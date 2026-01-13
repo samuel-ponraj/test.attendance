@@ -1,0 +1,66 @@
+'use client'
+
+import { usePathname } from "next/navigation"
+import { Separator } from "@/components/ui/separator"
+import { SidebarTrigger } from "@/components/ui/sidebar"
+import { ModeToggle } from "./modeToggle"
+
+const ROUTE_TITLES = [
+  {
+    path: "/dashboard/teams",
+    title: "Teams",
+    description: "Manage your teams and members",
+  },
+  {
+    path: "/dashboard/analytics",
+    title: "Analytics",
+    description: "Team-wise attendance insights",
+  },
+  {
+    path: "/settings",
+    title: "Settings",
+    description: "Manage your account and preferences",
+  },
+  {
+    path: "/dashboard",
+    title: "Dashboard",
+    description: "Manage teams and track attendance",
+  },
+]
+
+export function SiteHeader() {
+  const pathname = usePathname()
+
+  const currentRoute =
+    ROUTE_TITLES.find(
+      (route) =>
+        pathname === route.path ||
+        pathname.startsWith(route.path + "/")
+    ) || ROUTE_TITLES.find(route => route.path === "/dashboard")
+
+  return (
+    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)" >
+      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+        <SidebarTrigger className="-ml-1" />
+
+        <Separator
+          orientation="vertical"
+          className="mx-2 data-[orientation=vertical]:h-4"
+        />
+
+        <div className="flex flex-col leading-tight">
+          <h1 className="text-base font-medium">
+            {currentRoute.title}
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            {currentRoute.description}
+          </p>
+        </div>
+
+        <div className="ml-auto flex items-center gap-2">
+          <ModeToggle />
+        </div>
+      </div>
+    </header>
+  )
+}

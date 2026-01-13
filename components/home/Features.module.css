@@ -1,0 +1,12 @@
+.icon{
+    background-color: var(--red);
+}
+
+.headingDescription{
+    color: var(--gray);
+    font-size: 18px;
+}
+
+.featureDescription{
+    color: var(--gray);
+}
