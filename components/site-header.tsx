@@ -26,7 +26,13 @@ const ROUTE_TITLES = [
     title: "Dashboard",
     description: "Manage teams and track attendance",
   },
-]
+] as const
+
+const DEFAULT_ROUTE = {
+  path: "/dashboard",
+  title: "Dashboard",
+  description: "Manage teams and track attendance",
+}
 
 export function SiteHeader() {
   const pathname = usePathname()
@@ -36,11 +42,11 @@ export function SiteHeader() {
       (route) =>
         pathname === route.path ||
         pathname.startsWith(route.path + "/")
-    ) || ROUTE_TITLES.find(route => route.path === "/dashboard")
+    ) ?? DEFAULT_ROUTE
 
   return (
-    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)" >
-      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+      <div className="flex w-full items-center gap-1 px-4 py-3 lg:gap-2 lg:px-6 lg:py-4">
         <SidebarTrigger className="-ml-1" />
 
         <Separator

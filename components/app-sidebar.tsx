@@ -38,7 +38,7 @@ export function AppSidebar() {
   const isCollapsed = state === "collapsed"
   const pathname = usePathname()
 
-  const isActive = (url) => {
+  const isActive = (url: string)  => {
   if (url === "/dashboard") {
     return pathname === "/dashboard"
   }
