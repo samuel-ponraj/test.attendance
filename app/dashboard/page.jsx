@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Plus, Users } from "lucide-react";
 import { useState } from "react";
 import {  useTeams }  from '../context/TeamsContext'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
 
 export default function DashboardPage() {
 
@@ -25,19 +32,38 @@ export default function DashboardPage() {
         <h2 className="px-6">Your Teams</h2>
 
         {teams.length === 0 && !loading ? (
-          <div className="bg-card rounded-xl p-12 text-center shadow-card mx-6">
-            <div className="w-16 h-16 gradient-hero rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-primary-foreground" />
-            </div>
-            <h3 className="text-lg font-medium text-foreground mb-2">No teams yet</h3>
-            <p className="text-muted-foreground mb-6">Create your first team to start tracking attendance</p>
-            <Button onClick={() => setModalOpen(true)}><Plus />Add Team</Button>
+          <Card className="mx-6">
+            <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+              <div className="w-16 h-16 gradient-hero rounded-full flex items-center justify-center mb-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Users className="h-6 w-6" />
+                </div>
+              </div>
 
-            <AddTeamModal open={modalOpen} onOpenChange={setModalOpen} addTeam={addTeam} />
-          </div>
+              <CardTitle className="text-lg font-medium mb-2">
+                No teams yet
+              </CardTitle>
+
+              <p className="text-muted-foreground mb-6 max-w-sm">
+                Create your first team to start tracking attendance
+              </p>
+
+              <Button onClick={() => setModalOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Team
+              </Button>
+
+              <AddTeamModal
+                open={modalOpen}
+                onOpenChange={setModalOpen}
+                addTeam={addTeam}
+              />
+            </CardContent>
+          </Card>
         ) : (
           <TeamCardLayout teams={teams} deleteTeam={deleteTeam} />
-        )}
+)}
+
       </div>
     </>
   );
