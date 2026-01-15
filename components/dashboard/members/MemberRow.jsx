@@ -3,6 +3,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Check, X, Trash2 } from "lucide-react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
 
 const MemberRow = ({ member, teamId, onMemberRemoved }) => {
   const todayStatus = null; // placeholder, attendance not implemented
@@ -41,7 +45,8 @@ const MemberRow = ({ member, teamId, onMemberRemoved }) => {
   };
 
   return (
-    <div className="flex items-center justify-between p-4 bg-card rounded-lg shadow-card hover:shadow-soft transition-all duration-200 group">
+    <Card>
+    <CardContent className="flex items-center justify-between rounded-lg bg-card shadow-card hover:shadow-soft transition-all duration-200 group text-left" >
       <div className="flex items-center gap-4">
         <Avatar className="w-10 h-10">
           <AvatarFallback className="bg-accent text-accent-foreground font-medium">
@@ -76,7 +81,8 @@ const MemberRow = ({ member, teamId, onMemberRemoved }) => {
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>
-    </div>
+    </CardContent>
+    </Card>
   );
 };
 

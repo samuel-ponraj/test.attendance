@@ -75,11 +75,12 @@ export default function TeamDetailsPage() {
         {/* ---------------- ATTENDANCE TAB ---------------- */}
         <TabsContent value="attendance" className="space-y-6">
           {/* Header Card */}
-          <div className="bg-card rounded-xl shadow-card p-6">
+          <Card>
+            <CardContent className="p-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 gradient-hero rounded-xl flex items-center justify-center">
-                  <Users className="w-7 h-7 text-primary-foreground" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Users className="h-6 w-6" />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold">{team.name}</h2>
@@ -131,7 +132,8 @@ export default function TeamDetailsPage() {
                 <span>{unmarkedCount} Unmarked</span>
               </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
           {/* Members */}
           <h2 className="text-lg font-semibold">
@@ -139,7 +141,8 @@ export default function TeamDetailsPage() {
           </h2>
 
           {(!team.members || team.members.length === 0) ? (
-            <div className="bg-card rounded-xl p-12 text-center shadow-card">
+            <Card>
+              <CardContent className="p-6 space-y-6 text-center ">
               <div className="w-16 h-16 gradient-hero rounded-full flex items-center justify-center mx-auto mb-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
                   <Users className="h-6 w-6" />
@@ -164,7 +167,8 @@ export default function TeamDetailsPage() {
                   if (snap.exists()) setTeam({ id: snap.id, ...snap.data() });
                 }}
               />
-            </div>
+            </CardContent>
+            </Card>
           ) : (
             <div className="space-y-4">
               {team.members.map((member) => (
