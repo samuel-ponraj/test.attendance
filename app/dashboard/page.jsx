@@ -5,11 +5,14 @@ import TeamCardLayout from "@/components/dashboard/team-card";
 import AddTeamModal from "@/components/dashboard/addTeamModal";
 import { Button } from "@/components/ui/button";
 import { Plus, Users } from "lucide-react";
-import { useTeams } from "@/hooks/useTeams";
 import { useState } from "react";
+import {  useTeams }  from '../context/TeamsContext'
 
 export default function DashboardPage() {
-  const { teams, addTeam, deleteTeam, loading } = useTeams();
+
+
+  const { addTeam, deleteTeam, loading, teams } = useTeams()
+
   const [modalOpen, setModalOpen] = useState(false);
 
   return (

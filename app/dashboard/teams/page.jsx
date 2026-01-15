@@ -1,7 +1,7 @@
 'use client'
 import TeamCardLayout from "@/components/dashboard/team-card"
 import { useState } from "react";
-import { useTeams } from "@/hooks/useTeams";
+import {  useTeams }  from '../../context/TeamsContext'
 import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AddTeamModal from "@/components/dashboard/addTeamModal";

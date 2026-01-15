@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 import { UIProvider, useUI } from "../context/uiContext";
 import { AttendanceProvider } from "../context/AttendanceContext";
+import { TeamsProvider } from "../context/TeamsContext";
 
 function DashboardContent({ children }) {
   const { isAddTeamOpen, setAddTeamOpen } = useUI();
@@ -52,9 +53,11 @@ export default function DashboardLayout({ children }) {
       disableTransitionOnChange
     >
       <UIProvider>
+        <TeamsProvider>
         <AttendanceProvider>
           <DashboardContent>{children}</DashboardContent>
         </AttendanceProvider>
+        </TeamsProvider>
       </UIProvider>
     </ThemeProvider>
   );
