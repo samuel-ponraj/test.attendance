@@ -141,7 +141,9 @@ export default function TeamDetailsPage() {
           {(!team.members || team.members.length === 0) ? (
             <div className="bg-card rounded-xl p-12 text-center shadow-card">
               <div className="w-16 h-16 gradient-hero rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-primary-foreground" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Users className="h-6 w-6" />
+                </div>
               </div>
 
               <h3 className="text-lg font-medium mb-2">No members yet</h3>
