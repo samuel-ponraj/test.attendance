@@ -1,22 +1,26 @@
 'use client'
 
-import React from "react"
-import { ThemeProvider } from "@/components/theme-provider"
-import { AppSidebar } from "@/components/app-sidebar"
-import { SiteHeader } from "@/components/site-header"
+import AddTeamModal from "../../components/dashboard/addTeamModal";
+import { ThemeProvider } from "@/components/theme-provider";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
 import {
   SidebarInset,
   SidebarProvider,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
+import { UIProvider, useUI } from "../context/uiContext";
+import { AttendanceProvider } from "../context/AttendanceContext";
 
-export default function DashboardLayout({ children }) {
+function DashboardContent({ children }) {
+  const { isAddTeamOpen, setAddTeamOpen } = useUI();
+
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-    >
+    <>
+      <AddTeamModal
+        open={isAddTeamOpen}
+        onOpenChange={setAddTeamOpen}
+      />
+
       <SidebarProvider
         style={{
           "--sidebar-width": "calc(var(--spacing) * 72)",
@@ -35,6 +39,23 @@ export default function DashboardLayout({ children }) {
           </div>
         </SidebarInset>
       </SidebarProvider>
+    </>
+  );
+}
+
+export default function DashboardLayout({ children }) {
+  return (
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <UIProvider>
+        <AttendanceProvider>
+          <DashboardContent>{children}</DashboardContent>
+        </AttendanceProvider>
+      </UIProvider>
     </ThemeProvider>
-  )
+  );
 }

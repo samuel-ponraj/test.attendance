@@ -4,6 +4,12 @@ import { usePathname } from "next/navigation"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ModeToggle } from "./modeToggle"
+import { Button } from "./ui/button"
+import { Plus } from "lucide-react"
+import { useTeams } from "@/hooks/useTeams"
+import { useState } from "react"
+import AddTeamModal from "./dashboard/addTeamModal"
+
 
 const ROUTE_TITLES = [
   {
@@ -37,6 +43,9 @@ const DEFAULT_ROUTE = {
 export function SiteHeader() {
   const pathname = usePathname()
 
+  const { teams, addTeam, deleteTeam, loading } = useTeams();
+  const [modalOpen, setModalOpen] = useState(false);
+
   const currentRoute =
     ROUTE_TITLES.find(
       (route) =>
@@ -63,8 +72,11 @@ export function SiteHeader() {
           </p>
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-4">
+          <Button onClick={() => setModalOpen(true)}><Plus />Add Team</Button>
           <ModeToggle />
+
+          <AddTeamModal open={modalOpen} onOpenChange={setModalOpen} addTeam={addTeam} />
         </div>
       </div>
     </header>
