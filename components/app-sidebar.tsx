@@ -8,6 +8,7 @@ import {
   Users,
   BarChart3,
   Settings,
+  History
 } from "lucide-react"
 
 import {
@@ -26,6 +27,7 @@ import {
 const mainNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Teams", url: "/dashboard/teams", icon: Users },
+  { title: "History", url: "/dashboard/history", icon: History },
   { title: "Analytics", url: "/dashboard/analytics", icon: BarChart3 },
 ]
 
