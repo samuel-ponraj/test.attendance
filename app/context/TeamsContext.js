@@ -34,7 +34,7 @@ export function TeamsProvider({ children }) {
   return () => unsub();
 }, [user?.id]);
 
-  
+
 
   const addTeam = async (name, description) => {
     const res = await fetch("/api/teams/create", {
@@ -49,10 +49,6 @@ export function TeamsProvider({ children }) {
         },
       }),
     });
-
-    const data = await res.json();
-
-    setTeams((prev) => [data.team, ...prev]);
   };
 
   const deleteTeam = async (teamId) => {
@@ -62,7 +58,6 @@ export function TeamsProvider({ children }) {
       body: JSON.stringify({ teamId }),
     });
 
-    setTeams((prev) => prev.filter((t) => t.id !== teamId));
   };
 
   return (

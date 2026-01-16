@@ -20,6 +20,7 @@ export default function AddTeamModal({ open, onOpenChange, addTeam }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     if (!name.trim()) return;
 
     if (typeof addTeam !== "function") {

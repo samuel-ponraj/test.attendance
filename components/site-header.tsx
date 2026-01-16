@@ -6,7 +6,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ModeToggle } from "./modeToggle"
 import { Button } from "./ui/button"
 import { Plus } from "lucide-react"
-import { useTeams } from "@/hooks/useTeams"
+import { useTeams } from "@/app/context/TeamsContext"
 import { useState } from "react"
 import AddTeamModal from "./dashboard/addTeamModal"
 

@@ -17,7 +17,6 @@ export async function POST(req) {
       createdAt: serverTimestamp(),
       present: 0,
       absent: 0,
-      total: 0,
       members: []
     });
 
