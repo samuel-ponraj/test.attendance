@@ -54,7 +54,7 @@ const TeamCardLayout = ({ teams, deleteTeam }) => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:bg-destructive/10"
+                  className="text-muted-foreground hover:text-destructive"
                   onClick={(e) => handleDelete(e, team.id)}
                 >
                   <Trash2 className="w-4 h-4" />

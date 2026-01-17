@@ -72,64 +72,67 @@ const MemberRow = ({
 
   return (
     <Card>
-      <CardContent className="flex items-center justify-between rounded-lg bg-card shadow-card hover:shadow-soft transition-all duration-200 group text-left">
-        <div className="flex items-center gap-4">
-          <Avatar className="w-10 h-10">
-            <AvatarFallback className="bg-accent text-accent-foreground font-medium">
-              {getInitials(member.name)}
-            </AvatarFallback>
-          </Avatar>
+  {/* 'relative' is needed for the mobile absolute positioning */}
+  <CardContent className="relative flex flex-col sm:flex-row items-center justify-between rounded-lg bg-card shadow-card hover:shadow-soft transition-all duration-200 group text-left gap-4">
+    
+    {/* Avatar and Info */}
+    <div className="flex items-center gap-4 w-full sm:w-auto">
+      <Avatar className="w-10 h-10 shrink-0">
+        <AvatarFallback className="bg-accent text-accent-foreground font-medium">
+          {getInitials(member.name)}
+        </AvatarFallback>
+      </Avatar>
 
-          <div>
-            <p className="font-medium text-foreground">{member.name}</p>
-            <p className="text-sm text-muted-foreground">{member.email}</p>
-          </div>
-        </div>
+      <div>
+        <p className="font-medium text-foreground leading-none">{member.name}</p>
+        <p className="text-sm text-muted-foreground">{member.email}</p>
+      </div>
+    </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex gap-2">
-            <Button
-			variant={todayStatus === "present" ? "default" : "outline"}
-			size="sm"
-			onClick={() => handleAttendance("present")}
-			className={
-				todayStatus === "present"
-				? "bg-success text-white hover:bg-success hover:text-white hover:border-success"
-				: "hover:bg-success/10 hover:text-success hover:border-success"
-			}
-			>
-			<Check className="w-4 h-4 mr-1" />
-			Present
-			</Button>
+    {/* Buttons Container */}
+    <div className="flex items-center justify-center sm:justify-end gap-2 w-full sm:w-auto">
+      <div className="flex gap-2">
+        <Button
+          variant={todayStatus === "present" ? "default" : "outline"}
+          size="sm"
+          onClick={() => handleAttendance("present")}
+          className={
+            todayStatus === "present"
+              ? "bg-success text-white hover:bg-success"
+              : "hover:bg-success/10 hover:text-success hover:border-success"
+          }
+        >
+          <Check className="w-4 h-4 mr-1" />
+          Present
+        </Button>
 
-            <Button
-				variant={todayStatus === "absent" ? "default" : "outline"}
-				size="sm"
-				onClick={() => handleAttendance("absent")}
-				className={
-					todayStatus === "absent"
-					? "bg-destructive text-white hover:bg-destructive hover:text-white hover:border-destructive"
-					: "hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
-				}
-				>
-				<X className="w-4 h-4 mr-1" />
-				Absent
-			</Button>
+        <Button
+          variant={todayStatus === "absent" ? "default" : "outline"}
+          size="sm"
+          onClick={() => handleAttendance("absent")}
+          className={
+            todayStatus === "absent"
+              ? "bg-destructive text-white hover:bg-destructive"
+              : "hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
+          }
+        >
+          <X className="w-4 h-4 mr-1" />
+          Absent
+        </Button>
+      </div>
 
-
-          </div>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-destructive"
-            onClick={handleRemove}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      {/* Responsive Delete Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-0 right-2 sm:static text-muted-foreground hover:text-destructive"
+        onClick={handleRemove}
+      >
+        <Trash2 className="w-4 h-4" />
+      </Button>
+    </div>
+  </CardContent>
+</Card>
   );
 };
 
