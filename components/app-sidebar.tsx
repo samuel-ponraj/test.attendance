@@ -14,6 +14,7 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -23,6 +24,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { NavUser } from "./nav-user"
 
 const mainNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -48,6 +50,11 @@ export function AppSidebar() {
   return pathname === url || pathname.startsWith(url + "/")
 }
 
+const data = {
+  user: {
+    name: "Samuel Ponraj",
+    email: "samuel@example.com",
+  },}
 
   return (
     <Sidebar collapsible="icon">
@@ -118,6 +125,9 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+              <NavUser user={data.user} />
+            </SidebarFooter>
     </Sidebar>
   )
 }
