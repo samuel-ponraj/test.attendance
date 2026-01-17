@@ -39,6 +39,7 @@ const Features = () => {
     <section id="features" className="py-24">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
+          <span className={styles.badge}>Features</span>
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">
             Everything You Need
           </h2>

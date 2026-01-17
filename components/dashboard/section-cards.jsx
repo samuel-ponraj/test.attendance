@@ -24,24 +24,16 @@ export function SectionCards({ teams = [] }) {
     0
   );
 
-  // const totalPresent = teams.reduce(
-  //   (sum, team) => sum + (team.present || 0),
-  //   0
-  // );
 
-  // const totalAbsent = teams.reduce(
-  //   (sum, team) => sum + (team.absent || 0),
-  //   0
-  // );
 
   const CardItem = ({ title, value, Icon, color }) => (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardDescription >{title}</CardDescription>
-          <CardTitle className="text-3xl font-semibold mt-2">
+          <CardTitle className="text-3xl font-semibold mb-2">
             {value}
           </CardTitle>
+          <CardDescription >{title}</CardDescription>
         </div>
 
         {/* Colored icon */}

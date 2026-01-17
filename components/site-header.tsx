@@ -23,6 +23,11 @@ const ROUTE_TITLES = [
     description: "Team-wise attendance insights",
   },
   {
+    path: "/dashboard/history",
+    title: "Attendance History",
+    description: "View detailed attendance records",
+  },
+  {
     path: "/settings",
     title: "Settings",
     description: "Manage your account and preferences",

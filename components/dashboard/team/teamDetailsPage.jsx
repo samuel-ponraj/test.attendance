@@ -12,12 +12,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
   Card,
   CardHeader,
   CardTitle,
@@ -147,15 +141,7 @@ export default function TeamDetailsPage() {
         <ArrowLeft className="w-4 h-4" /> Back to Teams
       </button>
 
-      <Tabs defaultValue="attendance" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="attendance">Mark Attendance</TabsTrigger>
-          <TabsTrigger value="history">View History</TabsTrigger>
-        </TabsList>
-
-        {/* ---------------- ATTENDANCE TAB ---------------- */}
-        <TabsContent value="attendance" className="space-y-6">
-          {/* Header */}
+      
           <Card>
             <CardContent className="p-6 space-y-6">
               <div className="flex flex-col sm:flex-row justify-between gap-4">
@@ -246,23 +232,8 @@ export default function TeamDetailsPage() {
               if (snap.exists()) setTeam({ id: snap.id, ...snap.data() });
             }}
           />
-        </TabsContent>
 
-        {/* ---------------- HISTORY TAB ---------------- */}
-        <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Attendance History
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-muted-foreground">
-              No history yet
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+       
     </div>
   );
 }

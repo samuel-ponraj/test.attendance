@@ -1,10 +1,10 @@
-import TeamCardLayout from "@/components/dashboard/team-card"
+import HistoryLayout from "../../../components/dashboard/history/HistoryLayout"
 
-export default function TeamsPage() {
+export default function HistoryPage() {
   return (
     
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-      History
+      <HistoryLayout />
     </div>
   )
 }

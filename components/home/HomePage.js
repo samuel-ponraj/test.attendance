@@ -3,7 +3,8 @@ import styles from './HomePage.module.css'
 import { ArrowRight, CheckCircle } from 'lucide-react';
 import Features from './Features'
 import Link from 'next/link';
-
+import UseCase from './UseCase'
+import HowItWorks from './HowItWorks'
 
 const HomePage = () => {
   return (
@@ -35,6 +36,12 @@ const HomePage = () => {
         </section>
         <section className={styles.features}>
           <Features />
+        </section>
+        <section>
+          <UseCase />
+        </section>
+        <section>
+          <HowItWorks />
         </section>
     </div>
   )
