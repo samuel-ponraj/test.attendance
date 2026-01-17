@@ -30,6 +30,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-, "app/page.jsx", "app/layout.jsx", "next.config.ts", "app/dashboard/page.jsx", "components/dashboard/team-card.jsx", "components/dashboard/section-cards.jsx", "lib/attendance.ts"  ],
+, "app/page.jsx", "app/layout.jsx", "next.config.ts", "app/dashboard/page.jsx", "components/dashboard/team-card.jsx", "components/dashboard/section-cards.jsx", "lib/attendance.ts", "components/app-sidebar.jsx"  ],
   "exclude": ["node_modules"]
 }

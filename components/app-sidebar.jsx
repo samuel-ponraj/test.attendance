@@ -42,19 +42,20 @@ export function AppSidebar() {
   const isCollapsed = state === "collapsed"
   const pathname = usePathname()
 
-  const isActive = (url: string)  => {
-  if (url === "/dashboard") {
-    return pathname === "/dashboard"
+  const isActive = (url) => {
+    if (url === "/dashboard") {
+      return pathname === "/dashboard"
+    }
+
+    return pathname === url || pathname.startsWith(url + "/")
   }
 
-  return pathname === url || pathname.startsWith(url + "/")
-}
-
-const data = {
-  user: {
-    name: "Samuel Ponraj",
-    email: "samuel@example.com",
-  },}
+  const data = {
+    user: {
+      name: "Samuel Ponraj",
+      email: "samuel@example.com",
+    },
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -125,9 +126,10 @@ const data = {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
       <SidebarFooter>
-              <NavUser user={data.user} />
-            </SidebarFooter>
+        <NavUser user={data.user} />
+      </SidebarFooter>
     </Sidebar>
   )
 }
