@@ -20,7 +20,7 @@
 }
 
 .brandText {
-  font-size: 0.875rem;
+  font-size: 15px;
   line-height: 1.6;
   max-width: 22rem;
   color: var(--gray);
@@ -28,7 +28,7 @@
 
 .poweredby{
     margin-top: 10px;
-    font-size: 0.875rem;
+    font-size: 15px;
   line-height: 1.6;
   max-width: 22rem;
   color: var(--gray);
@@ -36,24 +36,22 @@
 
 .sectionTitle {
   font-weight: 600;
+  font-size: 18px;
   margin-bottom: 1rem;
-  color: var(--red)
+  
 }
 
 .links {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  
 }
 
 .footerLink {
-  font-size: 0.875rem;
-  color: white;
+  font-size: 15px;
   transition: color 0.2s ease;
-}
-
-.footerLink:hover {
-  color: hsl(var(--primary));
+  color: var(--gray);
 }
 
 .contact {
@@ -66,13 +64,9 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
+  font-size: 15px;
+  color: var(--gray);
   transition: color 0.2s ease;
-}
-
-.contactItem:hover {
-  color: hsl(var(--primary));
 }
 
 /* Bottom bar */

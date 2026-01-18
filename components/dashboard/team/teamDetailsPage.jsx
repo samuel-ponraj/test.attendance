@@ -26,6 +26,7 @@ import {
   XCircle,
   Clock,
   UserPlus,
+  Upload,
 } from "lucide-react";
 
 import { doc, getDoc, updateDoc, Timestamp } from "firebase/firestore";
@@ -220,6 +221,7 @@ export default function TeamDetailsPage() {
               <Button onClick={() => setModalOpen(true)}>
                 <UserPlus /> Add Member
               </Button>
+              
             </div>
           )}
 
@@ -266,9 +268,14 @@ function EmptyState({ onAdd }) {
         <p className="text-muted-foreground">
           Add team members to start tracking attendance
         </p>
+        <div className="flex align-center justify-center gap-4"> 
         <Button onClick={onAdd}>
           <UserPlus /> Add Member
         </Button>
+        {/* <Button onClick={onAdd}>
+          <Upload /> Upload Members
+        </Button> */}
+        </div>
       </CardContent>
     </Card>
   );

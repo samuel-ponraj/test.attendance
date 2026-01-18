@@ -20,7 +20,6 @@ export default function Page() {
   return (
     
      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-
         {teams.length === 0 && !loading ? (
           <Card className="mx-6">
             <CardContent className="flex flex-col items-center justify-center p-12 text-center">
@@ -42,6 +41,7 @@ export default function Page() {
                 <Plus  />
                 Add Team
               </Button>
+              
 
               <AddTeamModal
                 open={modalOpen}
