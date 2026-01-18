@@ -27,7 +27,7 @@ export function SectionCards({ teams = [] }) {
 
 
   const CardItem = ({ title, value, Icon, color }) => (
-    <Card className="py-3 lg:py-6">
+    <Card className="py-5 lg:py-6">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-3xl font-semibold mb-2">
