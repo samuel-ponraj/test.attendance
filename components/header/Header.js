@@ -39,7 +39,7 @@ const Header = () => {
     <div
         className={`${styles.headerContainer} ${isScrolled ? styles.scrolled : ''}`}>
         <div className={styles.header}>
-            <Image src='/logo/kds-transparent-white.png' alt='KDS Logo' width={150} height={100}/>
+            <Image src='/logo/KDA-logo-white.png' alt='KDS Logo' width={150} height={100}/>
             <div style={{display:'flex', alignItems:'center', gap:'30px'}}>
               {/* <Link href='/dashboard'>
               {isSignedIn && (

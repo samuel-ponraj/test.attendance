@@ -57,6 +57,7 @@ export function AppSidebar() {
       {/* ---------- Header ---------- */}
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center justify-center gap-3 px-2 py-3">
+          <Link href='/'>
           {isCollapsed ? (
             <Image
               src="/logo/logo.png"
@@ -66,12 +67,13 @@ export function AppSidebar() {
             />
           ) : (
             <Image
-              src="/logo/kds-transparent-white.png"
+              src="/logo/KDA-logo-white.png"
               alt="KDS Full Logo"
               width={150}
               height={40}
             />
           )}
+          </Link>
         </div>
       </SidebarHeader>
 

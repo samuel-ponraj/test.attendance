@@ -92,6 +92,10 @@
   gap: 1.5rem;
 }
 
+.quickLinks{
+  margin-left: 100px;
+}
+
 /* ---------- Media Queries ---------- */
 
 /* ≥ 768px (tablet) */

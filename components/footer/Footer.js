@@ -13,7 +13,7 @@ const Footer = () => {
           {/* Brand */}
           <div>
             <a href="/" className="flex items-center gap-2 mb-6">
-              <Image src='/logo/kds-transparent-white.png' alt='KDS Logo' width={150} height={100}/>
+              <Image src='/logo/KDA-logo-white.png' alt='KDS Logo' width={180} height={100}/>
             </a>
 
             <p className={styles.brandText}>
@@ -27,13 +27,12 @@ const Footer = () => {
           </div>
 
           {/* Quick Links */}
-          <div>
+          <div className={styles.quickLinks}>
             <h4 className={styles.sectionTitle}>Quick Links</h4>
             <nav className={styles.links}>
               <a href="#features" className={styles.footerLink}>Features</a>
               <a href="#use-cases" className={styles.footerLink}>Use Cases</a>
               <a href="#how-it-works" className={styles.footerLink}>How It Works</a>
-              <a href="#" className={styles.footerLink}>Dashboard</a>
             </nav>
           </div>
 
