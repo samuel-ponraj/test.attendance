@@ -4,6 +4,7 @@ import "./globals.css"
 import Header from "../components/header/Header"
 import { usePathname } from "next/navigation"
 import {  ClerkProvider} from '@clerk/nextjs'
+import Footer from "@/components/footer/Footer"
 
 
 export default function RootLayout({ children }) {
@@ -17,6 +18,7 @@ export default function RootLayout({ children }) {
       <body>
           {!isDashboard && <Header />}
           {children}
+          {!isDashboard && <Footer />}
       </body>
     </html>
     </ClerkProvider>

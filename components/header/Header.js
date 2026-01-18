@@ -41,11 +41,11 @@ const Header = () => {
         <div className={styles.header}>
             <Image src='/logo/kds-transparent-white.png' alt='KDS Logo' width={150} height={100}/>
             <div style={{display:'flex', alignItems:'center', gap:'30px'}}>
-              <Link href='/dashboard'>
+              {/* <Link href='/dashboard'>
               {isSignedIn && (
                 <h1 className={styles.dashboardBtn} ><LayoutDashboard /> Dashboard</h1>
               )}
-              </Link>
+              </Link> */}
               <button onClick={handleAuthClick}>
                 {isSignedIn ? (
                   <>

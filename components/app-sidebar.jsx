@@ -50,18 +50,13 @@ export function AppSidebar() {
     return pathname === url || pathname.startsWith(url + "/")
   }
 
-  const data = {
-    user: {
-      name: "Samuel Ponraj",
-      email: "samuel@example.com",
-    },
-  }
+  
 
   return (
     <Sidebar collapsible="icon">
       {/* ---------- Header ---------- */}
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-3 px-2 py-3">
+        <div className="flex items-center justify-center gap-3 px-2 py-3">
           {isCollapsed ? (
             <Image
               src="/logo/logo.png"
@@ -83,7 +78,7 @@ export function AppSidebar() {
       {/* ---------- Content ---------- */}
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Main</SidebarGroupLabel>
+          {/* <SidebarGroupLabel>Main</SidebarGroupLabel> */}
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNavItems.map((item) => (
@@ -104,7 +99,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
+        {/* <SidebarGroup>
           <SidebarGroupLabel>System</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -124,11 +119,11 @@ export function AppSidebar() {
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
-        </SidebarGroup>
+        </SidebarGroup> */}
       </SidebarContent>
 
-      <SidebarFooter>
-        <NavUser user={data.user} />
+      <SidebarFooter className="py-6">
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   )

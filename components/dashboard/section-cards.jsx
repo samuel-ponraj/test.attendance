@@ -27,7 +27,7 @@ export function SectionCards({ teams = [] }) {
 
 
   const CardItem = ({ title, value, Icon, color }) => (
-    <Card>
+    <Card className="py-3 lg:py-6">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-3xl font-semibold mb-2">
@@ -47,7 +47,7 @@ export function SectionCards({ teams = [] }) {
   );
 
   return (
-    <div className="grid grid-cols-2 gap-4 px-4 lg:px-6 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 px-4 lg:px-6 sm:grid-cols-2  xl:grid-cols-4">
       <CardItem
         title="Total Teams"
         value={totalTeams}
@@ -56,6 +56,7 @@ export function SectionCards({ teams = [] }) {
           bg: "bg-indigo-100 dark:bg-indigo-900/30",
           icon: "text-indigo-600 dark:text-indigo-400",
         }}
+        
       />
 
       <CardItem

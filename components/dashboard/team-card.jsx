@@ -43,8 +43,7 @@ const TeamCardLayout = ({ teams, deleteTeam }) => {
         return (
           <Card
             key={team.id}
-            className="group bg-card shadow-xs hover:shadow-md transition-all duration-300"
-          >
+            className="group bg-card shadow-xs hover:shadow-md transition-all duration-300">
             <CardHeader className="relative">
               <div className="flex items-start justify-between mb-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">

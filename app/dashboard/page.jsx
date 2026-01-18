@@ -32,7 +32,7 @@ export default function DashboardPage() {
         <h2 className="px-6">Your Teams</h2>
 
         {teams.length === 0 && !loading ? (
-          <Card className="mx-6">
+          <Card className="mx-6 py-2 lg:py-6">
             <CardContent className="flex flex-col items-center justify-center p-12 text-center">
               <div className="w-16 h-16 gradient-hero rounded-full flex items-center justify-center mb-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">

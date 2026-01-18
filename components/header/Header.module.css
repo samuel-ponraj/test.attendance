@@ -61,3 +61,12 @@
 .dashboardBtn:hover{
     background-color: rgba(255, 255, 255, 0.111);
 }
+
+
+@media (max-width: 768px) {
+    .header button{
+    background-color: var(--red);
+    padding: 8px 15px 8px 15px;
+    font-size: 14px;
+}
+}
