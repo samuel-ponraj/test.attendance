@@ -23,7 +23,15 @@
   font-size: 0.875rem;
   line-height: 1.6;
   max-width: 22rem;
-  color: hsl(var(--muted-foreground));
+  color: var(--gray);
+}
+
+.poweredby{
+    margin-top: 10px;
+    font-size: 0.875rem;
+  line-height: 1.6;
+  max-width: 22rem;
+  color: var(--gray);
 }
 
 .sectionTitle {
@@ -97,6 +105,12 @@
     justify-content: space-between;
     text-align: left;
   }
+
+  .brandText{
+    width: 100%;
+  }
+
+
 }
 
 /* ≥ 1024px (desktop) */
