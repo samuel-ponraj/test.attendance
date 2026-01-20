@@ -1,6 +1,10 @@
 'use client'
 
-import useAttendanceCount from '@/lib/AttendanceCount'
+import { useEffect, useState } from "react"
+import { collection, getDocs } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { useUser } from "@clerk/nextjs"
+
 import {
   Card,
   CardContent,
@@ -8,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+
 import {
   BarChart,
   Bar,
@@ -21,87 +26,111 @@ import {
   Cell,
   Legend,
 } from "recharts"
-import { useState } from "react"
-import { Users, CheckCircle, XCircle, TrendingUp } from "lucide-react"
 
-const COLORS = ["hsl(var(--success))", "hsl(var(--destructive))"]
+const COLORS = ["hsl(var(--success))", "#BA2C2C"]
 
 const Analytics = () => {
-  // ✅ SAFE DESTRUCTURING (NO HOOK CHANGES)
-  const hookData = useAttendanceCount()
+  const { user } = useUser()
 
-  const teams = Array.isArray(hookData?.teams) ? hookData.teams : []
-  const attendanceRecords = Array.isArray(hookData?.attendanceRecords)
-    ? hookData.attendanceRecords
-    : []
+  const [teamWiseData, setTeamWiseData] = useState([])
+  const [pieData, setPieData] = useState([])
 
-  const [selectedTeam, setSelectedTeam] = useState("all")
+  useEffect(() => {
+  if (!user || !user.primaryEmailAddress) return
 
-  const today = new Date().toISOString().split("T")[0]
+  const userEmail = user.primaryEmailAddress.emailAddress.toLowerCase()
 
-  // ✅ SAFE FILTER
-  const filteredRecords =
-    selectedTeam === "all"
-      ? attendanceRecords
-      : attendanceRecords.filter((r) => {
-          const team = teams.find((t) => t.id === selectedTeam)
-          return team?.members?.some((m) => m.id === r.memberId)
-        })
+  
 
-  const todayRecords = filteredRecords.filter((r) => r.date === today)
+  const fetchAnalytics = async () => {
+    const today = getTodayKey()
+    const teamsSnap = await getDocs(collection(db, "teams"))
 
-  const presentToday = todayRecords.filter((r) => r.status === "present").length
-  const absentToday = todayRecords.filter((r) => r.status === "absent").length
+    let totalPresent = 0
+    let totalAbsent = 0
+    const teamData = []
 
-  // ✅ TEAM-WISE DATA (GUARDED)
-  const teamWiseData = teams.map((team) => {
-    const members = team?.members || []
-    const memberIds = members.map((m) => m.id)
+    teamsSnap.forEach(docSnap => {
+      const team = docSnap.data()
 
-    const records = attendanceRecords.filter(
-      (r) => memberIds.includes(r.memberId) && r.date === today
-    )
+      if (
+        team.admin?.email?.toLowerCase() !== userEmail
+      ) return
 
-    const present = records.filter((r) => r.status === "present").length
-    const absent = records.filter((r) => r.status === "absent").length
 
-    return {
-      name: team.name,
-      present,
-      absent,
-      total: members.length,
-      attendanceRate:
-        members.length > 0
-          ? Math.round((present / members.length) * 100)
-          : 0,
-    }
-  })
+      const attendanceToday = team.attendance?.[today] || {}
 
-  const pieData = [
-    { name: "Present", value: presentToday },
-    { name: "Absent", value: absentToday },
-  ].filter((d) => d.value > 0)
+      let present = 0
+      let absent = 0
 
-  const totalMembers =
-    selectedTeam === "all"
-      ? teams.reduce((acc, t) => acc + (t.members?.length || 0), 0)
-      : teams.find((t) => t.id === selectedTeam)?.members?.length || 0
+      Object.values(attendanceToday).forEach((entry) => {
+        if (entry.status === "present") present++
+        if (entry.status === "absent") absent++
+      })
 
-  const attendanceRate =
-    totalMembers > 0 ? Math.round((presentToday / totalMembers) * 100) : 0
+      const total = present + absent
+      const rate = total > 0 ? Math.round((present / total) * 100) : 0
 
-  // ✅ LOADING STATE (OPTIONAL BUT RECOMMENDED)
-  if (!teams.length && !attendanceRecords.length) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center text-muted-foreground">
-        Loading analytics...
-      </div>
-    )
+      totalPresent += present
+      totalAbsent += absent
+
+      teamData.push({
+        name: team.name,
+        present,
+        absent,
+        attendanceRate: rate,
+      })
+    })
+
+    setTeamWiseData(teamData)
+    setPieData([
+      { name: "Present", value: totalPresent },
+      { name: "Absent", value: totalAbsent },
+    ])
   }
 
+  fetchAnalytics()
+}, [user])
+
+
+const renderPercentageLabel = ({
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
+  percent,
+  name,
+}) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 1.6
+  const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180))
+  const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180))
+
+  const color =
+    name === "Present"
+      ? "hsl(var(--success))"
+      : "#BA2C2C"
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Bar Chart */}
+    <text
+      x={x}
+      y={y}
+      fill={color}
+      textAnchor={x > cx ? "start" : "end"}
+      dominantBaseline="central"
+      fontSize={14}
+      fontWeight={500}
+    >
+      {name} {Math.round(percent * 100)}%
+    </text>
+  )
+}
+
+
+
+  return (
+    <div className="grid grid-cols-1 px-6 lg:grid-cols-2 gap-6">
+      {/* Team-wise Attendance */}
       <Card>
         <CardHeader>
           <CardTitle>Team-wise Attendance</CardTitle>
@@ -110,22 +139,22 @@ const Analytics = () => {
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={teamWiseData}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="present" fill="hsl(var(--success))" />
-              <Bar dataKey="absent" fill="hsl(var(--destructive))" />
+              <Bar dataKey="present" fill="hsl(var(--success))" radius={[4,4,0,0]} />
+              <Bar dataKey="absent" fill="#BA2C2C" radius={[4,4,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* Pie Chart */}
+      {/* Attendance Distribution */}
       <Card>
         <CardHeader>
           <CardTitle>Attendance Distribution</CardTitle>
-          <CardDescription>Today</CardDescription>
+          <CardDescription>Today's overall attendance</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -137,10 +166,11 @@ const Analytics = () => {
                 cy="50%"
                 innerRadius={60}
                 outerRadius={100}
-                label
+                paddingAngle={5}
+                label={renderPercentageLabel}
               >
-                {pieData.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                {pieData.map((_, index) => (
+                  <Cell key={index} fill={COLORS[index]} />
                 ))}
               </Pie>
               <Tooltip />
@@ -150,22 +180,25 @@ const Analytics = () => {
         </CardContent>
       </Card>
 
-      {/* Progress Bars */}
+      {/* Attendance Rate */}
       <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle>Attendance Rate by Team</CardTitle>
+          <CardDescription>Percentage of members present today</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {teamWiseData.map((team) => (
+          {teamWiseData.map(team => (
             <div key={team.name} className="flex items-center gap-4">
-              <div className="w-32 truncate">{team.name}</div>
+              <div className="w-32 truncate font-medium">{team.name}</div>
               <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-primary"
+                  className="h-full bg-primary transition-all"
                   style={{ width: `${team.attendanceRate}%` }}
                 />
               </div>
-              <div className="w-14 text-right">{team.attendanceRate}%</div>
+              <div className="w-16 text-right text-sm font-medium">
+                {team.attendanceRate}%
+              </div>
             </div>
           ))}
         </CardContent>
@@ -175,3 +208,15 @@ const Analytics = () => {
 }
 
 export default Analytics
+
+/* ---------------- Utils ---------------- */
+
+const getTodayKey = () => {
+  const d = new Date()
+  return `${String(d.getDate()).padStart(2, "0")}-${String(
+    d.getMonth() + 1
+  ).padStart(2, "0")}-${d.getFullYear()}`
+}
+
+
+
