@@ -59,7 +59,7 @@ const HistoryLayout = () => {
   }, [selectedTeam]);
 
   return (
-    <div className="space-y-6 px-6">
+    <div className="space-y-6 px-4 lg:px-6">
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -153,7 +153,7 @@ const HistoryLayout = () => {
     </div>
 
     {/* To Date */}
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5 ">
       <label className="text-sm font-medium text-muted-foreground">To Date</label>
       <Popover>
         <PopoverTrigger asChild>
