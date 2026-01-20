@@ -36,7 +36,7 @@ const features = [
 
 const Features = () => {
   return (
-    <section id="features" className={`py-24 ${styles.featuresSection}`}>
+    <section id="features" className={`py-15 ${styles.featuresSection}`}>
       <div className={`container mx-auto px-4 ${styles.container} `}>
         <div className="text-center mb-16">
           <span className={styles.badge}>Features</span>

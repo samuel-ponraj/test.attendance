@@ -27,8 +27,6 @@ const steps = [
 const HowItWorksSection = () => {
   return (
     <section id="how-it-works" className={styles.section}>
-      <div className={styles.ctabgblack}></div>
-      <div className={styles.ctapatternoverlay}></div>
       <div className={styles.container}>
 
         {/* Header */}
