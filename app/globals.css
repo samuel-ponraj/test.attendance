@@ -8,6 +8,11 @@
 
 /* #9d1c1b */
 
+html {
+  scroll-behavior: smooth;
+}
+
+
 :root {
   --text: #202124;
   --red: #9d1c1b;

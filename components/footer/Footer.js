@@ -1,6 +1,7 @@
 import { Crown, Mail, Phone } from "lucide-react";
 import styles from "./Footer.module.css";
 import Image from "next/image";
+import Link from "next/link";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -22,7 +23,7 @@ const Footer = () => {
             </p>
 
             <p className={styles.poweredby}>
-              Powered by Kingz Digital Solutions
+              Powered by <Link href='https://kingzdigitalsolutions.in/'>Kingz Digital Solutions</Link>
             </p>
           </div>
 
@@ -45,9 +46,13 @@ const Footer = () => {
                 contact@kingzdigitalsolutions.in
               </a>
 
-              <a href="tel:+1234567890" className={styles.contactItem}>
+              <a href="tel:+919345018217" className={styles.contactItem}>
                 <Phone className="w-4 h-4" />
                 +91 9345018217
+              </a>
+
+              <a href="https://kingzdigitalsolutions.in/" className={styles.contactItemLogo}>
+                <Image src='/logo/kds-transparent copy.png' alt='KDS Logo' width={150} height={100}/>
               </a>
             </div>
           </div>

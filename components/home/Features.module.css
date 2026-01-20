@@ -1,3 +1,13 @@
+.featuresSection{
+    background-color: #0D0D0D;
+    color: white;
+}
+
+.container {
+  max-width: 1200px;
+  width: 100%;
+}
+
 .icon{
     color: var(--red);
 }

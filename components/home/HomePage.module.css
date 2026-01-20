@@ -6,6 +6,11 @@
   padding-top: 60px;
   color: white;
   background-color: #0D0D0D;
+  background-image: url('/bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 /* ---------------- Hero Section ---------------- */
@@ -170,7 +175,4 @@
 
 /* ---------------- Features ---------------- */
 
-.features {
-  max-width: 1300px;
-  width: 100%;
-}
+

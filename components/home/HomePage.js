@@ -34,15 +34,6 @@ const HomePage = () => {
             </div>
           </div>
         </section>
-        <section className={styles.features}>
-          <Features />
-        </section>
-        <section>
-          <UseCase />
-        </section>
-        <section>
-          <HowItWorks />
-        </section>
     </div>
   )
 }
