@@ -25,3 +25,6 @@ export async function POST(req) {
     return NextResponse.json({ error: "Failed to fetch teams" }, { status: 500 })
   }
 }
+
+
+

@@ -35,6 +35,7 @@ import { db } from "@/lib/firebase";
 import AddMemberModal from "../addMemberModal";
 import MemberRow from "../members/MemberRow";
 import { getDateKey } from "../../../lib/DateKey";
+import Link from "next/link";
 
 export default function TeamDetailsPage() {
   const router = useRouter();
@@ -146,7 +147,7 @@ export default function TeamDetailsPage() {
 
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 ">
       {/* Back */}
       <div className="flex justify-between">
           <button
@@ -156,13 +157,13 @@ export default function TeamDetailsPage() {
             <ArrowLeft className="w-4 h-4" /> Back to Teams
           </button>
 
-          <Button onClick={() => setModalOpen(true)}>
+          	<Button onClick={() => setModalOpen(true)}>
                 <UserPlus /> Add Member
               </Button>
         </div>
       
           <Card>
-            <CardContent className="py-2 space-y-6">
+            <CardContent className="py-2 space-y-6 ">
               <div className="flex flex-col sm:flex-row justify-between gap-4 ">
                 <div className="flex items-center gap-4">
                   <div className="h-12 w-12 flex items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -224,16 +225,21 @@ export default function TeamDetailsPage() {
 				{format(selectedDate, "MMM d, yyyy")}
 			</h2>
 
-			<div className="w-full md:w-72">
-				<input
-				type="text"
-				placeholder="Search by name, email or contact"
-				value={search}
-				onChange={(e) => setSearch(e.target.value)}
-				className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-				/>
+			<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+				<Link href={`/dashboard/teams/${team.id}/members`}>
+					<Button className="w-full">View Members List</Button>
+				</Link>
+				<div className="w-full md:w-72 ">
+					<input
+					type="text"
+					placeholder="Search by name, email or contact"
+					value={search}
+					onChange={(e) => setSearch(e.target.value)}
+					className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+					/>
+				</div>
 			</div>
-</div>
+		</div>
           
           
 
