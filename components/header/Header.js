@@ -9,9 +9,12 @@ import { LayoutDashboard, LogOut } from 'lucide-react';
 
 const Header = () => {
 
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   const [isScrolled, setIsScrolled] = useState(false);
       const { isSignedIn, user } = useUser();
       const { openSignIn, signOut } = useClerk();
+      const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
 
   useEffect(() => {
@@ -40,12 +43,14 @@ const Header = () => {
         className={`${styles.headerContainer} ${isScrolled ? styles.scrolled : ''}`}>
         <div className={styles.header}>
             <Image src='/logo/KDA-logo-white.png' alt='KDS Logo' width={150} height={100}/>
+            
             <div style={{display:'flex', alignItems:'center', gap:'30px'}}>
               {/* <Link href='/dashboard'>
               {isSignedIn && (
                 <h1 className={styles.dashboardBtn} ><LayoutDashboard /> Dashboard</h1>
               )}
               </Link> */}
+              
               <button onClick={handleAuthClick}>
                 {isSignedIn ? (
                   <>

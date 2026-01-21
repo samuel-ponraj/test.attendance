@@ -17,7 +17,9 @@ const HomePage = () => {
             <Link href='/dashboard'>
               <button className={styles.homeBtn1}>Record Attendance <ArrowRight /></button>
             </Link>
+            <Link href='#features'>
             <button className={styles.homeBtn2}>Learn More</button>
+            </Link>
           </div>
           <div className={styles.highlights}>
             <div className={styles.highlight}>
