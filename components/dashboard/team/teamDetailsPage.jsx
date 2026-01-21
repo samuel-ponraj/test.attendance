@@ -178,21 +178,23 @@ export default function TeamDetailsPage() {
                 </div>
 
                 {/* Date Picker */}
-                <Popover >
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-[240px] justify-start">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {format(selectedDate, "PPP")}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={(d) => d && setSelectedDate(d)}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <div className="flex justify-center">
+					<Popover >
+						<PopoverTrigger asChild>
+							<Button variant="outline" className="w-[240px] justify-start">
+							<CalendarIcon className="mr-2 h-4 w-4" />
+							{format(selectedDate, "PPP")}
+							</Button>
+						</PopoverTrigger>
+						<PopoverContent className="w-auto p-0">
+							<Calendar
+							mode="single"
+							selected={selectedDate}
+							onSelect={(d) => d && setSelectedDate(d)}
+							/>
+						</PopoverContent>
+					</Popover>
+				</div>
               </div>
 
               {/* Counts */}
