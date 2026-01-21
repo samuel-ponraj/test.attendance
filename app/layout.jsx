@@ -16,46 +16,34 @@ export default function RootLayout({ children }) {
     return (
       <html lang="en">
         <body
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "radial-gradient(circle at center, #5a0000, #000)",
-            color: "#fff",
-            textAlign: "center",
-            fontFamily: "system-ui, sans-serif",
-          }}
-        >
-          <div>
-            {/* Logo */}
-            <Image
-              src="/logo/KDA-logo-white.png"
-              alt="KDS Logo"
-              width={150}
-              height={100}
-              priority
-            />
+            className="min-h-screen flex items-center justify-center text-center text-white"
+            style={{
+              background: "radial-gradient(circle at center, #5a0000 0%, #3a0000 18%, #000 45%)",
+              fontFamily: "system-ui, sans-serif",
+            }}
+          >
+            <div className="flex flex-col items-center justify-center w-full px-4">
+              <Image
+                src="/logo/KDA-logo-white.png"
+                alt="KDS Logo"
+                width={250}
+                height={100}
+                className="mx-auto w-[180px] sm:w-[220px] md:w-[250px]"
+                priority
+              />
 
-            {/* Spacing */}
-            <div style={{ height: "24px" }} />
+              <div className="h-6" />
 
-            {/* Coming Soon */}
-            <h1
-              style={{
-                letterSpacing: "6px",
-                fontSize: "28px",
-                opacity: 0.9,
-              }}
-            >
-              COMING SOON
-            </h1>
+              <h1 className="tracking-[6px] text-[32px] sm:text-[48px] md:text-[60px] opacity-90 text-white">
+                COMING SOON
+              </h1>
 
-            <p style={{ marginTop: "12px", opacity: 0.7 }}>
-              We’re preparing something great
-            </p>
-          </div>
-        </body>
+              <p className="mt-3 opacity-70 text-sm sm:text-base text-white">
+                We’re preparing something great !!!
+              </p>
+            </div>
+          </body>
+
       </html>
     )
   }
