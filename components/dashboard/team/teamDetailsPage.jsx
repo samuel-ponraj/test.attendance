@@ -44,6 +44,7 @@ export default function TeamDetailsPage() {
   const [team, setTeam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
   /* ---------------- FETCH TEAM ---------------- */
   useEffect(() => {
@@ -131,7 +132,19 @@ export default function TeamDetailsPage() {
     }));
   };
 
-  /* ---------------- UI ---------------- */
+	/* ---------------- Search Bar ---------------- */
+  	const filteredMembers = members.filter((member) => {
+	const query = search.toLowerCase();
+
+	return (
+		member.name?.toLowerCase().includes(query) ||
+		member.email?.toLowerCase().includes(query) ||
+		member.contact?.toLowerCase().includes(query)
+	);
+	});
+
+
+  
   return (
     <div className="space-y-6">
       {/* Back */}
@@ -204,26 +217,51 @@ export default function TeamDetailsPage() {
           </Card>
 
           {/* Members */}
-          <h2 className="text-lg font-semibold">
-            Team Members ({totalCount}) – {format(selectedDate, "MMM d, yyyy")}
-          </h2>
+
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+			<h2 className="text-lg font-semibold">
+				Team Members ({filteredMembers.length}) –{" "}
+				{format(selectedDate, "MMM d, yyyy")}
+			</h2>
+
+			<div className="w-full md:w-72">
+				<input
+				type="text"
+				placeholder="Search by name, email or contact"
+				value={search}
+				onChange={(e) => setSearch(e.target.value)}
+				className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+				/>
+			</div>
+</div>
+          
+          
 
           {members.length === 0 ? (
             <EmptyState onAdd={() => setModalOpen(true)} />
           ) : (
             <div className="space-y-4">
-              {members.map((member) => (
-                <MemberRow
-                  key={member.id}
-                  member={member}
-                  teamId={team.id}
-                  selectedDate={selectedDate}
-                  attendance={team.attendance}
-                  onUpdateAttendance={updateAttendance}
-                  onMemberRemoved={handleMemberRemoved}
-                />
-              ))}
-              
+              {filteredMembers.length === 0 ? (
+				<Card>
+					<CardContent className="p-6 text-center text-muted-foreground">
+					No members found
+					</CardContent>
+				</Card>
+				) : (
+				<div className="space-y-4">
+					{filteredMembers.map((member) => (
+					<MemberRow
+						key={member.id}
+						member={member}
+						teamId={team.id}
+						selectedDate={selectedDate}
+						attendance={team.attendance}
+						onUpdateAttendance={updateAttendance}
+						onMemberRemoved={handleMemberRemoved}
+					/>
+					))}
+				</div>
+)}              
             </div>
           )}
 

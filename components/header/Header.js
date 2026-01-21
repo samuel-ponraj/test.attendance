@@ -4,7 +4,7 @@ import styles from './Header.module.css'
 import { useEffect, useState } from 'react'
 import { useUser, useClerk } from '@clerk/nextjs';
 import Link from 'next/link';
-import { LayoutDashboard, LogOut } from 'lucide-react';
+import {  LogOut } from 'lucide-react';
 
 
 const Header = () => {
@@ -29,9 +29,9 @@ const Header = () => {
   const handleAuthClick = () => {
     if (isSignedIn) {
       signOut(() => {
-      if (pathname === '/our-publications/ungal-thozhan/checkout') {
-        router.push('/our-publications/ungal-thozhan');
-      }
+      
+        router.push('/');
+      
     });
     } else {
       openSignIn();
@@ -45,11 +45,7 @@ const Header = () => {
             <Image src='/logo/KDA-logo-white.png' alt='KDS Logo' width={150} height={100}/>
             
             <div style={{display:'flex', alignItems:'center', gap:'30px'}}>
-              {/* <Link href='/dashboard'>
-              {isSignedIn && (
-                <h1 className={styles.dashboardBtn} ><LayoutDashboard /> Dashboard</h1>
-              )}
-              </Link> */}
+            
               
               <button onClick={handleAuthClick}>
                 {isSignedIn ? (

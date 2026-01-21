@@ -51,9 +51,13 @@ export default function RootLayout({ children }) {
   return (
     <ClerkProvider>
       <html lang="en">
-        <body>
+        <body className="layout">
           {!isDashboard && <Header />}
-          {children}
+
+          <main className="content">
+            {children}
+          </main>
+
           {!isDashboard && <Footer />}
         </body>
       </html>
