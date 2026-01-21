@@ -28,6 +28,7 @@ const Footer = () => {
           </div>
 
           {/* Quick Links */}
+        <div className="flex  align-center justify-center">
           <div className={styles.quickLinks}>
             <h4 className={styles.sectionTitle}>Quick Links</h4>
             <nav className={styles.links}>
@@ -36,6 +37,7 @@ const Footer = () => {
               <a href="#how-it-works" className={styles.footerLink}>How It Works</a>
             </nav>
           </div>
+        </div>
 
           {/* Contact */}
           <div>
@@ -64,10 +66,10 @@ const Footer = () => {
             © {currentYear} Kingz Digital Solutions. All rights reserved.
           </p>
 
-          <div className={styles.bottomLinks}>
+          {/* <div className={styles.bottomLinks}>
             <a href="#" className={styles.footerLink}>Privacy Policy</a>
             <a href="#" className={styles.footerLink}>Terms of Service</a>
-          </div>
+          </div> */}
         </div>
       </div>
     </footer>

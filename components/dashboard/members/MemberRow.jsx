@@ -83,7 +83,7 @@ const MemberRow = ({
         </AvatarFallback>
       </Avatar>
 
-      <div>
+      <div className="flex flex-col gap-1">
         <p className="font-medium text-foreground leading-none">{member.name}</p>
         <p className="text-sm text-muted-foreground">{member.email}</p>
       </div>

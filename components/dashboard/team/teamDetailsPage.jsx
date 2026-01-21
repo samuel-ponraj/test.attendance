@@ -135,17 +135,22 @@ export default function TeamDetailsPage() {
   return (
     <div className="space-y-6">
       {/* Back */}
-      <button
-        onClick={() => router.push("/dashboard/teams")}
-        className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="w-4 h-4" /> Back to Teams
-      </button>
+      <div className="flex justify-between">
+          <button
+            onClick={() => router.push("/dashboard/teams")}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Teams
+          </button>
 
+          <Button onClick={() => setModalOpen(true)}>
+                <UserPlus /> Add Member
+              </Button>
+        </div>
       
           <Card>
-            <CardContent className="p-6 space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between gap-4">
+            <CardContent className="py-2 space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between gap-4 ">
                 <div className="flex items-center gap-4">
                   <div className="h-12 w-12 flex items-center justify-center rounded-full bg-primary text-primary-foreground">
                     <Users className="h-6 w-6" />
@@ -159,7 +164,7 @@ export default function TeamDetailsPage() {
                 </div>
 
                 {/* Date Picker */}
-                <Popover>
+                <Popover >
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-[240px] justify-start">
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -177,7 +182,8 @@ export default function TeamDetailsPage() {
               </div>
 
               {/* Counts */}
-              <div className="flex flex-wrap gap-4 pt-6 border-t">
+              <div className="flex flex-wrap gap-4 pt-6 border-t justify-center md:justify-start">
+
                 <Count
                   icon={CheckCircle}
                   label={`${presentCount} Present`}
@@ -217,10 +223,6 @@ export default function TeamDetailsPage() {
                   onMemberRemoved={handleMemberRemoved}
                 />
               ))}
-
-              <Button onClick={() => setModalOpen(true)}>
-                <UserPlus /> Add Member
-              </Button>
               
             </div>
           )}

@@ -64,7 +64,7 @@ const TeamCardLayout = ({ teams, deleteTeam }) => {
               <CardDescription className="text-sm">{team.description}</CardDescription>
             </CardHeader>
 
-            <div className="px-6 pb-4 flex gap-4">
+            <div className="px-6 pb-2 flex gap-4">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-success" />
                 <span className="text-sm text-muted-foreground">{presentCount} Present</span>
@@ -76,7 +76,7 @@ const TeamCardLayout = ({ teams, deleteTeam }) => {
               </div>
             </div>
 
-            <CardFooter className="flex items-center justify-between border-t">
+            <CardFooter className="flex items-center justify-between border-t ">
               <span className="text-sm text-muted-foreground">{members.length} members</span>
 
               <Button
