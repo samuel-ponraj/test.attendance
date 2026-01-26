@@ -2,13 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { collection, getDocs } from "firebase/firestore"
-<<<<<<< HEAD
 import { onAuthStateChanged } from "firebase/auth"
 import { db, auth } from "@/lib/firebase"
-=======
-import { db } from "@/lib/firebase"
-import { useUser } from "@clerk/nextjs"
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
 
 import {
   Card,
@@ -35,7 +30,6 @@ import {
 const COLORS = ["hsl(var(--success))", "#BA2C2C"]
 
 const Analytics = () => {
-<<<<<<< HEAD
   const [user, setUser] = useState(null)
   const [teamWiseData, setTeamWiseData] = useState([])
   const [pieData, setPieData] = useState([])
@@ -130,106 +124,6 @@ const Analytics = () => {
     )
   }
 
-=======
-  const { user } = useUser()
-
-  const [teamWiseData, setTeamWiseData] = useState([])
-  const [pieData, setPieData] = useState([])
-
-  useEffect(() => {
-  if (!user || !user.primaryEmailAddress) return
-
-  const userEmail = user.primaryEmailAddress.emailAddress.toLowerCase()
-
-  
-
-  const fetchAnalytics = async () => {
-    const today = getTodayKey()
-    const teamsSnap = await getDocs(collection(db, "teams"))
-
-    let totalPresent = 0
-    let totalAbsent = 0
-    const teamData = []
-
-    teamsSnap.forEach(docSnap => {
-      const team = docSnap.data()
-
-      if (
-        team.admin?.email?.toLowerCase() !== userEmail
-      ) return
-
-
-      const attendanceToday = team.attendance?.[today] || {}
-
-      let present = 0
-      let absent = 0
-
-      Object.values(attendanceToday).forEach((entry) => {
-        if (entry.status === "present") present++
-        if (entry.status === "absent") absent++
-      })
-
-      const total = present + absent
-      const rate = total > 0 ? Math.round((present / total) * 100) : 0
-
-      totalPresent += present
-      totalAbsent += absent
-
-      teamData.push({
-        name: team.name,
-        present,
-        absent,
-        attendanceRate: rate,
-      })
-    })
-
-    setTeamWiseData(teamData)
-    setPieData([
-      { name: "Present", value: totalPresent },
-      { name: "Absent", value: totalAbsent },
-    ])
-  }
-
-  fetchAnalytics()
-}, [user])
-
-
-const renderPercentageLabel = ({
-  cx,
-  cy,
-  midAngle,
-  innerRadius,
-  outerRadius,
-  percent,
-  name,
-}) => {
-  const radius = innerRadius + (outerRadius - innerRadius) * 1.6
-  const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180))
-  const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180))
-
-  const color =
-    name === "Present"
-      ? "hsl(var(--success))"
-      : "#BA2C2C"
-
-  return (
-    <text
-      x={x}
-      y={y}
-      fill={color}
-      textAnchor={x > cx ? "start" : "end"}
-      dominantBaseline="central"
-      fontSize={14}
-      fontWeight={500}
-    >
-      {name} {Math.round(percent * 100)}%
-    </text>
-  )
-}
-
-
-
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
   return (
     <div className="grid grid-cols-1 px-4 lg:px-6 lg:grid-cols-2 gap-6">
       {/* Team-wise Attendance */}
@@ -319,9 +213,3 @@ const getTodayKey = () => {
     d.getMonth() + 1
   ).padStart(2, "0")}-${d.getFullYear()}`
 }
-<<<<<<< HEAD
-=======
-
-
-
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8

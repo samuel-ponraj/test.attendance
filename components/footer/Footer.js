@@ -2,10 +2,7 @@ import { Crown, Mail, Phone } from "lucide-react";
 import styles from "./Footer.module.css";
 import Image from "next/image";
 import Link from "next/link";
-<<<<<<< HEAD
 import { FaWhatsapp } from "react-icons/fa";
-=======
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -53,11 +50,7 @@ const Footer = () => {
               </a>
 
               <a href="tel:+919345018217" className={styles.contactItem}>
-<<<<<<< HEAD
                 <FaWhatsapp className="w-4 h-4" />
-=======
-                <Phone className="w-4 h-4" />
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
                 +91 9345018217
               </a>
 

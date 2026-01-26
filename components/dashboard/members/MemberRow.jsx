@@ -1,20 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Check, X, Trash2 } from "lucide-react";
-<<<<<<< HEAD
 import { deleteDoc, doc } from "firebase/firestore";
-=======
-import { doc, getDoc, updateDoc } from "firebase/firestore";
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
 import { db } from "@/lib/firebase";
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-<<<<<<< HEAD
 import { useEffect, useState } from "react";
-=======
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
 
 // ✅ Utility: DD-MM-YYYY
 const getDateKey = (date = new Date()) => {
@@ -30,16 +23,11 @@ const MemberRow = ({
   attendance = {},
   selectedDate = new Date(),
   onUpdateAttendance,
-<<<<<<< HEAD
   onRemove,
-=======
-  onMemberRemoved,
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
 }) => {
   const dateKey = getDateKey(selectedDate);
 
   // ✅ Read today’s status
-<<<<<<< HEAD
   const todayStatus = attendance?.[member.id]?.status ?? null;
 const [localStatus, setLocalStatus] = useState(todayStatus);
 
@@ -47,9 +35,6 @@ const [localStatus, setLocalStatus] = useState(todayStatus);
 useEffect(() => {
   setLocalStatus(todayStatus);
 }, [todayStatus]);
-=======
-  const todayStatus = attendance?.[dateKey]?.[member.id]?.status ?? null;
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
 
   const getInitials = (name) =>
     name
@@ -60,7 +45,6 @@ useEffect(() => {
       .slice(0, 2);
 
   const handleAttendance = async (status) => {
-<<<<<<< HEAD
   if (!onUpdateAttendance) return;
 
   // 🔥 instant UI update
@@ -78,39 +62,6 @@ useEffect(() => {
  const handleRemove = () => {
   onRemove?.(member.id);
 };
-=======
-    if (!onUpdateAttendance) return;
-
-    await onUpdateAttendance({
-      teamId,
-      dateKey,
-      member,
-      status,
-    });
-  };
-
-  const handleRemove = async () => {
-    if (!confirm(`Remove ${member.name} from the team?`)) return;
-
-    try {
-      const teamRef = doc(db, "teams", teamId);
-      const teamSnap = await getDoc(teamRef);
-      if (!teamSnap.exists()) return;
-
-      const currentMembers = teamSnap.data().members || [];
-      const updatedMembers = currentMembers.filter((m) => m.id !== member.id);
-
-      await updateDoc(teamRef, {
-        members: updatedMembers,
-        total: updatedMembers.length,
-      });
-
-      onMemberRemoved?.(member.id);
-    } catch (err) {
-      console.error("Failed to remove member:", err);
-    }
-  };
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
 
   return (
     <Card>
@@ -135,19 +86,11 @@ useEffect(() => {
     <div className="flex items-center justify-center sm:justify-end gap-2 w-full sm:w-auto">
       <div className="flex gap-2">
         <Button
-<<<<<<< HEAD
           variant={localStatus  === "present" ? "default" : "outline"}
           size="sm"
           onClick={() => handleAttendance("present")}
           className={
             localStatus  === "present"
-=======
-          variant={todayStatus === "present" ? "default" : "outline"}
-          size="sm"
-          onClick={() => handleAttendance("present")}
-          className={
-            todayStatus === "present"
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
               ? "bg-success text-white hover:bg-success"
               : "hover:bg-success/10 hover:text-success hover:border-success"
           }
@@ -157,19 +100,11 @@ useEffect(() => {
         </Button>
 
         <Button
-<<<<<<< HEAD
           variant={localStatus  === "absent" ? "default" : "outline"}
           size="sm"
           onClick={() => handleAttendance("absent")}
           className={
             localStatus  === "absent"
-=======
-          variant={todayStatus === "absent" ? "default" : "outline"}
-          size="sm"
-          onClick={() => handleAttendance("absent")}
-          className={
-            todayStatus === "absent"
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
               ? "bg-destructive text-white hover:bg-destructive"
               : "hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
           }

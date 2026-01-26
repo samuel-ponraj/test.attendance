@@ -5,11 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-<<<<<<< HEAD
 import { doc, collection, setDoc, Timestamp, updateDoc, increment } from "firebase/firestore";
-=======
-import { doc, updateDoc, arrayUnion, Timestamp, increment } from "firebase/firestore";
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
 import { db } from "@/lib/firebase";
 import { nanoid } from "nanoid";
 
@@ -20,7 +16,6 @@ export default function AddMemberModal({ open, onOpenChange, teamId, onMemberAdd
   const [loading, setLoading] = useState(false);
 
   const handleAdd = async (e) => {
-<<<<<<< HEAD
   e.preventDefault();
   if (!name || !email || !contact) return;
 
@@ -59,40 +54,6 @@ export default function AddMemberModal({ open, onOpenChange, teamId, onMemberAdd
 };
 
 
-=======
-    e.preventDefault();
-    if (!name || !email || !contact) return;
-
-    setLoading(true);
-
-    const member = {
-      id: nanoid(),
-      name,
-      email,
-      contact,
-      createdAt: Timestamp.now(),
-    };
-
-    try {
-      await updateDoc(doc(db, "teams", teamId), {
-        members: arrayUnion(member),
-        total: increment(1),
-      });
-
-      setName("");
-      setEmail("");
-      setContact("");
-      onOpenChange(false);
-
-      if (onMemberAdded) onMemberAdded();
-    } catch (err) {
-      console.error("Failed to add member:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -120,10 +81,6 @@ export default function AddMemberModal({ open, onOpenChange, teamId, onMemberAdd
               placeholder="e.g., john@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-<<<<<<< HEAD
-=======
-              required
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
             />
           </div>
 
@@ -134,10 +91,6 @@ export default function AddMemberModal({ open, onOpenChange, teamId, onMemberAdd
               placeholder="e.g., +91 9876543210"
               value={contact}
               onChange={(e) => setContact(e.target.value)}
-<<<<<<< HEAD
-=======
-              required
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
             />
           </div>
 

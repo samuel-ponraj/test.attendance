@@ -1,10 +1,6 @@
 'use client'
 import TeamCardLayout from "@/components/dashboard/team-card"
-<<<<<<< HEAD
 import { useEffect, useState } from "react";
-=======
-import { useState } from "react";
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
 import {  useTeams }  from '../../context/TeamsContext'
 import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,10 +17,6 @@ export default function Page() {
 
   const { teams, addTeam, deleteTeam, loading } = useTeams();
   const [modalOpen, setModalOpen] = useState(false);
-<<<<<<< HEAD
-
-=======
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
   return (
     
      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
