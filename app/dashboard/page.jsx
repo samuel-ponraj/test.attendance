@@ -10,6 +10,10 @@ import {  useTeams }  from '../context/TeamsContext'
 import {
   Card,
   CardContent,
+<<<<<<< HEAD
+=======
+  CardHeader,
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
   CardTitle,
 } from "@/components/ui/card";
 
@@ -21,7 +25,10 @@ export default function DashboardPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
   return (
     <>
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">

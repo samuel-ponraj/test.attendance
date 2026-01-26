@@ -10,6 +10,7 @@ import {
   UserX,
   Layers,
 } from "lucide-react";
+<<<<<<< HEAD
 
 
 export function SectionCards({ teams = [] }) {
@@ -30,6 +31,22 @@ export function SectionCards({ teams = [] }) {
     (sum, team) => sum + (team.attendanceSummary?.absent || 0),
     0
   );
+=======
+import useAttendanceCount from '../../lib/AttendanceCount'
+
+export function SectionCards({ teams = [] }) {
+
+  const { present, absent, loading } =
+    useAttendanceCount(new Date());
+
+  const totalTeams = teams.length;
+
+  const totalMembers = teams.reduce(
+    (sum, team) => sum + (team.total || 0),
+    0
+  );
+
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
 
 
   const CardItem = ({ title, value, Icon, color }) => (
@@ -77,7 +94,11 @@ export function SectionCards({ teams = [] }) {
 
       <CardItem
         title="Present Today"
+<<<<<<< HEAD
         value={totalPresent}
+=======
+        value={present}
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
         Icon={UserCheck}
         color={{
           bg: "bg-emerald-100 dark:bg-emerald-900/30",
@@ -87,7 +108,11 @@ export function SectionCards({ teams = [] }) {
 
       <CardItem
         title="Absent Today"
+<<<<<<< HEAD
         value={totalAbsent}
+=======
+        value={absent}
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
         Icon={UserX}
         color={{
           bg: "bg-rose-100 dark:bg-rose-900/30",

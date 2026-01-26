@@ -30,6 +30,10 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
+<<<<<<< HEAD
 , "app/page.jsx", "app/layout.jsx", "next.config.ts", "app/dashboard/page.jsx", "components/dashboard/team-card.jsx", "components/dashboard/section-cards.jsx", "lib/attendance.ts", "components/app-sidebar.jsx", "lib/removeTeamMember.js", "proxy.js", "components/nav-user.jsx"  ],
+=======
+, "app/page.jsx", "app/layout.jsx", "next.config.ts", "app/dashboard/page.jsx", "components/dashboard/team-card.jsx", "components/dashboard/section-cards.jsx", "lib/attendance.ts", "components/app-sidebar.jsx"  ],
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
   "exclude": ["node_modules"]
 }

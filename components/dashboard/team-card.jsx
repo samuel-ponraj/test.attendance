@@ -5,14 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 
+<<<<<<< HEAD
 import { getDateKey } from "@/lib/DateKey"; 
+=======
+import { getDateKey } from "@/lib/DateKey"; // helper to format date keys
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
 
 const TeamCardLayout = ({ teams, deleteTeam }) => {
   const router = useRouter();
 
   const todayKey = getDateKey(new Date());
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
   const handleDelete = async (e, teamId) => {
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this team?")) return;
@@ -28,10 +35,26 @@ const TeamCardLayout = ({ teams, deleteTeam }) => {
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 px-4 lg:px-6">
       {sortedTeams.map((team) => {
+<<<<<<< HEAD
 
         const totalPresent = team.attendanceSummary?.present || 0;
         const totalAbsent = team.attendanceSummary?.absent || 0;
       
+=======
+        const members = team.members || [];
+        const attendanceToday = team.attendance?.[todayKey] || {};
+
+        let presentCount = 0;
+        let absentCount = 0;
+
+        members.forEach((member) => {
+          const record = attendanceToday[member.id];
+          if (!record) return;
+          if (record.status === "present") presentCount++;
+          if (record.status === "absent") absentCount++;
+        });
+
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
         return (
           <Card
             key={team.id}
@@ -59,17 +82,29 @@ const TeamCardLayout = ({ teams, deleteTeam }) => {
             <div className="px-6 pb-2 flex gap-4">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-success" />
+<<<<<<< HEAD
                 <span className="text-sm text-muted-foreground">{totalPresent} Present</span>
+=======
+                <span className="text-sm text-muted-foreground">{presentCount} Present</span>
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
               </div>
 
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-destructive" />
+<<<<<<< HEAD
                 <span className="text-sm text-muted-foreground">{totalAbsent} Absent</span>
+=======
+                <span className="text-sm text-muted-foreground">{absentCount} Absent</span>
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
               </div>
             </div>
 
             <CardFooter className="flex items-center justify-between border-t ">
+<<<<<<< HEAD
               <span className="text-sm text-muted-foreground">{team.totalMembers} members</span>
+=======
+              <span className="text-sm text-muted-foreground">{members.length} members</span>
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
 
               <Button
                 variant="ghost"

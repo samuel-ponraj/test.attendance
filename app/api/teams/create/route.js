@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server"
@@ -8,6 +9,14 @@ import { getDateKey } from "../../../../lib/DateKey";
 export async function POST(req) {
 
   const todayKey = getDateKey(new Date());
+=======
+// app/api/teams/create/route.js
+import { NextResponse } from "next/server"
+import { db } from "@/lib/firebase"
+import { collection, addDoc, serverTimestamp } from "firebase/firestore"
+
+export async function POST(req) {
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
   try {
     const body = await req.json()
     const { name, description, admin } = body
@@ -19,6 +28,7 @@ export async function POST(req) {
     const docRef = await addDoc(collection(db, "teams"), {
       name,
       description,
+<<<<<<< HEAD
       admin,
       createdAt: serverTimestamp(),
       totalMembers: 0,
@@ -27,6 +37,13 @@ export async function POST(req) {
         absent: 0,
         lastUpdatedDate: todayKey,
       },
+=======
+      present: 0,
+      absent: 0,
+      admin,
+      members: [],
+      createdAt: serverTimestamp(),
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
     })
 
     return NextResponse.json({
@@ -35,6 +52,7 @@ export async function POST(req) {
         id: docRef.id,
         name,
         description,
+<<<<<<< HEAD
         admin,
         totalMembers: 0,
         attendanceSummary: {
@@ -42,6 +60,12 @@ export async function POST(req) {
           absent: 0,
           lastUpdatedDate: todayKey,
         },
+=======
+        present: 0,
+        absent: 0,
+        admin,
+        members: [],
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
       },
     })
   } catch (err) {

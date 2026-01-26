@@ -33,9 +33,15 @@ const mainNavItems = [
   { title: "Analytics", url: "/dashboard/analytics", icon: BarChart3 },
 ]
 
+<<<<<<< HEAD
 // const settingsNavItems = [
 //   { title: "Settings", url: "/dashboard/settings", icon: Settings },
 // ]
+=======
+const settingsNavItems = [
+  { title: "Settings", url: "/settings", icon: Settings },
+]
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
 
 export function AppSidebar() {
   const { state } = useSidebar()
@@ -80,7 +86,11 @@ export function AppSidebar() {
       {/* ---------- Content ---------- */}
       <SidebarContent>
         <SidebarGroup>
+<<<<<<< HEAD
           <SidebarGroupLabel>Main</SidebarGroupLabel>
+=======
+          {/* <SidebarGroupLabel>Main</SidebarGroupLabel> */}
+>>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNavItems.map((item) => (
