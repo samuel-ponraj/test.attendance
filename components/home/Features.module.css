@@ -1,0 +1,33 @@
+.featuresSection{
+    background-color: #0D0D0D;
+    color: white;
+}
+
+.container {
+  max-width: 1200px;
+  width: 100%;
+  background-color: #0D0D0D;
+}
+
+.icon{
+    color: var(--red);
+}
+
+.headingDescription{
+    color: var(--gray);
+    font-size: 18px;
+}
+
+.featureDescription{
+    color: var(--gray);
+}
+
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--red);
+}

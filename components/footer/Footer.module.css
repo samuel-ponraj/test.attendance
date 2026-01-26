@@ -1,0 +1,152 @@
+.footer {
+  background-color: #0d0d0d;
+  padding-top: 50px;
+  color: white;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2.5rem 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* ---------- TOP SECTION ---------- */
+
+.top {
+  display: grid;
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+  text-align: center;
+  justify-items: center;
+}
+
+.brandText,
+.poweredby {
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 22rem;
+  color: var(--gray);
+  margin: 0 auto;
+}
+
+.poweredby {
+  margin-top: 10px;
+}
+
+.sectionTitle {
+  font-weight: 600;
+  font-size: 18px;
+  margin-bottom: 1rem;
+}
+
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.footerLink {
+  font-size: 15px;
+  color: var(--gray);
+  transition: color 0.2s ease;
+}
+
+.footerLink:hover {
+  color: white;
+}
+
+.contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.contactItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 15px;
+  color: var(--gray);
+  transition: color 0.2s ease;
+  justify-content: center;
+}
+
+/* ---------- BOTTOM BAR ---------- */
+
+.bottom {
+  padding-top: 1.5rem;
+  border-top: 1px solid hsl(var(--border));
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  text-align: center;
+}
+
+.bottomLinks {
+  display: flex;
+  gap: 1.5rem;
+}
+
+
+
+/* ---------- TABLET & UP ---------- */
+
+@media (min-width: 768px) {
+  .top {
+    grid-template-columns: repeat(3, 1fr);
+    text-align: left;
+    justify-items: stretch;
+  }
+
+  .links {
+    align-items: flex-start;
+  }
+
+  .contact {
+    align-items: flex-start;
+  }
+
+  .contactItem {
+    justify-content: flex-start;
+  }
+
+
+  .brandText,
+  .poweredby {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .bottom {
+    flex-direction: row;
+    justify-content: space-between;
+    text-align: left;
+  }
+
+  
+}
+
+/* ---------- DESKTOP ---------- */
+
+@media (min-width: 1024px) {
+  .top {
+    gap: 3rem;
+  }
+
+  .container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+  
+}
+
+@media (max-width: 978px) {
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
