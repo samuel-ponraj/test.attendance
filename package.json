@@ -34,10 +34,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "firebase": "^12.7.0",
-<<<<<<< HEAD
     "firebase-admin": "^13.6.0",
-=======
->>>>>>> c39aa9d3570ced9499a5f3473f6b937ca0c693a8
     "framer-motion": "^12.26.2",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
