@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from "react"
-import { collection, getDocs } from "firebase/firestore"
+import { collection, query, where, getDocs } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
 import { db, auth } from "@/lib/firebase"
 
@@ -51,7 +51,13 @@ const Analytics = () => {
 
     const fetchAnalytics = async () => {
       const todayKey = getTodayKey()
-      const teamsSnap = await getDocs(collection(db, "teams"))
+
+      const q = query(
+        collection(db, "teams"),
+        where("admin.userId", "==", user.uid)
+      );
+
+      const teamsSnap = await getDocs(q)
 
       let totalPresent = 0
       let totalAbsent = 0

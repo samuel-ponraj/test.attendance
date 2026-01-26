@@ -3,8 +3,9 @@
 import { createContext, useContext, useEffect, useState } from "react";
 // 1. Swap Clerk for your custom Firebase Auth hook
 import { useAuth } from "../context/AuthContext"; 
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { getDateKey } from "@/lib/DateKey";
 
 const TeamsContext = createContext(null);
 
@@ -15,7 +16,6 @@ export function TeamsProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 3. Firebase uses 'uid' instead of Clerk's 'id'
     if (!user?.uid) {
       setTeams([]);
       setLoading(false);
@@ -44,32 +44,58 @@ export function TeamsProvider({ children }) {
   }, [user?.uid]);
 
   const addTeam = async (name, description) => {
-    if (!user) return;
+  if (!user) {
+    console.error("No user found");
+    return;
+  }
 
-    const res = await fetch("/api/teams/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        description,
-        admin: {
-          // 4. Firebase user email access
-          email: user.email,
-          userId: user.uid,
-        },
-      }),
+  try {
+    const todayKey = getDateKey(new Date());
+    
+    // Direct Firestore call from the client
+    const docRef = await addDoc(collection(db, "teams"), {
+      name,
+      description: description || "",
+      admin: {
+        email: user.email,
+        userId: user.uid, // This UID will now correctly match your Security Rules
+      },
+      createdAt: serverTimestamp(),
+      totalMembers: 0,
+      attendanceSummary: {
+        present: 0,
+        absent: 0,
+        lastUpdatedDate: todayKey,
+      },
     });
-    return res;
-  };
+
+    return { success: true, id: docRef.id };
+  } catch (err) {
+    console.error("Firestore Error:", err);
+    throw err; // This will now show the specific "Missing Permissions" if rules fail
+  }
+};
 
   const deleteTeam = async (teamId) => {
-    const res = await fetch("/api/teams/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamId }),
-    });
-    return res;
-  };
+  if (!user) {
+    console.error("No authenticated user found");
+    return;
+  }
+
+  try {
+    // This executes on the client, so Firestore sees the user's UID
+    // and matches it against your 'admin.userId' security rule.
+    const teamRef = doc(db, "teams", teamId);
+    await deleteDoc(teamRef);
+    
+    return { success: true };
+  } catch (err) {
+    console.error("Delete Error:", err);
+    // This will likely show "Missing or insufficient permissions" 
+    // if the person logged in isn't the actual admin.
+    throw err;
+  }
+};
 
   return (
     <TeamsContext.Provider
