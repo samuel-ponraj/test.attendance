@@ -51,7 +51,6 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4 relative text-white overflow-hidden">
-      <Toaster position="top-center" />
       
       <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-black to-black z-0 pointer-events-none" />
       <div className="absolute top-20 right-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl z-0" />

@@ -33,16 +33,17 @@ export default function RootLayout({ children }) {
 						<Image
 							src="/logo/KDA-logo-white.png"
 							alt="KDS Logo"
-							width={250}
+							width={180}
 							height={100}
 							priority
+							className="mb-3"
 						/>
 
-						<h1 className="tracking-[6px] text-[32px] sm:text-[48px] md:text-[60px] opacity-90 text-white">
+						<h1 className="tracking-[6px] text-[32px] sm:text-[48px] md:text-[50px] opacity-90 text-white">
 							COMING SOON
 						</h1>
 
-						<p className="mt-3 opacity-70">
+						<p className="mt-3 opacity-70 text-white">
 							We’re preparing something great !!!
 						</p>
 					</div>

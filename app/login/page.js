@@ -65,7 +65,6 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4 relative text-white overflow-hidden">
-      <Toaster position="top-center" />
       
       {/* Background Orbs */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-black to-black z-0 pointer-events-none" />
