@@ -24,7 +24,6 @@ export function TeamsProvider({ children }) {
 
     const q = query(
       collection(db, "teams"),
-      // Ensure your Firestore documents use "userId" to store the Firebase UID
       where("admin.userId", "==", user.uid)
     );
 

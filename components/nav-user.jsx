@@ -120,14 +120,14 @@ export function NavUser() {
               </div>
             </DropdownMenuLabel>
 
-            <DropdownMenuSeparator />
+            {/* <DropdownMenuSeparator /> */}
 
-            <DropdownMenuGroup>
+            {/* <DropdownMenuGroup>
               <DropdownMenuItem disabled>
                 <IconUserCircle />
                 Account
               </DropdownMenuItem>
-            </DropdownMenuGroup>
+            </DropdownMenuGroup> */}
 
             <DropdownMenuSeparator />
 
