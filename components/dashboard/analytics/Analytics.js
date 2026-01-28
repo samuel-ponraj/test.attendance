@@ -44,60 +44,59 @@ const Analytics = () => {
   }, [])
 
   // 📊 Fetch analytics once user is available
-  useEffect(() => {
-    if (!user?.email) return
+  // 📊 Fetch analytics once user is available
+useEffect(() => {
+  if (!user?.uid) return;
 
-    const userEmail = user.email.toLowerCase()
-
-    const fetchAnalytics = async () => {
-      const todayKey = getTodayKey()
-
+  const fetchAnalytics = async () => {
+    try {
+      const todayKey = getTodayKey(); // Ensure this matches getDateKey format
       const q = query(
         collection(db, "teams"),
         where("admin.userId", "==", user.uid)
       );
 
-      const teamsSnap = await getDocs(q)
-
-      let totalPresent = 0
-      let totalAbsent = 0
-      const teamData = []
+      const teamsSnap = await getDocs(q);
+      let totalPresent = 0;
+      let totalAbsent = 0;
+      const teamData = [];
 
       teamsSnap.forEach((docSnap) => {
-        const team = docSnap.data()
+        const team = docSnap.data();
+        const summary = team.attendanceSummary || {};
 
-        // Only include teams where current user is admin
-        if (team.admin?.email?.toLowerCase() !== userEmail) return
+        // 1. Check if the date matches today
+        const isToday = summary.lastUpdatedDate === todayKey;
+        
+        // TEMPORARY: Remove 'isToday ?' to see if data appears regardless of date
+        const present = summary.present || 0; 
+        const absent = summary.absent || 0;
 
-        const summary = team.attendanceSummary || {}
-        const isToday = summary.lastUpdatedDate === todayKey
-
-        const present = isToday ? summary.present || 0 : 0
-        const absent = isToday ? summary.absent || 0 : 0
-
-        const total = present + absent
-        const rate = total > 0 ? Math.round((present / total) * 100) : 0
-
-        totalPresent += present
-        totalAbsent += absent
+        totalPresent += present;
+        totalAbsent += absent;
 
         teamData.push({
           name: team.name,
           present,
           absent,
-          attendanceRate: rate,
-        })
-      })
+          attendanceRate: (present + absent) > 0 
+            ? Math.round((present / (present + absent)) * 100) 
+            : 0,
+        });
+      });
 
-      setTeamWiseData(teamData)
+      setTeamWiseData(teamData);
       setPieData([
         { name: "Present", value: totalPresent },
         { name: "Absent", value: totalAbsent },
-      ])
+      ]);
+    } catch (err) {
+      console.error("Analytics Fetch Error:", err);
     }
+  };
 
-    fetchAnalytics()
-  }, [user])
+  fetchAnalytics();
+}, [user?.uid]);
 
   const renderPercentageLabel = ({
     cx,
