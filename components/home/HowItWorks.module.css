@@ -9,6 +9,7 @@
   margin: 0 auto;
   position: relative;
   z-index: 2;
+  padding: 24px;
 }
 
 /* Header */
@@ -83,6 +84,10 @@
 
   .header h2 {
   font-size: 30px}
+
+  .container{
+    padding: 16px;
+  }
 }
 
 /* Icon */
