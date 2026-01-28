@@ -158,26 +158,32 @@ useEffect(() => {
           <CardDescription>Today's overall attendance</CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <div className="h-[200px] sm:h-[250px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie
-                data={pieData}
-                dataKey="value"
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={5}
-                label={renderPercentageLabel}
-              >
-                {pieData.map((_, index) => (
-                  <Cell key={index} fill={COLORS[index]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
+    <Pie
+      data={pieData}
+      dataKey="value"
+      cx="50%"
+      cy="50%"
+      // Reduce radius slightly on small screens to prevent label clipping
+      innerRadius="40%" 
+      outerRadius="70%" 
+      paddingAngle={5}
+      // Use a simpler label for small screens or position it better
+      label={renderPercentageLabel}
+      labelLine={false} // Clean up the look on mobile
+    >
+      {pieData.map((_, index) => (
+        <Cell key={index} fill={COLORS[index]} />
+      ))}
+    </Pie>
+    <Tooltip />
+    {/* Ensure the legend is at the bottom to save horizontal space */}
+    <Legend verticalAlign="bottom" height={36}/>
+  </PieChart>
           </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
 
