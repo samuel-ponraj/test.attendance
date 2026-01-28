@@ -34,8 +34,9 @@ const Footer = () => {
             <h4 className={styles.sectionTitle}>Quick Links</h4>
             <nav className={styles.links}>
               <a href="#features" className={styles.footerLink}>Features</a>
-              <a href="#use-cases" className={styles.footerLink}>Use Cases</a>
               <a href="#how-it-works" className={styles.footerLink}>How It Works</a>
+              <a href="#mockups" className={styles.footerLink}>Mockups</a>
+              <a href="#use-cases" className={styles.footerLink}>Use Cases</a>
             </nav>
           </div>
         </div>

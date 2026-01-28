@@ -2,6 +2,7 @@ import Features from "@/components/home/Features";
 import HomePage from "../components/home/HomePage"
 import UseCasesSection from "@/components/home/UseCase";
 import HowItWorksSection from "@/components/home/HowItWorks";
+import Mockup from "@/components/home/Mockup";
 
 
 export const metadata = {
@@ -60,6 +61,7 @@ export default function Home() {
       <HomePage />
       <Features />
       <HowItWorksSection />
+      <Mockup />
       <UseCasesSection />
     </div>
   );
