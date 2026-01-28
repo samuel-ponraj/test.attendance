@@ -38,7 +38,7 @@ const mainNavItems = [
 // ]
 
 export function AppSidebar() {
-  const { state } = useSidebar()
+  const { state, setOpenMobile } = useSidebar()
   const isCollapsed = state === "collapsed"
   const pathname = usePathname()
 
@@ -46,8 +46,11 @@ export function AppSidebar() {
     if (url === "/dashboard") {
       return pathname === "/dashboard"
     }
-
     return pathname === url || pathname.startsWith(url + "/")
+  }
+
+  const closeSidebar = () => {
+    setOpenMobile(false)
   }
 
   
@@ -57,7 +60,7 @@ export function AppSidebar() {
       {/* ---------- Header ---------- */}
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center justify-center gap-3 px-2 py-3">
-          <Link href='/'>
+          <Link href='/' onClick={closeSidebar}>
           {isCollapsed ? (
             <Image
               src="/logo/logo.png"
@@ -90,7 +93,7 @@ export function AppSidebar() {
                     isActive={isActive(item.url)}
                     tooltip={item.title}
                   >
-                    <Link href={item.url}>
+                    <Link href={item.url} onClick={closeSidebar}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>
