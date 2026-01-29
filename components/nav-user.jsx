@@ -33,9 +33,10 @@ import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { useAuth } from "@/app/context/AuthContext"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export function NavUser() {
-  const { isMobile } = useSidebar()
+  const { isMobile, setOpenMobile } = useSidebar()
   const { user } = useAuth()
 
   if (!user) return null
@@ -58,6 +59,10 @@ export function NavUser() {
       .join("")
       .slice(0, 2)
       .toUpperCase() || "U"
+
+  const closeSidebar = () => {
+    setOpenMobile(false)
+  }
 
   return (
     <SidebarMenu>
@@ -120,14 +125,21 @@ export function NavUser() {
               </div>
             </DropdownMenuLabel>
 
-            {/* <DropdownMenuSeparator /> */}
+            <DropdownMenuSeparator />
 
-            {/* <DropdownMenuGroup>
-              <DropdownMenuItem disabled>
-                <IconUserCircle />
-                Account
+            <DropdownMenuGroup>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/dashboard/account"
+                  onClick={closeSidebar}
+                >
+                  <div className="flex items-center gap-2">
+                    <IconUserCircle className="mt-0.5" />
+                    Account
+                  </div>
+                </Link>
               </DropdownMenuItem>
-            </DropdownMenuGroup> */}
+            </DropdownMenuGroup>
 
             <DropdownMenuSeparator />
 

@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { resetAttendanceSummaryIfNeeded } from "@/lib/resetAttendanceSummaryIfNeeded";
+import { Toaster } from "sonner";
 
 
 
@@ -53,6 +54,7 @@ export default function DashboardPage() {
 
   return (
     <>
+      <Toaster richColors position="top-center" />
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
         <SectionCards teams={teams}/>
       </div>

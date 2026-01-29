@@ -15,7 +15,6 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth"
 import {  auth } from "@/lib/firebase"
-import { Toaster } from "sonner";
 
 function DashboardContent({ children }) {
   const { isAddTeamOpen, setAddTeamOpen } = useUI();
@@ -64,7 +63,6 @@ export default function DashboardLayout({ children }) {
       enableSystem
       disableTransitionOnChange
     >
-      <Toaster richColors position="top-center" />
       <UIProvider>
         <TeamsProvider>
           <DashboardContent>{children}</DashboardContent>

@@ -28,15 +28,15 @@ const ROUTE_TITLES = [
     description: "View detailed attendance records",
   },
   {
-    path: "/settings",
-    title: "Settings",
+    path: "/dashboard/account",
+    title: "My Account",
     description: "Manage your account and preferences",
   },
   {
     path: "/dashboard",
     title: "Dashboard",
     description: "Manage teams and track attendance",
-  },
+  }
 ] as const
 
 const DEFAULT_ROUTE = {
@@ -48,14 +48,16 @@ const DEFAULT_ROUTE = {
 export function SiteHeader() {
   const pathname = usePathname()
 
-  const { teams, addTeam, deleteTeam, loading } = useTeams();
+  const { addTeam } = useTeams();
   const [modalOpen, setModalOpen] = useState(false);
+
+  const normalizedPath = pathname?.replace(/\/$/, "");
 
   const currentRoute =
     ROUTE_TITLES.find(
       (route) =>
-        pathname === route.path ||
-        pathname.startsWith(route.path + "/")
+        normalizedPath === route.path ||
+        normalizedPath.startsWith(route.path + "/")
     ) ?? DEFAULT_ROUTE
 
   return (
