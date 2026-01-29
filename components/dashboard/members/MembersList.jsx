@@ -4,15 +4,28 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { collection, getDocs, doc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { removeTeamMember } from "../../../lib/removeTeamMember";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const MembersList = () => {
   const router = useRouter();
   const { slug } = useParams(); // teamId
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [memberToDelete, setMemberToDelete] = useState(null);
+
 
   /* ---------------- FETCH MEMBERS ---------------- */
   useEffect(() => {
@@ -39,21 +52,29 @@ const MembersList = () => {
   }, [slug]);
 
   /* ---------------- DELETE MEMBER ---------------- */
-  const handleDelete = async (memberId) => {
-  if (!confirm("Are you sure you want to delete this member?")) return;
+  const handleDelete = (memberId) => {
+  setMemberToDelete(memberId);
+};
+
+const confirmDeleteMember = async () => {
+  if (!memberToDelete) return;
 
   try {
     await removeTeamMember({
       teamId: slug,
-      memberId,
+      memberId: memberToDelete,
     });
 
-    setMembers(prev => prev.filter(m => m.id !== memberId));
+    setMembers(prev => prev.filter(m => m.id !== memberToDelete));
+    toast.success("Member deleted successfully");
   } catch (err) {
     console.error(err);
-    alert("Failed to delete member");
+    toast.error("Failed to delete member");
+  } finally {
+    setMemberToDelete(null);
   }
 };
+
 
   if (loading) {
     return <div className="p-6">Loading members...</div>;
@@ -115,6 +136,30 @@ const MembersList = () => {
           </tbody>
         </table>
       </div>
+      <AlertDialog
+          open={!!memberToDelete}
+          onOpenChange={() => setMemberToDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete member?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. The member will be permanently removed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDeleteMember}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
     </div>
   );
 };

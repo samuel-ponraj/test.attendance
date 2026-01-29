@@ -29,7 +29,17 @@ import {
 } from "@/components/ui/select"
 import { updateAttendanceSummary } from "@/lib/updateAttendanceSummary";
 import { removeTeamMember } from "../../../lib/removeTeamMember"
-
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function TeamDetailsPage() {
   const router = useRouter();
@@ -43,6 +53,8 @@ export default function TeamDetailsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [memberToRemove, setMemberToRemove] = useState(null);
+
 
 
   /* ---------------- FETCH TEAM & MEMBERS ---------------- */
@@ -149,26 +161,34 @@ export default function TeamDetailsPage() {
 
 
   /* ---------------- MEMBER REMOVAL ---------------- */
-  const handleMemberRemoved = async (memberId) => {
-  if (!confirm("Remove this member from the team?")) return;
+
+  const handleMemberRemoved = (memberId) => {
+      setMemberToRemove(memberId);
+    };
+
+
+  const confirmRemoveMember = async () => {
+  if (!memberToRemove) return;
 
   try {
     await removeTeamMember({
       teamId: slug,
-      memberId,
+      memberId: memberToRemove,
     });
 
-    // UI sync
-    setMembers(prev => prev.filter(m => m.id !== memberId));
+    setMembers(prev => prev.filter(m => m.id !== memberToRemove));
     setAttendance(prev => {
       const copy = { ...prev };
-      delete copy[memberId];
+      delete copy[memberToRemove];
       return copy;
     });
 
+    toast.success("Member removed successfully");
   } catch (err) {
     console.error(err);
-    alert("Failed to remove member");
+    toast.error("Failed to remove member");
+  } finally {
+    setMemberToRemove(null);
   }
 };
 
@@ -337,7 +357,32 @@ export default function TeamDetailsPage() {
           setMembers(membersList);
         }}
       />
+      <AlertDialog
+          open={!!memberToRemove}
+          onOpenChange={() => setMemberToRemove(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove member?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This member will be permanently removed from the team.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmRemoveMember}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
     </div>
+    
   );
 }
 

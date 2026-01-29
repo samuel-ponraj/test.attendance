@@ -58,11 +58,19 @@ const signup = async (email, password, { firstName, lastName } = {}) => {
 
   const logout = () => firebaseSignOut(auth);
 
-  const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    // It's better to return the result of the popup
-    return await signInWithPopup(auth, provider);
-  };
+  // src/context/AuthContext.js
+
+const signInWithGoogle = async () => {
+  const provider = new GoogleAuthProvider();
+  try {
+    const result = await signInWithPopup(auth, provider);
+    // Return the user object specifically
+    return result.user; 
+  } catch (error) {
+    console.error("Google Popup Error:", error);
+    throw error;
+  }
+};
 
   return (
     <AuthContext.Provider value={{ user, login, signup, logout, signInWithGoogle, loading }}>
