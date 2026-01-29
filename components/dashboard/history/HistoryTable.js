@@ -14,8 +14,18 @@ const HistoryTable = ({ attendance = [], team }) => {
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [attendanceFilter, setAttendanceFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  const rows = attendance;
+  const rows = attendance.filter((row) => {
+  const attendanceMatch =
+    attendanceFilter === "all" || row.status === attendanceFilter;
+
+  const statusMatch =
+    statusFilter === "all" || row.membershipStatus?.toLowerCase() === statusFilter;
+
+  return attendanceMatch && statusMatch;
+});
   
   // Calculate Pagination values
   const totalRows = rows.length;
@@ -23,6 +33,10 @@ const HistoryTable = ({ attendance = [], team }) => {
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;
   const currentRows = rows.slice(startIndex, endIndex);
+
+  const capitalize = (text) =>
+    text ? text.charAt(0).toUpperCase() + text.slice(1) : "-";
+
 
   const handleExportPDF = () => {
     const doc = new jsPDF({ orientation: "landscape", unit: "pt" });
@@ -36,9 +50,9 @@ const HistoryTable = ({ attendance = [], team }) => {
         row.dateDisplay || "-",
         row.name || "-",
         team?.name || "-",
-        row.status || "-",
+        capitalize(row.status),
         row.markedAtDate ? format(row.markedAtDate, "hh:mm a") : "-",
-        row.membershipStatus || "-"
+        capitalize(row.membershipStatus)
       ]),
       styles: { fontSize: 9, cellPadding: 6 },
     });
@@ -47,11 +61,44 @@ const HistoryTable = ({ attendance = [], team }) => {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center gap-6 justify-start  sm:justify-between">
         <CardTitle className="text-lg">Attendance History</CardTitle>
-        <Button size="sm" variant="outline" onClick={handleExportPDF} disabled={rows.length === 0}>
-          Export PDF
-        </Button>
+        <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
+          {/* Attendance Filter */}
+          <Select value={attendanceFilter} onValueChange={setAttendanceFilter}>
+            <SelectTrigger className="w-full h-8">
+              <SelectValue placeholder="Attendance" />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              <SelectItem value="all">All Attendance</SelectItem>
+              <SelectItem value="present">Present</SelectItem>
+              <SelectItem value="absent">Absent</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Status Filter */}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full h-8">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="removed">Removed</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Export */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExportPDF}
+            disabled={rows.length === 0}
+            className="w-full h-8"
+          >
+            Export PDF
+          </Button>
+        </div>
       </CardHeader>
 
       <CardContent className="px-3">
