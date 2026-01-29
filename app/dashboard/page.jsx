@@ -5,13 +5,14 @@ import TeamCardLayout from "@/components/dashboard/team-card";
 import AddTeamModal from "@/components/dashboard/addTeamModal";
 import { Button } from "@/components/ui/button";
 import { Plus, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {  useTeams }  from '../context/TeamsContext'
 import {
   Card,
   CardContent,
   CardTitle,
 } from "@/components/ui/card";
+import { resetAttendanceSummaryIfNeeded } from "@/lib/resetAttendanceSummaryIfNeeded";
 
 
 
@@ -22,6 +23,32 @@ export default function DashboardPage() {
   const { addTeam, deleteTeam, loading, teams } = useTeams()
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [summaryReady, setSummaryReady] = useState(false);
+
+      useEffect(() => {
+      if (!teams) return;
+
+      const runReset = async () => {
+        if (teams.length > 0) {
+          for (const team of teams) {
+            await resetAttendanceSummaryIfNeeded(team.id);
+          }
+        }
+        setSummaryReady(true);
+      };
+
+      runReset();
+    }, [teams]);
+
+
+
+    if (!summaryReady) {
+      return (
+        <div className="p-6 text-muted-foreground">
+          Preparing today’s dashboard…
+        </div>
+      );
+    }
 
 
   return (

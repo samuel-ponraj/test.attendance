@@ -53,7 +53,7 @@ export default function TeamDetailsPage() {
       setLoading(true);
       try {
         // Team doc
-        const teamDoc = await getDoc(doc(db, "teams", slug)); // ✅ correct
+        const teamDoc = await getDoc(doc(db, "teams", slug)); 
 
         if (!teamDoc.exists()) {
           setLoading(false);
