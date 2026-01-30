@@ -127,7 +127,13 @@ const handleGoogleLogin = async () => {
 
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4 relative text-white overflow-hidden">
+    <div className="
+          min-h-screen bg-black flex
+          items-start pt-20
+          sm:items-start sm:mt-0
+          justify-center p-4
+          relative text-white overflow-hidden
+        ">
       <Toaster richColors position="top-center" />
 
       <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-black to-black z-0 pointer-events-none" />
@@ -167,7 +173,7 @@ const handleGoogleLogin = async () => {
               <span className="w-full border-t border-gray-700" />
             </div>
             <div className="relative flex justify-center text-[10px] uppercase">
-              <span className="bg-[#111] px-2 text-gray-500">Or continue with email</span>
+              <span className="bg-[#080C14] px-2 text-gray-500">Or continue with email</span>
             </div>
           </div>
 

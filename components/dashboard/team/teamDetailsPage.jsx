@@ -220,10 +220,10 @@ export default function TeamDetailsPage() {
       {/* Back & Add */}
       <div className="flex justify-between items-center">
         <button
-          onClick={() => router.push("/dashboard/teams")}
+          onClick={() => router.push("/dashboard")}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to Teams
+          <ArrowLeft className="w-4 h-4" /> Back
         </button>
 
         <Button onClick={() => setModalOpen(true)}>
