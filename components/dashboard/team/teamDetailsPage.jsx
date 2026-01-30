@@ -259,6 +259,7 @@ export default function TeamDetailsPage() {
                     mode="single"
                     selected={selectedDate}
                     onSelect={(d) => d && setSelectedDate(d)}
+                    disabled={(date) => date > new Date()}
                   />
                 </PopoverContent>
               </Popover>
