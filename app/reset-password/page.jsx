@@ -62,7 +62,6 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4 text-white">
-      <Toaster richColors />
       <div className="w-full max-w-md bg-gray-900/50 p-8 rounded-2xl border border-gray-800 backdrop-blur-xl">
         <div className="flex justify-center mb-4 text-primary">
             <ShieldCheck size={48} />
