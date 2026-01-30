@@ -68,10 +68,10 @@ const Footer = () => {
             © {currentYear} Kingz Digital Solutions. All rights reserved.
           </p>
 
-          {/* <div className={styles.bottomLinks}>
-            <a href="#" className={styles.footerLink}>Privacy Policy</a>
-            <a href="#" className={styles.footerLink}>Terms of Service</a>
-          </div> */}
+          <div className={styles.bottomLinks}>
+            <a href="/privacy-policy" className={styles.footerLink}>Privacy Policy</a>
+            <a href="/terms-of-service" className={styles.footerLink}>Terms of Service</a>
+          </div>
         </div>
       </div>
     </footer>

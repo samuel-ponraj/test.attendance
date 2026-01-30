@@ -29,7 +29,7 @@ export const metadata = {
     siteName: "Kingz Digital Attendance",
     images: [
       {
-        url: "/logo/kda-meta.png",
+        url: "/logo/kda-meta.jpg",
         width: 1200,
         height: 630,
         alt: "Smart Attendance App for Small Teams",
@@ -42,7 +42,7 @@ export const metadata = {
     title: "Smart Attendance App | Kingz Digital Attendance",
     description:
       "Smart Attendance App makes attendance tracking simple for small teams and groups. Manage multiple teams and view clear attendance records.",
-    images: ["/logo/kda-meta.png"],
+    images: ["/logo/kda-meta.jpg"],
   },
   robots: {
     index: true,
