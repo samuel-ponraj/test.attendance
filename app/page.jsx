@@ -6,10 +6,11 @@ import Mockup from "@/components/home/Mockup";
 
 
 export const metadata = {
-  title: "Smart Attendance App | Kingz Digital Attendance",
+  title: "Kingz Digital Attendance | Smart Attendance App",
   description:
-    "Smart Attendance App by Kingz Digital Solutions helps small teams and groups track attendance easily. Mark present or absent with time records and manage multiple teams effortlessly.",
+    "Kingz Digital Attendance, a Smart Attendance App by Kingz Digital Solutions helps small teams and groups track attendance easily. Mark present or absent with time records and manage multiple teams effortlessly.",
   keywords: [
+    "Kingz Digital Attendance",
     "Smart Attendance App",
     "Attendance App",
     "Attendance Tracking App",
@@ -22,7 +23,7 @@ export const metadata = {
     "Kingz Digital Solutions"
   ],
   openGraph: {
-    title: "Smart Attendance App | Kingz Digital Attendance",
+    title: "Kingz Digital Attendance | Smart Attendance App",
     description:
       "A simple and smart attendance app for classes, tuition centers, sports teams, and office groups. Track present & absent members with accurate time records.",
     url: "https://attendance.kingzdigitalsolutions.in",
@@ -39,9 +40,9 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Smart Attendance App | Kingz Digital Attendance",
+    title: "Kingz Digital Attendance | Smart Attendance App",
     description:
-      "Smart Attendance App makes attendance tracking simple for small teams and groups. Manage multiple teams and view clear attendance records.",
+      "Kingz Digital Attendance makes attendance tracking simple for small teams and groups. Manage multiple teams and view clear attendance records.",
     images: ["/logo/kda-meta.jpg"],
   },
   robots: {
