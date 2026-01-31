@@ -241,7 +241,7 @@ const handleSaveProfile = async () => {
       photoURL: photoURLToSave || "",
       lastLogin: serverTimestamp(),
     });
-    
+    setUser(auth.currentUser);
 
     toast.success("Profile updated successfully ✅");
   } catch (err) {

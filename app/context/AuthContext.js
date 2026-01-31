@@ -73,7 +73,7 @@ const signInWithGoogle = async () => {
 };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, signInWithGoogle, loading }}>
+    <AuthContext.Provider value={{ user, setUser, login, signup, logout, signInWithGoogle, loading }}>
       {/* Optional: Show a blank screen or spinner while loading to prevent UI flicker */}
       {!loading ? children : <div className="min-h-screen bg-black" />}
     </AuthContext.Provider>

@@ -1,16 +1,29 @@
 .homePagecontainer {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
   padding: 60px 0 40px 0;
   color: white;
-  background-color: #0D0D0D;
-  background-image: url('/bg.jpg');
+  background-image: url('/bg1.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
+}
+
+.homePagecontainer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7); 
+  z-index: 0;
+}
+
+.homePagecontainer > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* ---------------- Hero Section ---------------- */
@@ -133,8 +146,7 @@
 @media (max-width: 768px) {
   .heroSection {
     width: 100%;
-    min-height: auto;
-    padding: 100px 16px 24px 16px;
+    min-height: 85vh;
   }
 
   .heroSection h1 {
