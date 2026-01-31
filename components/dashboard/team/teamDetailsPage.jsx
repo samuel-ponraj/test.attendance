@@ -225,7 +225,7 @@ export default function TeamDetailsPage() {
   return (
     <div className="space-y-6">
       {/* Back & Add */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-4 sm:mb-4">
         <button
           onClick={() => router.push("/dashboard")}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
@@ -240,7 +240,7 @@ export default function TeamDetailsPage() {
 
       {/* Team Info */}
       <Card>
-        <CardContent className="py-2 space-y-6">
+        <CardContent className="sm:py-2 py-0 space-y-6">
           <div className="flex flex-col sm:flex-row justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 flex items-center justify-center rounded-full bg-primary text-primary-foreground">
