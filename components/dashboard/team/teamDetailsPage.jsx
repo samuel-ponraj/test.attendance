@@ -40,6 +40,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Spinner } from "@/components/ui/spinner"
+
 
 export default function TeamDetailsPage() {
   const router = useRouter();
@@ -102,9 +104,14 @@ export default function TeamDetailsPage() {
     fetchTeamData();
   }, [slug, selectedDate]);
 
-  if (loading || !team) {
-    return <div className="p-6">Loading team...</div>;
-  }
+ if (loading || !team) {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <Spinner className="size-8" />
+    </div>
+  );
+}
+
 
   /* ---------------- DERIVED COUNTS ---------------- */
   let presentCount = 0;

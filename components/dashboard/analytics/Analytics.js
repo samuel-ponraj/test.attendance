@@ -43,8 +43,7 @@ const Analytics = () => {
     return () => unsubscribe()
   }, [])
 
-  // 📊 Fetch analytics once user is available
-  // 📊 Fetch analytics once user is available
+
 useEffect(() => {
   if (!user?.uid) return;
 

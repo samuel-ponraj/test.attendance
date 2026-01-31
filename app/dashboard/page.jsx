@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { resetAttendanceSummaryIfNeeded } from "@/lib/resetAttendanceSummaryIfNeeded";
 import { Toaster } from "sonner";
+import { Spinner } from "@/components/ui/spinner";
 
 
 
@@ -45,8 +46,8 @@ export default function DashboardPage() {
 
     if (!summaryReady) {
       return (
-        <div className="p-6 text-muted-foreground">
-          Preparing today’s dashboard…
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Spinner className="size-8" />
         </div>
       );
     }

@@ -22,7 +22,7 @@ const Login = () => {
   const { login, signInWithGoogle } = useAuth();
   const router = useRouter();
 
-  // Handle email/password login
+ 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
