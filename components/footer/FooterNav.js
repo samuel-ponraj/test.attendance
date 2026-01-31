@@ -23,7 +23,7 @@ const FooterNav = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 p-1 z-50 border-t bg-background md:hidden ">
-      <div className="grid grid-cols-5">
+      <div className="grid grid-cols-4">
         {footerItems.map((item) => {
           const isActive = pathname === item.url
 
@@ -46,7 +46,7 @@ const FooterNav = () => {
             </Link>
           )
         })}
-        <FooterUserNav />
+        {/* <FooterUserNav /> */}
       </div>
     </nav>
   )
