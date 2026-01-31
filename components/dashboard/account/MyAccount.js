@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { 
   Card, CardContent, CardDescription, CardHeader, CardTitle 
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input"; 
 import { toast, Toaster } from "sonner";
-import { auth, db } from "@/lib/firebase"; // Assuming db is exported for firestore
+import { auth, db } from "@/lib/firebase";
 import {
   EmailAuthProvider,
   GoogleAuthProvider,
@@ -30,8 +30,12 @@ import {
   updatePassword,
   onAuthStateChanged
 } from "firebase/auth";
-import { doc, deleteDoc } from "firebase/firestore";
+import { doc, deleteDoc, updateDoc, serverTimestamp  } from "firebase/firestore";
 import { Label } from "@/components/ui/label";
+import { User, Camera } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { updateProfile } from "firebase/auth";
+
 
 const MyAccount = () => {
   const router = useRouter();
@@ -47,6 +51,13 @@ const MyAccount = () => {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const fileInputRef = useRef(null);
+
+const [firstName, setFirstName] = useState("");
+const [lastName, setLastName] = useState("");
+const [avatar, setAvatar] = useState(null);
+
 
   // Use useEffect to listen for Auth changes to ensure providerId is caught
   useEffect(() => {
@@ -127,9 +138,192 @@ const MyAccount = () => {
     }
   };
 
+  // Load user data
+      useEffect(() => {
+        if (!user) return;
+
+        const names = user.displayName?.split(" ") || [];
+        setFirstName(names[0] || "");
+        setLastName(names.slice(1).join(" ") || "");
+        setAvatar(user.photoURL || null);
+      }, [user]);
+
+      const getInitials = () =>
+        `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+
+      const handleAvatarClick = () => fileInputRef.current?.click();
+
+
+
+    const uploadToCloudinarySigned = async (file) => {
+  if (!user) throw new Error("User not logged in");
+
+  const res = await fetch(`/api/cloudinary-sign?userId=${user.uid}`);
+  if (!res.ok) throw new Error("Failed to get signature");
+
+  const { signature, timestamp, public_id } = await res.json();
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("api_key", process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY);
+  formData.append("timestamp", timestamp);
+  formData.append("signature", signature);
+  formData.append("public_id", public_id);
+  formData.append("overwrite", "true");
+
+  const uploadRes = await fetch(
+    `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+    { method: "POST", body: formData }
+  );
+
+  if (!uploadRes.ok) throw new Error("Upload failed");
+
+  const data = await uploadRes.json();
+  return data.secure_url;
+};
+
+
+const handleAvatarChange = async (e) => {
+  if (!e.target.files?.[0] || !user) return;
+
+  const file = e.target.files[0];
+
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error("Image must be under 5MB");
+    return;
+  }
+
+  try {
+    toast.loading("Uploading image...");
+
+    // Upload with signed function
+    const avatarUrl = await uploadToCloudinarySigned(file);
+
+    // Update state for instant preview
+    setAvatar(avatarUrl);
+
+    toast.dismiss();
+    toast.success("Image uploaded");
+
+    // Immediately update Firebase Auth & Firestore
+    await updateProfile(user, { photoURL: avatarUrl });
+    await updateDoc(doc(db, "users", user.uid), { photoURL: avatarUrl });
+  } catch (err) {
+    toast.dismiss();
+    console.error(err);
+    toast.error("Failed to upload image");
+  }
+};
+
+
+
+
+
+
+const handleSaveProfile = async () => {
+  if (!user) return;
+
+  try {
+    const displayName = `${firstName} ${lastName}`.trim();
+
+    // Use the latest avatar URL (not state) in updateProfile
+    const photoURLToSave = avatar; // avatar already has latest URL after upload
+
+    await updateProfile(user, {
+      displayName,
+      photoURL: photoURLToSave || undefined,
+    });
+
+    // Update Firestore
+    await updateDoc(doc(db, "users", user.uid), {
+      firstName,
+      lastName,
+      photoURL: photoURLToSave || "",
+      lastLogin: serverTimestamp(),
+    });
+    
+
+    toast.success("Profile updated successfully ✅");
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to update profile");
+  }
+};
+
+
+
+
+
   return (
     <div className="p-4 flex flex-col w-full md:w-1/2 gap-4 md:px-6 py-2">
       <Toaster richColors position="top-center" />
+
+      <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              <CardTitle>Profile</CardTitle>
+            </div>
+            <CardDescription>Update your personal information</CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-6">
+            {/* Avatar */}
+            <div className="flex items-center gap-6">
+              <div className="relative">
+                <Avatar className="h-20 w-20 cursor-pointer" onClick={handleAvatarClick}>
+                  <AvatarImage src={avatar || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                    {getInitials()}
+                  </AvatarFallback>
+                </Avatar>
+
+                <button
+                  onClick={handleAvatarClick}
+                  className="absolute bottom-0 right-0 p-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                </button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+              </div>
+
+              <div>
+                <p className="text-sm font-medium">Profile Picture</p>
+                <p className="text-xs text-muted-foreground">
+                  Click to upload. Max size 5MB.
+                </p>
+              </div>
+            </div>
+
+            {/* Name */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>First Name</Label>
+                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Last Name</Label>
+                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Email */}
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input value={user?.email || ""} disabled className="bg-muted" />
+            </div>
+
+            <Button onClick={handleSaveProfile}>Save Changes</Button>
+          </CardContent>
+        </Card>
+
 
       {/* Logic: Only show for Email/Password users */}
       {providerId === "password" && (
