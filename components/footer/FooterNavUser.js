@@ -74,7 +74,7 @@ export function FooterUserNav() {
 
         <DropdownMenuItem
           onClick={handleLogout}
-          className="flex items-center gap-2 text-destructive"
+          className="flex items-center gap-2"
         >
           <IconLogout size={16} />
           Logout
