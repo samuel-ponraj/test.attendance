@@ -39,8 +39,8 @@ function DashboardContent({ children }) {
         <SidebarInset>
           <SiteHeader />
 
-          <div className="flex flex-1 flex-col">
-            <div className="@container/main flex flex-1 flex-col gap-2">
+          <div className="flex flex-1 flex-col ">
+            <div className="@container/main flex flex-1 flex-col gap-2 pb-16 md:pb-0">
               {children}
             </div>
           </div>
