@@ -25,6 +25,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { NavUser } from "./nav-user"
+import { useTheme } from "next-themes"
+
 
 const mainNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -41,6 +43,10 @@ export function AppSidebar() {
   const { state, setOpenMobile } = useSidebar()
   const isCollapsed = state === "collapsed"
   const pathname = usePathname()
+
+  const { theme } = useTheme()
+  const isLight = theme === "light"
+
 
   const isActive = (url) => {
     if (url === "/dashboard") {
@@ -70,7 +76,11 @@ export function AppSidebar() {
             />
           ) : (
             <Image
-              src="/logo/KDA-logo-white.png"
+              src={
+                isLight
+                  ? "/logo/KDA-logo-black.png"
+                  : "/logo/KDA-logo-white.png"
+              }
               alt="KDS Full Logo"
               width={150}
               height={40}
