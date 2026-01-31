@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth"
 import {  auth } from "@/lib/firebase"
+import FooterNav from "../../components/footer/FooterNav";
 
 
 function DashboardContent({ children }) {
@@ -43,6 +44,7 @@ function DashboardContent({ children }) {
               {children}
             </div>
           </div>
+          <FooterNav />
         </SidebarInset>
       </SidebarProvider>
     </>
