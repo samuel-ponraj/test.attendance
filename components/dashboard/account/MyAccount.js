@@ -255,7 +255,7 @@ const handleSaveProfile = async () => {
 
 
   return (
-    <div className="p-4 flex flex-col w-full md:w-1/2 gap-4 md:px-6 py-2">
+    <div className="p-4 flex flex-col w-full md:w-3/4 gap-4 md:px-6 py-2 ">
       <Toaster richColors position="top-center" />
 
       <Card>

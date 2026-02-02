@@ -65,7 +65,8 @@ const Login = () => {
         provider: "google",
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),
-        photoURL: user.photoURL || null
+        photoURL: user.photoURL || null,
+        subscription: "basic"
       });
     } else {
       // Update last login for existing user

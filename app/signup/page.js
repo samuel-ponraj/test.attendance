@@ -50,7 +50,8 @@ const signup = async (email, password, { firstName, lastName }) => {
     provider: "email",
     createdAt: serverTimestamp(),
     lastLogin: serverTimestamp(),
-    photoURL: user.photoURL || null
+    photoURL: user.photoURL || null,
+    subscription: "basic"
   });
   
   return user;
@@ -103,7 +104,8 @@ const handleGoogleLogin = async () => {
         provider: "google",
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),
-        photoURL: user.photoURL || null
+        photoURL: user.photoURL || null,
+        subscription: "basic"
       });
     } else {
       // Update last login for existing user
