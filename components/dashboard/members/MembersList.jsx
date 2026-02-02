@@ -18,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Spinner } from "@/components/ui/spinner"
 
 const MembersList = () => {
   const router = useRouter();
@@ -77,8 +78,12 @@ const confirmDeleteMember = async () => {
 
 
   if (loading) {
-    return <div className="p-6">Loading members...</div>;
-  }
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <Spinner className="size-8" />
+    </div>
+  );
+}
 
   return (
     <div className="space-y-6">
