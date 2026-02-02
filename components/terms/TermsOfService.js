@@ -51,8 +51,17 @@ export default function TermsOfService() {
           </section>
 
 
+		  <section style={styles.section}>
+			<h2 style={styles.subHeading}>4. Attendance Data Retention</h2>
+			<p>
+				Attendance records created in the service are stored for a maximum period of 6 months.
+				Records older than this period are automatically deleted.
+			</p>
+			</section>
+
+
 				<section style={styles.section}>
-					<h2 style={styles.subHeading}>4. Data & Privacy</h2>
+					<h2 style={styles.subHeading}>5. Data & Privacy</h2>
 					<p>
 						Your use of the service is subject to our Privacy Policy. Data access
 						is controlled through secure authentication and authorization rules.
@@ -60,7 +69,7 @@ export default function TermsOfService() {
 				</section>
 
 				<section style={styles.section}>
-					<h2 style={styles.subHeading}>5. Termination</h2>
+					<h2 style={styles.subHeading}>6. Termination</h2>
 					<p>
 						We reserve the right to suspend or terminate access to the service at
 						any time if these terms are violated or if misuse is detected.
@@ -68,7 +77,7 @@ export default function TermsOfService() {
 				</section>
 
 				<section style={styles.section}>
-					<h2 style={styles.subHeading}>6. Limitation of Liability</h2>
+					<h2 style={styles.subHeading}>7. Limitation of Liability</h2>
 					<p>
 						Kingz Digital Solutions is not liable for any indirect or incidental
 						damages arising from the use or inability to use the service.
@@ -76,7 +85,7 @@ export default function TermsOfService() {
 				</section>
 
 				<section style={styles.section}>
-					<h2 style={styles.subHeading}>7. Changes to Terms</h2>
+					<h2 style={styles.subHeading}>8. Changes to Terms</h2>
 					<p>
 						We may update these Terms of Service from time to time. Continued use
 						of the service after changes indicates acceptance of the updated
@@ -85,7 +94,7 @@ export default function TermsOfService() {
 				</section>
 
 				<section style={styles.section}>
-					<h2 style={styles.subHeading}>8. Contact Information</h2>
+					<h2 style={styles.subHeading}>9. Contact Information</h2>
 					<p>
 						<strong>Kingz Digital Solutions</strong><br />
 						Email: contact@kingzdigitalsolutions.in

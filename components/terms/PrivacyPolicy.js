@@ -36,7 +36,17 @@ export default function PrivacyPolicy() {
 				</section>
 
 				<section style={styles.section}>
-          <h2 style={styles.subHeading}>3. Data Access & Security</h2>
+				<h2 style={styles.subHeading}>3. Data Retention</h2>
+				<p>
+					Attendance records and related team data are stored for a maximum period of
+					6 months. Data older than this period is automatically deleted from our
+					systems.
+				</p>
+				</section>
+
+
+				<section style={styles.section}>
+          <h2 style={styles.subHeading}>4. Data Access & Security</h2>
           <p>
             We use Firebase Firestore security rules to ensure strict data protection:
           </p>
@@ -52,7 +62,7 @@ export default function PrivacyPolicy() {
 
 
 				<section style={styles.section}>
-					<h2 style={styles.subHeading}>4. Data Sharing</h2>
+					<h2 style={styles.subHeading}>5. Data Sharing</h2>
 					<p>
 						We do not sell or rent your personal data. Information is shared only
 						within your team or when legally required.
@@ -60,7 +70,7 @@ export default function PrivacyPolicy() {
 				</section>
 
 				<section style={styles.section}>
-					<h2 style={styles.subHeading}>5. Your Rights</h2>
+					<h2 style={styles.subHeading}>6. Your Rights</h2>
 					<ul style={styles.list}>
 						<li>Access and update your personal information.</li>
 						<li>Request account deletion by contacting support.</li>
@@ -68,7 +78,7 @@ export default function PrivacyPolicy() {
 				</section>
 
 				<section style={styles.section}>
-					<h2 style={styles.subHeading}>6. Policy Updates</h2>
+					<h2 style={styles.subHeading}>7. Policy Updates</h2>
 					<p>
 						This Privacy Policy may be updated periodically. Changes will be
 						reflected on this page.
@@ -76,7 +86,7 @@ export default function PrivacyPolicy() {
 				</section>
 
 				<section style={styles.section}>
-					<h2 style={styles.subHeading}>7. Contact Us</h2>
+					<h2 style={styles.subHeading}>8. Contact Us</h2>
 					<p>
 						<strong>Kingz Digital Solutions</strong><br />
 						Email: contact@kingzdigitalsolutions.in
