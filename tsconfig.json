@@ -41,6 +41,6 @@
     "lib/removeTeamMember.js",
     "proxy.js",
     "components/nav-user.jsx"
-, "lib/resetAttendanceSummaryIfNeeded.js"  ],
+, "lib/resetAttendanceSummaryIfNeeded.js", "functions/src/index.js"  ],
   "exclude": ["node_modules"]
 }
