@@ -14,7 +14,7 @@ const SplashLoader = () => {
 	}, []);
 
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-black px-4 animate-fade-in">
+        <div className="flex h-[90vh] sm:min-h-screen items-center justify-center bg-black px-4 animate-fade-in">
 			<div className="flex w-full max-w-sm flex-col items-center gap-8">
 				<img
 					src="/logo/KDA-logo-white.png"
