@@ -54,13 +54,13 @@ export default function DashboardLayout({ children }) {
 	const router = useRouter();
 	const [showSplash, setShowSplash] = useState(true);
 
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			setShowSplash(false);
-		}, 1000);
+	// useEffect(() => {
+	// 	const timer = setTimeout(() => {
+	// 		setShowSplash(false);
+	// 	}, 1000);
 
-		return () => clearTimeout(timer);
-	}, []);
+	// 	return () => clearTimeout(timer);
+	// }, []);
 
 	useEffect(() => {
 		const unsub = onAuthStateChanged(auth, (user) => {

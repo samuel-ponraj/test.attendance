@@ -14,8 +14,8 @@ const SplashLoader = () => {
 	}, []);
 
 	return (
-        <div className="flex h-[90vh] sm:min-h-screen items-center justify-center bg-black px-4 animate-fade-in">
-			<div className="flex w-full max-w-sm flex-col items-center gap-8">
+            <div className="flex flex-start min-h-screen justify-center bg-black px-4 animate-fade-in">
+			<div className="flex h-[90vh] sm:min-h-screen w-full max-w-sm flex-col items-center justify-center gap-6">
 				<img
 					src="/logo/KDA-logo-white.png"
 					alt="App Logo"
@@ -24,7 +24,7 @@ const SplashLoader = () => {
 
 				<Progress
 					value={progress}
-					className="h-1 w-2/3 max-w-[220px] bg-white/20"
+					className="h-1 w-2/3 max-w-[150px] bg-white/20"
 				/>
 			</div>
 		</div>
