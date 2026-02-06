@@ -11,6 +11,7 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { AuthProvider } from "../app/context/AuthContext";
 import { Toaster } from "sonner";
+import { Analytics } from "@vercel/analytics/next"
 
 export default function RootLayout({ children }) {
 	const pathname = usePathname();
@@ -63,6 +64,7 @@ export default function RootLayout({ children }) {
 					<Toaster richColors position="top-center" />
 					{!isDashboard && !isAuthPage && <Footer />}
 				</AuthProvider>
+				<Analytics />
 			</body>
 		</html>
 	);
