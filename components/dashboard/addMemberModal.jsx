@@ -94,16 +94,16 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
 
         <form onSubmit={handleAdd} className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 pt-2 space-y-4 lg:py-3">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+            <div className="pb-1">
+              <Label className='pb-2' htmlFor="fullName">Full Name</Label>
               <Input id="fullName" placeholder="e.g. John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            <div className="pb-1">
+              <Label className='pb-2' htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="e.g. john@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required/>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="contact">Contact</Label>
+            <div className="pb-1">
+              <Label className='pb-2' htmlFor="contact">Contact</Label>
               <Input id="contact" placeholder="e.g. +91 9876543210" value={contact} onChange={(e) => setContact(e.target.value)} required/>
             </div>
 
@@ -117,12 +117,12 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
             )}
 
             {fields.map((field) => (
-              <div key={field.id} className="space-y-2">
-                <Label htmlFor={field.id}>{field.name} {field.required}</Label>
+              <div key={field.id} className=" pb-1">
+                <Label className='pb-2' htmlFor={field.id}>{field.name} {field.required}</Label>
                 {field.type === "textarea" ? (
                   <Textarea id={field.id} value={dynamicValues[field.id] || ""} onChange={(e) => handleDynamicChange(field.id, e.target.value)} required={field.required} />
                 ) : field.type === "select" ? (
-                  <Select onValueChange={(val) => handleDynamicChange(field.id, val)} required={field.required}>
+                  <Select onValueChange={(val) => handleDynamicChange(field.id, val)} required={field.required} >
                     <SelectTrigger className="w-full"><SelectValue placeholder={`Select ${field.name.toLowerCase()}`} /></SelectTrigger>
                     <SelectContent>{field.options?.map((opt) => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
                   </Select>
