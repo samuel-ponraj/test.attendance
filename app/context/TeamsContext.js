@@ -57,7 +57,7 @@ export function TeamsProvider({ children }) {
       description: description || "",
       admin: {
         email: user.email,
-        userId: user.uid, // This UID will now correctly match your Security Rules
+        userId: user.uid, 
       },
       createdAt: serverTimestamp(),
       totalMembers: 0,
@@ -71,7 +71,7 @@ export function TeamsProvider({ children }) {
     return { success: true, id: docRef.id };
   } catch (err) {
     console.error("Firestore Error:", err);
-    throw err; // This will now show the specific "Missing Permissions" if rules fail
+    throw err; 
   }
 };
 
