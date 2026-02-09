@@ -63,7 +63,7 @@ const TeamCardLayout = ({ teams, deleteTeam }) => {
           return (
             <Card
               key={team.id}
-              className="group bg-card shadow-xs hover:shadow-md transition-all duration-300 "
+              className="group bg-card shadow-xs hover:shadow-md transition-all duration-300 gap-4 pb-4"
             >
               <CardHeader className="relative">
                 <div className="flex items-start justify-between mb-3">
@@ -108,7 +108,7 @@ const TeamCardLayout = ({ teams, deleteTeam }) => {
                 </div>
               </div>
 
-              <CardFooter className="flex items-center justify-between border-t">
+              <CardFooter className="flex items-center justify-between border-t !px-6 !py-4 !pb-0">
                 <span className="text-sm text-muted-foreground">
                   {team.totalMembers} members
                 </span>
