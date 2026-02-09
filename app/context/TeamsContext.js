@@ -42,37 +42,48 @@ export function TeamsProvider({ children }) {
     return () => unsub();
   }, [user?.uid]);
 
-  const addTeam = async (name, description) => {
-  if (!user) {
-    console.error("No user found");
-    return;
-  }
+  const addTeam = async (name, description, customFields = []) => {
+    if (!user) {
+      console.error("No user found");
+      return;
+    }
 
-  try {
-    const todayKey = getDateKey(new Date());
-    
-    // Direct Firestore call from the client
-    const docRef = await addDoc(collection(db, "teams"), {
-      name,
-      description: description || "",
-      admin: {
-        email: user.email,
-        userId: user.uid, 
-      },
-      createdAt: serverTimestamp(),
-      totalMembers: 0,
-      attendanceSummary: {
-        present: 0,
-        absent: 0,
-        lastUpdatedDate: todayKey,
-      },
-    });
+    try {
+      const todayKey = getDateKey(new Date());
 
-    return { success: true, id: docRef.id };
-  } catch (err) {
-    console.error("Firestore Error:", err);
-    throw err; 
-  }
+      // 1. Prepare the custom fields for Firestore
+      const formattedFields = customFields.map(field => ({
+        id: field.id,
+        name: field.name,
+        type: field.type,
+        required: field.required,
+        // ADD THIS LINE:
+        ...(field.options && { options: field.options }) 
+      }));
+
+      // 2. Direct Firestore call
+      const docRef = await addDoc(collection(db, "teams"), {
+        name,
+        description: description || "",
+        admin: {
+          email: user.email,
+          userId: user.uid,
+        },
+        createdAt: serverTimestamp(),
+        totalMembers: 0,
+        attendanceSummary: {
+          present: 0,
+          absent: 0,
+          lastUpdatedDate: todayKey,
+        },
+        customFields: formattedFields 
+      });
+
+      return { success: true, id: docRef.id };
+    } catch (err) {
+      console.error("Firestore Error:", err);
+      throw err;
+    }
 };
 
   const deleteTeam = async (teamId) => {

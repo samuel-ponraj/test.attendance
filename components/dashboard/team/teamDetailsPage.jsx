@@ -274,10 +274,20 @@ export default function TeamDetailsPage() {
           </div>
 
           {/* Counts */}
-          <div className="flex flex-wrap gap-4 pt-6 border-t justify-center md:justify-start">
-            <Count icon={CheckCircle} label={`${presentCount} Present`} color="success" />
-            <Count icon={XCircle} label={`${absentCount} Absent`} color="destructive" />
-            <Count icon={Users} label={`${unmarkedCount} Unmarked`} color="muted" />
+          <div className="flex border-t pt-6 justify-between flex-col md:flex-row gap-6 md:gap-0">
+            <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+              <Count icon={CheckCircle} label={`${presentCount} Present`} color="success" />
+              <Count icon={XCircle} label={`${absentCount} Absent`} color="destructive" />
+              <Count icon={Users} label={`${unmarkedCount} Unmarked`} color="muted" />
+            </div>
+            <div className="flex justify-center gap-4">
+              {/* <Link href={`/dashboard/teams/${team.id}/invite`} className="">
+                <Button className="">Invite Member</Button>
+              </Link> */}
+              <Link href={`/dashboard/teams/${team.id}/members`} className="w-full">
+                <Button className="w-full">View Members</Button>
+              </Link>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -291,43 +301,37 @@ export default function TeamDetailsPage() {
 
 
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-  
-  {/* Button — full width on mobile */}
-  <Link href={`/dashboard/teams/${team.id}/members`} className="w-full md:w-auto">
-    <Button className="w-full">View Members List</Button>
-  </Link>
-
   {/* Filter + Search wrapper */}
-  <div className="flex w-full gap-2 md:w-auto md:gap-3 md:items-center">
-    
-    {/* Select */}
-    <Select value={statusFilter} onValueChange={setStatusFilter}>
-      <SelectTrigger className="w-35 md:w-48">
-        <SelectValue placeholder="Filter" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          <SelectItem value="all">All</SelectItem>
-          <SelectItem value="present">Present</SelectItem>
-          <SelectItem value="absent">Absent</SelectItem>
-          <SelectItem value="unmarked">Unmarked</SelectItem>
-        </SelectGroup>
-      </SelectContent>
-    </Select>
+          <div className="flex w-full gap-2 md:w-auto md:gap-3 md:items-center">
+            
+            {/* Select */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-35 md:w-48">
+                <SelectValue placeholder="Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="present">Present</SelectItem>
+                  <SelectItem value="absent">Absent</SelectItem>
+                  <SelectItem value="unmarked">Unmarked</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
 
-    {/* Search */}
-    <div className="flex-1 md:w-[250px]">
-      <input
-        type="text"
-        placeholder="Search by name, email or contact"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-      />
-    </div>
+            {/* Search */}
+            <div className="flex-1 md:w-[250px]">
+              <input
+                type="text"
+                placeholder="Search by name, email or contact"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
 
-  </div>
-</div>
+          </div>
+      </div>
 
       </div>
 
@@ -358,7 +362,7 @@ export default function TeamDetailsPage() {
       <AddMemberModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        teamId={team.id}
+        team={team}
         onMemberAdded={async () => {
           const membersSnap = await getDocs(collection(db, "teams", team.id, "members"));
           const membersList = membersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));

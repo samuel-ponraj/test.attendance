@@ -94,7 +94,7 @@ const HistoryTable = ({ attendance = [], team }) => {
             variant="outline"
             onClick={handleExportPDF}
             disabled={rows.length === 0}
-            className="w-full h-8"
+            className="w-full h-8.8"
           >
             Export PDF
           </Button>
