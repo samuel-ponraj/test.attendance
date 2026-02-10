@@ -41,6 +41,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Spinner } from "@/components/ui/spinner"
+import { FileSpreadsheet } from 'lucide-react';
+import ImportExcelSheet from "../functions/ExcelSheetImport";
+
+
 
 
 export default function TeamDetailsPage() {
@@ -56,53 +60,51 @@ export default function TeamDetailsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [memberToRemove, setMemberToRemove] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
 
 
+  const fetchTeamData = async () => {
+        if (!slug) return;
+        setLoading(true);
+        try {
+          // Fetch Team
+          const teamDoc = await getDoc(doc(db, "teams", slug)); 
+          if (!teamDoc.exists()) {
+            setLoading(false);
+            return;
+          }
+          setTeam({ id: teamDoc.id, ...teamDoc.data() });
 
-  /* ---------------- FETCH TEAM & MEMBERS ---------------- */
-  useEffect(() => {
-    if (!slug) return;
+          // Fetch Members
+          const membersSnap = await getDocs(collection(db, "teams", slug, "members"));
+          const membersList = membersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          setMembers(membersList);
 
-    const fetchTeamData = async () => {
-      setLoading(true);
-      try {
-        // Team doc
-        const teamDoc = await getDoc(doc(db, "teams", slug)); 
-
-        if (!teamDoc.exists()) {
-          setLoading(false);
-          return;
-        }
-        setTeam({ id: teamDoc.id, ...teamDoc.data() });
-
-        // Fetch members subcollection
-        const membersSnap = await getDocs(collection(db, "teams", slug, "members"));
-        const membersList = membersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setMembers(membersList);
-
-        // Fetch today's attendance subcollection
-        const dateKey = getDateKey(selectedDate);
-        const attendanceDoc = await getDoc(
-            doc(db, "teams", slug, "attendance", dateKey)
-          );
+          // Fetch Attendance
+          const dateKey = getDateKey(selectedDate);
+          const attendanceDoc = await getDoc(doc(db, "teams", slug, "attendance", dateKey));
 
           if (attendanceDoc.exists()) {
-            const attendanceMap = {};
-            const membersMap = attendanceDoc.data().members || {};
-              setAttendance(membersMap);
+            setAttendance(attendanceDoc.data().members || {});
           } else {
             setAttendance({});
           }
-      } catch (err) {
-        console.error("Failed to fetch team data:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+        } catch (err) {
+          console.error("Failed to fetch team data:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
 
+      useEffect(() => {
+        fetchTeamData();
+      }, [slug, selectedDate]);
 
-    fetchTeamData();
-  }, [slug, selectedDate]);
+      /* ---------------- 3. CALL ON IMPORT SUCCESS ---------------- */
+      const handleImportSuccess = () => {
+        fetchTeamData();
+      };
+  
 
  if (loading || !team) {
   return (
@@ -281,9 +283,15 @@ export default function TeamDetailsPage() {
               <Count icon={Users} label={`${unmarkedCount} Unmarked`} color="muted" />
             </div>
             <div className="flex justify-center gap-4">
-              {/* <Link href={`/dashboard/teams/${team.id}/invite`} className="">
-                <Button className="">Invite Member</Button>
-              </Link> */}
+              <div className="w-full">
+              <Button
+                className="w-full"
+                onClick={() => setImportOpen(true)}
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Import
+              </Button>
+              </div>
               <Link href={`/dashboard/teams/${team.id}/members`} className="w-full">
                 <Button className="w-full">View Members</Button>
               </Link>
@@ -291,6 +299,14 @@ export default function TeamDetailsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ImportExcelSheet
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          team={team}
+          onSuccess={handleImportSuccess}
+        />
+
 
       {/* Members Header */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -394,6 +410,8 @@ export default function TeamDetailsPage() {
         </AlertDialog>
 
     </div>
+
+    
     
   );
 }
@@ -430,3 +448,5 @@ function EmptyState({ onAdd }) {
     </Card>
   );
 }
+
+

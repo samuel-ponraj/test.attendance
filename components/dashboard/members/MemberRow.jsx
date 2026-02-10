@@ -30,6 +30,7 @@ const MemberRow = ({
 const [localStatus, setLocalStatus] = useState(todayStatus);
 
 
+
 useEffect(() => {
   setLocalStatus(todayStatus);
 }, [todayStatus]);
