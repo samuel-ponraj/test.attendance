@@ -35,6 +35,7 @@ import { Label } from "@/components/ui/label";
 import { User, Camera } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { updateProfile } from "firebase/auth";
+import SubscriptionCard from "../billing/SubscriptionCard";
 
 
 const MyAccount = () => {
@@ -344,7 +345,7 @@ const handleSaveProfile = async () => {
           </CardContent>
         </Card>
 
-
+      <SubscriptionCard />
       {/* Logic: Only show for Email/Password users */}
       {providerId === "password" && (
         <Card>

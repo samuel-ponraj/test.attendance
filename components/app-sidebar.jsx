@@ -8,7 +8,8 @@ import {
   Users,
   BarChart3,
   UsersRound,
-  History
+  History,
+  Settings 
 } from "lucide-react"
 
 import {
@@ -35,6 +36,10 @@ const mainNavItems = [
   { title: "History", url: "/dashboard/history", icon: History },
   { title: "Analytics", url: "/dashboard/analytics", icon: BarChart3 },
 ]
+
+const settingsItems = [
+  { title: "Account", url: "/dashboard/account", icon: Settings },
+];
 
 export function AppSidebar() {
 
@@ -145,6 +150,31 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Settings</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {settingsItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.url)}
+                    tooltip={item.title}
+                  >
+                    <Link href={item.url} onClick={closeSidebar}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+
+
       </SidebarContent>
 
       <SidebarFooter className="py-6">
