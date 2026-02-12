@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { doc, collection, setDoc, Timestamp, updateDoc, increment } from "firebase/firestore";
+import { doc, collection, setDoc, Timestamp, updateDoc, increment, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { nanoid } from "nanoid";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -48,41 +48,57 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
 };
 
   const handleAdd = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (!validateRequiredFields()) {
-      alert("Please fill in all required fields (marked with *)");
-      return; 
-    }
+  if (!validateRequiredFields()) {
+    alert("Please fill in all required fields (marked with *)");
+    return;
+  }
 
-    if (!team?.id || !fullName.trim()) return;
+  if (!team?.id || !fullName.trim()) return;
 
-    setLoading(true);
-    try {
-      const memberId = nanoid();
-      const member = {
-        id: memberId,
-        name: fullName.trim(),
-        email: email.trim().toLowerCase(),
-        contact: contact.trim(),
-        customData: dynamicValues,
-        createdAt: Timestamp.now(),
-      };
+  setLoading(true);
 
-      const memberRef = doc(collection(db, "teams", team.id, "members"), memberId);
-      await setDoc(memberRef, member);
+  try {
+    const memberId = nanoid();
 
-      const teamRef = doc(db, "teams", team.id);
-      await updateDoc(teamRef, { totalMembers: increment(1) });
+    const member = {
+      id: memberId,
+      name: fullName.trim(),
+      email: email.trim().toLowerCase(),
+      contact: contact.trim(),
+      customData: dynamicValues,
+      createdAt: Timestamp.now(),
+    };
 
-      onOpenChange(false);
-      if (onMemberAdded) onMemberAdded();
-    } catch (err) {
-      console.error("Failed to add member:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const teamRef = doc(db, "teams", team.id);
+    const memberRef = doc(collection(db, "teams", team.id, "members"), memberId);
+    const userRef = doc(db, "users", team.admin.userId); // important
+
+    await runTransaction(db, async (transaction) => {
+      // Create member
+      transaction.set(memberRef, member);
+
+      // Increment team member count
+      transaction.update(teamRef, {
+        totalMembers: increment(1),
+      });
+
+      // Increment global user member count
+      transaction.update(userRef, {
+        memberCount: increment(1),
+      });
+    });
+
+    onOpenChange(false);
+    if (onMemberAdded) onMemberAdded();
+
+  } catch (err) {
+    console.error("Failed to add member:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
 
   return (

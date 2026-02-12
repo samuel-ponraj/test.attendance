@@ -9,6 +9,17 @@ import { Plus } from "lucide-react"
 import { useTeams } from "@/app/context/TeamsContext"
 import { useState } from "react"
 import AddTeamModal from "./dashboard/addTeamModal"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog"
+import Link from "next/link"
+
 
 
 const ROUTE_TITLES = [
@@ -48,8 +59,9 @@ const DEFAULT_ROUTE = {
 export function SiteHeader() {
   const pathname = usePathname()
 
-  const { addTeam } = useTeams();
+  const { addTeam, hasReachedTeamLimit  } = useTeams();
   const [modalOpen, setModalOpen] = useState(false);
+  const [showLimitDialog, setShowLimitDialog] = useState(false);
 
   const normalizedPath = pathname?.replace(/\/$/, "");
 
@@ -80,12 +92,42 @@ export function SiteHeader() {
         </div>
 
         <div className="ml-auto flex items-center gap-4">
-          <Button onClick={() => setModalOpen(true)}><Plus />Add Team</Button>
+          <Button
+            onClick={() => {
+              if (hasReachedTeamLimit) {
+                setShowLimitDialog(true);
+              } else {
+                setModalOpen(true);
+              }
+            }}
+          >
+            <Plus />
+            Add Team
+          </Button>
+
           <ModeToggle />
 
           <AddTeamModal open={modalOpen} onOpenChange={setModalOpen} addTeam={addTeam} />
+          <AlertDialog open={showLimitDialog} onOpenChange={setShowLimitDialog}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Team Limit Reached</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    You have reached the maximum limit of <strong>2 teams</strong> in the free plan.
+                    <br /><br />
+                    Please contact <Link href='https://kingzdigitalsolutions.in' target="_blank" rel="noopener noreferrer"><strong>Kingz Digital Solutions</strong></Link> to upgrade your plan.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogAction onClick={() => setShowLimitDialog(false)}>
+                    OK
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
         </div>
       </div>
     </header>
+    
   )
 }

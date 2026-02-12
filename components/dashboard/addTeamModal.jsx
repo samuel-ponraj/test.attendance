@@ -31,6 +31,7 @@ export default function AddTeamModal({ open, onOpenChange, addTeam }) {
   const [customFields, setCustomFields] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  
 
   const handleComplete = async () => {
     setLoading(true);
@@ -161,6 +162,7 @@ export default function AddTeamModal({ open, onOpenChange, addTeam }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </>
   );
 }

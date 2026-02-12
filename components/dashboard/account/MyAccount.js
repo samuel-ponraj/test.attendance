@@ -30,7 +30,7 @@ import {
   updatePassword,
   onAuthStateChanged
 } from "firebase/auth";
-import { doc, deleteDoc, updateDoc, serverTimestamp  } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, writeBatch, collection , where, getDocs } from "firebase/firestore";
 import { Label } from "@/components/ui/label";
 import { User, Camera } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -106,37 +106,57 @@ const [avatar, setAvatar] = useState(null);
   };
 
   const handleDeleteAccount = async () => {
-    if (!user) return;
-    setLoading(true);
+  if (!user) return;
+  setLoading(true);
 
-    try {
-      // 1. Reauthentication
-      if (providerId === "password") {
-        if (!password) throw new Error("Password is required to delete your account.");
-        const credential = EmailAuthProvider.credential(user.email, password);
-        await reauthenticateWithCredential(user, credential);
-      } else if (providerId === "google.com") {
-        const provider = new GoogleAuthProvider();
-        await reauthenticateWithPopup(user, provider);
-      }
-
-      // 2. Delete Firestore data (Optional but recommended)
-      await deleteDoc(doc(db, "users", user.uid));
-
-      // 3. Delete the user from Auth
-      await deleteUser(user);
-
-      toast.success("Your account has been deleted!");
-      router.push("/");
-    } catch (err) {
-      console.error(err);
-      toast.error(err.message || "Failed to delete account.");
-    } finally {
-      setLoading(false);
-      setModalOpen(false);
-      setPassword("");
+  try {
+    // 1. Reauthentication Logic
+    if (providerId === "password") {
+      if (!password) throw new Error("Password is required to delete your account.");
+      const credential = EmailAuthProvider.credential(user.email, password);
+      await reauthenticateWithCredential(user, credential);
+    } else if (providerId === "google.com") {
+      const provider = new GoogleAuthProvider();
+      await reauthenticateWithPopup(user, provider);
     }
-  };
+
+    // 2. Initialize Batch for Atomic Deletion
+    const batch = writeBatch(db);
+
+    // Query for all teams where this user is the admin
+    const teamsQuery = query(
+      collection(db, "teams"),
+      where("admin.userId", "==", user.uid)
+    );
+    const teamsSnapshot = await getDocs(teamsQuery);
+
+    // Add each specific team document to the batch for deletion
+    teamsSnapshot.forEach((teamDoc) => {
+      batch.delete(teamDoc.ref);
+    });
+
+    // Add the specific user document to the batch
+    const userRef = doc(db, "users", user.uid);
+    batch.delete(userRef);
+
+    // Commit all deletions at once to maintain database integrity
+    await batch.commit();
+
+    // 3. Delete the user from Firebase Auth
+    // Note: We do this LAST so the user remains authenticated while deleting Firestore data
+    await deleteUser(user);
+
+    toast.success("Account and associated teams deleted successfully.");
+    router.push("/");
+  } catch (err) {
+    console.error("Account Deletion Error:", err);
+    toast.error(err.message || "Failed to delete account.");
+  } finally {
+    setLoading(false);
+    setModalOpen(false);
+    setPassword("");
+  }
+};
 
   // Load user data
       useEffect(() => {

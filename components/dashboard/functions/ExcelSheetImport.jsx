@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Upload, FileSpreadsheet, CheckCircle2, Loader2, Info } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from '../../../app/context/AuthContext'
 
 // Firebase Imports
 import { db } from "@/lib/firebase"; 
@@ -27,6 +28,7 @@ export default function ImportExcelSheet({ open, onOpenChange, team, onSuccess }
   const [loading, setLoading] = useState(false);
   const [excelData, setExcelData] = useState([]);
   const fileInputRef = useRef(null);
+  const { user } = useAuth()
 
   if (!team) return null;
 
@@ -78,18 +80,27 @@ export default function ImportExcelSheet({ open, onOpenChange, team, onSuccess }
   };
 
   const handleUpload = async () => {
-        if (!excelData.length || !team.id) return;
+    // DEBUG: Check if user exists here
+    console.log("Current User UID:", user?.uid);
+    console.log("Team ID:", team?.id);
 
-        setLoading(true);
-        const batch = writeBatch(db);
-        const membersRef = collection(db, "teams", team.id, "members");
-        const teamRef = doc(db, "teams", team.id);
-        
-        // Create an array to hold the payload for the UI update
-        const membersToUpdateUI = [];
+    if (!excelData.length || !team?.id || !user?.uid) {
+        toast.error("Missing data or user session");
+        return;
+    }
 
-        try {
-            excelData.forEach((row) => {
+    setLoading(true);
+    const batch = writeBatch(db);
+    
+    // 1. References
+    const membersRef = collection(db, "teams", team.id, "members");
+    const teamRef = doc(db, "teams", team.id);
+    const userRef = doc(db, "users", user.uid);
+    
+    const membersToUpdateUI = [];
+
+    try {
+        excelData.forEach((row) => {
             const newMemberRef = doc(membersRef);
             
             const memberPayload = {
@@ -101,47 +112,49 @@ export default function ImportExcelSheet({ open, onOpenChange, team, onSuccess }
                 customData: {}
             };
 
+            // Custom fields logic...
             customFieldsMap.forEach(field => {
                 const rowValue = Object.entries(row).find(
-                ([key]) => key.toLowerCase().trim() === field.name
+                    ([key]) => key.toLowerCase().trim() === field.name
                 )?.[1];
-                
                 if (rowValue !== undefined) {
-                memberPayload.customData[field.id] = rowValue;
+                    memberPayload.customData[field.id] = rowValue;
                 }
             });
 
             batch.set(newMemberRef, memberPayload);
             
-            // Push to UI array with a local Date string for immediate display
             membersToUpdateUI.push({
                 ...memberPayload,
                 createdAt: new Date().toISOString() 
             });
-            });
+        });
 
-            batch.update(teamRef, { 
-                    totalMembers: increment(excelData.length) 
-                });
-            await batch.commit();
+        // 2. Perform Increments
+        // Update the specific team's count
+        batch.update(teamRef, { 
+            totalMembers: increment(excelData.length) 
+        });
 
-            // Trigger the parent update
-            if (onSuccess) {
-            onSuccess(membersToUpdateUI);
-            }
+        // Update the user's global count
+        batch.update(userRef, {
+            memberCount: increment(excelData.length)
+        });
 
-            toast.success("Success!", {
-            description: `Imported ${excelData.length} members.`
-            });
+        // 3. Commit
+        await batch.commit();
 
-            onOpenChange(false);
-            resetState(); 
-        } catch (error) {
-            console.error(error);
-            toast.error("Firestore Error", { description: error.message });
-        } finally {
-            setLoading(false);
-        }
+        if (onSuccess) onSuccess(membersToUpdateUI);
+
+        toast.success(`Imported ${excelData.length} members.`);
+        onOpenChange(false);
+        resetState(); 
+    } catch (error) {
+        console.error("Batch Update Failed:", error);
+        toast.error("Upload failed", { description: error.message });
+    } finally {
+        setLoading(false);
+    }
 };
 
   const resetState = () => {

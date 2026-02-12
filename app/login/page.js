@@ -56,7 +56,6 @@ const Login = () => {
     const docSnap = await getDoc(userRef);
 
     if (!docSnap.exists()) {
-      // Create the document if it's a new user
       await setDoc(userRef, {
         id: user.uid,
         firstName: user.displayName?.split(" ")[0] || "User",
@@ -66,10 +65,12 @@ const Login = () => {
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),
         photoURL: user.photoURL || null,
-        subscription: "basic"
+        subscription: "basic",
+        role: "admin", 
+        teamCount: 0,
+        memberCount: 0
       });
     } else {
-      // Update last login for existing user
       await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true });
     }
 

@@ -1,33 +1,58 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-// 1. Swap Clerk for your custom Firebase Auth hook
 import { useAuth } from "../context/AuthContext"; 
-import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, where } from "firebase/firestore";
+import { 
+  collection, 
+  doc, 
+  onSnapshot, 
+  query, 
+  serverTimestamp, 
+  where, 
+  runTransaction, 
+  increment 
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getDateKey } from "@/lib/DateKey";
 
 const TeamsContext = createContext(null);
 
+const TEAM_LIMIT = 2;
+
 export function TeamsProvider({ children }) {
-  // 2. Access the Firebase user from your context
   const { user } = useAuth();
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [subscription, setSubscription] = useState('basic'); // Changed from userRole
+
+  // Logic: Only block if subscription is NOT pro AND limit reached
+  const hasReachedTeamLimit = subscription !== 'pro' && teams.length >= TEAM_LIMIT;
 
   useEffect(() => {
     if (!user?.uid) {
       setTeams([]);
+      setSubscription('basic');
       setLoading(false);
       return;
     }
 
+    // 1. Listen to the User Document for subscription changes
+    const userDocRef = doc(db, "users", user.uid);
+    const unsubUser = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        // Fallback to 'basic' if field is missing
+        setSubscription(data.subscription || 'basic');
+      }
+    });
+
+    // 2. Listen to the Teams Collection
     const q = query(
       collection(db, "teams"),
       where("admin.userId", "==", user.uid)
     );
 
-    const unsub = onSnapshot(q, (snapshot) => {
+    const unsubTeams = onSnapshot(q, (snapshot) => {
       const teamsData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -35,11 +60,14 @@ export function TeamsProvider({ children }) {
       setTeams(teamsData);
       setLoading(false);
     }, (error) => {
-      console.error("Firestore Error:", error);
+      console.error("Firestore Teams Error:", error);
       setLoading(false);
     });
 
-    return () => unsub();
+    return () => {
+      unsubUser();
+      unsubTeams();
+    };
   }, [user?.uid]);
 
   const addTeam = async (name, description, customFields = []) => {
@@ -48,72 +76,112 @@ export function TeamsProvider({ children }) {
       return;
     }
 
+    // Client-side guard based on state
+    if (hasReachedTeamLimit) {
+      throw new Error(`Team limit of ${TEAM_LIMIT} reached for basic plan.`);
+    }
+
     try {
       const todayKey = getDateKey(new Date());
-
-      // 1. Prepare the custom fields for Firestore
       const formattedFields = customFields.map(field => ({
         id: field.id,
         name: field.name,
         type: field.type,
         required: field.required,
-        // ADD THIS LINE:
         ...(field.options && { options: field.options }) 
       }));
 
-      // 2. Direct Firestore call
-      const docRef = await addDoc(collection(db, "teams"), {
-        name,
-        description: description || "",
-        admin: {
-          email: user.email,
-          userId: user.uid,
-        },
-        createdAt: serverTimestamp(),
-        totalMembers: 0,
-        attendanceSummary: {
-          present: 0,
-          absent: 0,
-          lastUpdatedDate: todayKey,
-        },
-        customFields: formattedFields 
+      const newTeamId = await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await transaction.get(userRef);
+
+        if (!userSnap.exists()) {
+          throw new Error("User profile not found!");
+        }
+
+        const userData = userSnap.data();
+        const currentCount = userData.teamCount || 0;
+        const currentSub = userData.subscription || 'basic';
+
+        // Server-side Enforcement within Transaction
+        if (currentSub !== 'pro' && currentCount >= TEAM_LIMIT) {
+          throw new Error("Limit reached. Upgrade to Pro for unlimited teams.");
+        }
+
+        const teamDocRef = doc(collection(db, "teams"));
+
+        transaction.set(teamDocRef, {
+          name,
+          description: description || "",
+          admin: {
+            email: user.email,
+            userId: user.uid,
+          },
+          createdAt: serverTimestamp(),
+          totalMembers: 0,
+          attendanceSummary: {
+            present: 0,
+            absent: 0,
+            lastUpdatedDate: todayKey,
+          },
+          customFields: formattedFields 
+        });
+
+        transaction.update(userRef, {
+          teamCount: increment(1)
+        });
+
+        return teamDocRef.id;
       });
 
-      return { success: true, id: docRef.id };
+      return { success: true, id: newTeamId };
     } catch (err) {
-      console.error("Firestore Error:", err);
+      console.error("Add Team Error:", err);
       throw err;
     }
-};
+  };
 
   const deleteTeam = async (teamId) => {
-  if (!user) {
-    console.error("No authenticated user found");
-    return;
-  }
+    if (!user?.uid) return;
 
-  try {
-    // This executes on the client, so Firestore sees the user's UID
-    // and matches it against your 'admin.userId' security rule.
-    const teamRef = doc(db, "teams", teamId);
-    await deleteDoc(teamRef);
-    
-    return { success: true };
-  } catch (err) {
-    console.error("Delete Error:", err);
-    // This will likely show "Missing or insufficient permissions" 
-    // if the person logged in isn't the actual admin.
-    throw err;
-  }
-};
+    try {
+      await runTransaction(db, async (transaction) => {
+        const teamRef = doc(db, "teams", teamId);
+        const userRef = doc(db, "users", user.uid);
+
+        const teamSnap = await transaction.get(teamRef);
+        if (!teamSnap.exists()) {
+          throw new Error("Team not found.");
+        }
+
+        const teamData = teamSnap.data();
+        const membersInThisTeam = teamData.totalMembers || 0;
+
+        transaction.delete(teamRef);
+
+        transaction.update(userRef, {
+          teamCount: increment(-1),
+          memberCount: increment(-membersInThisTeam)
+        });
+      });
+
+      return { success: true };
+    } catch (err) {
+      console.error("Delete Team Error:", err);
+      throw err;
+    }
+  };
 
   return (
     <TeamsContext.Provider
       value={{
         teams,
         loading,
+        subscription, // Exported as subscription
         addTeam,
         deleteTeam,
+        TEAM_LIMIT,
+        hasReachedTeamLimit,
       }}
     >
       {children}

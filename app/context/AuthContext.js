@@ -5,7 +5,7 @@ import {
   onAuthStateChanged, 
   signOut as firebaseSignOut, 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, // Added for signup
+  createUserWithEmailAndPassword, 
   signInWithPopup, 
   GoogleAuthProvider,
   updateProfile // Added to save names

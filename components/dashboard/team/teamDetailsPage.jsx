@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Users, CalendarIcon, CheckCircle, XCircle, UserPlus } from "lucide-react";
 
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, setDoc, Timestamp, updateDoc, increment, serverTimestamp  } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, Timestamp, updateDoc, increment, serverTimestamp, runTransaction  } from "firebase/firestore";
 
 import AddMemberModal from "../addMemberModal";
 import MemberRow from "../members/MemberRow";
@@ -43,6 +43,7 @@ import {
 import { Spinner } from "@/components/ui/spinner"
 import { FileSpreadsheet } from 'lucide-react';
 import ImportExcelSheet from "../functions/ExcelSheetImport";
+import { useAuth } from '../../../app/context/AuthContext'
 
 
 
@@ -50,6 +51,7 @@ import ImportExcelSheet from "../functions/ExcelSheetImport";
 export default function TeamDetailsPage() {
   const router = useRouter();
   const { slug } = useParams();
+  const { user } = useAuth()
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [team, setTeam] = useState(null);
@@ -177,14 +179,31 @@ export default function TeamDetailsPage() {
 
 
   const confirmRemoveMember = async () => {
-  if (!memberToRemove) return;
+  if (!memberToRemove || !user?.uid) return;
 
   try {
-    await removeTeamMember({
-      teamId: slug,
-      memberId: memberToRemove,
+    await runTransaction(db, async (transaction) => {
+      // 1. Reference to the member document
+      const memberRef = doc(db, "teams", slug, "members", memberToRemove);
+      
+      // 2. Reference to the user document (to update count)
+      const userRef = doc(db, "users", user.uid);
+      const teamRef = doc(db, "teams", slug);
+
+      // 3. Delete the member document
+      transaction.delete(memberRef);
+
+      transaction.update(teamRef, {
+        totalMembers: increment(-1)   // Decrement team-specific count
+      });
+
+      // 4. Decrement the memberCount in user document
+      transaction.update(userRef, {
+        memberCount: increment(-1)
+      });
     });
 
+    // Update Local UI State
     setMembers(prev => prev.filter(m => m.id !== memberToRemove));
     setAttendance(prev => {
       const copy = { ...prev };
@@ -194,7 +213,7 @@ export default function TeamDetailsPage() {
 
     toast.success("Member removed successfully");
   } catch (err) {
-    console.error(err);
+    console.error("Removal Error:", err);
     toast.error("Failed to remove member");
   } finally {
     setMemberToRemove(null);

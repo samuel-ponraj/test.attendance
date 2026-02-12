@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Eye, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, runTransaction, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { removeTeamMember } from "../../../lib/removeTeamMember";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { useAuth } from '../../../app/context/AuthContext'
 
 const MembersList = () => {
   const router = useRouter();
@@ -27,6 +28,7 @@ const MembersList = () => {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [memberToDelete, setMemberToDelete] = useState(null);
+  const { user } = useAuth()
 
   /* ---------------- FETCH DATA ---------------- */
   useEffect(() => {
@@ -66,23 +68,34 @@ const MembersList = () => {
   };
 
   const confirmDeleteMember = async () => {
-    if (!memberToDelete) return;
+  if (!memberToDelete || !user?.uid) return;
 
-    try {
-      await removeTeamMember({
-        teamId: slug,
-        memberId: memberToDelete,
+  try {
+    await runTransaction(db, async (transaction) => {
+      const memberRef = doc(db, "teams", slug, "members", memberToDelete);
+      const userRef = doc(db, "users", user.uid);
+      const teamRef = doc(db, "teams", slug);
+
+      transaction.delete(memberRef);
+
+      transaction.update(teamRef, {
+        totalMembers: increment(-1)   
       });
+      
+      transaction.update(userRef, {
+        memberCount: increment(-1)
+      });
+    });
 
-      setMembers((prev) => prev.filter((m) => m.id !== memberToDelete));
-      toast.success("Member deleted successfully");
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to delete member");
-    } finally {
-      setMemberToDelete(null);
-    }
-  };
+    setMembers((prev) => prev.filter((m) => m.id !== memberToDelete));
+    toast.success("Member deleted successfully");
+  } catch (err) {
+    console.error("Deletion Error:", err);
+    toast.error("Failed to delete member");
+  } finally {
+    setMemberToDelete(null);
+  }
+};
 
   if (loading) {
     return (
