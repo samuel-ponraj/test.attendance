@@ -183,21 +183,29 @@ export default function TeamDetailsPage() {
 
   try {
     await runTransaction(db, async (transaction) => {
-      // 1. Reference to the member document
+      // 1. References
       const memberRef = doc(db, "teams", slug, "members", memberToRemove);
-      
-      // 2. Reference to the user document (to update count)
       const userRef = doc(db, "users", user.uid);
       const teamRef = doc(db, "teams", slug);
 
-      // 3. Delete the member document
+      // 2. READ: Get the member doc to find their email
+      const memberSnap = await transaction.get(memberRef);
+      if (!memberSnap.exists()) {
+        throw "Member does not exist!";
+      }
+      
+      const memberEmail = memberSnap.data().email;
+      // Reference to the global lookup collection
+      const allMembersRef = doc(db, "allMembers", memberEmail);
+
+      // 3. WRITES: Perform all deletions and updates
       transaction.delete(memberRef);
+      transaction.delete(allMembersRef); // Delete from allMembers index
 
       transaction.update(teamRef, {
-        totalMembers: increment(-1)   // Decrement team-specific count
+        totalMembers: increment(-1)
       });
 
-      // 4. Decrement the memberCount in user document
       transaction.update(userRef, {
         memberCount: increment(-1)
       });

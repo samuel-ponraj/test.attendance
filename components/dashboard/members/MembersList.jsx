@@ -67,35 +67,57 @@ const MembersList = () => {
     setMemberToDelete(memberId);
   };
 
-  const confirmDeleteMember = async () => {
-  if (!memberToDelete || !user?.uid) return;
+ const confirmDeleteMember = async () => {
+    if (!memberToDelete || !user?.uid) return;
 
-  try {
-    await runTransaction(db, async (transaction) => {
-      const memberRef = doc(db, "teams", slug, "members", memberToDelete);
-      const userRef = doc(db, "users", user.uid);
-      const teamRef = doc(db, "teams", slug);
+    try {
+      await runTransaction(db, async (transaction) => {
+        // 1. References
+        const memberRef = doc(db, "teams", slug, "members", memberToDelete);
+        const userRef = doc(db, "users", user.uid);
+        const teamRef = doc(db, "teams", slug);
 
-      transaction.delete(memberRef);
+        // 2. READ: Get the member data first
+        const memberSnap = await transaction.get(memberRef);
+        
+        if (!memberSnap.exists()) {
+          throw new Error("Member does not exist.");
+        }
 
-      transaction.update(teamRef, {
-        totalMembers: increment(-1)   
+        const memberData = memberSnap.data();
+        const memberEmail = memberData.email;
+
+        // 3. WRITES
+        // Delete from the team's member subcollection
+        transaction.delete(memberRef);
+
+        // Delete from the global allMembers lookup (using email as ID)
+        if (memberEmail) {
+          const allMembersRef = doc(db, "allMembers", memberEmail);
+          transaction.delete(allMembersRef);
+        }
+
+        // Update counts
+        transaction.update(teamRef, {
+          totalMembers: increment(-1)   
+        });
+        
+        transaction.update(userRef, {
+          memberCount: increment(-1)
+        });
       });
-      
-      transaction.update(userRef, {
-        memberCount: increment(-1)
-      });
-    });
 
-    setMembers((prev) => prev.filter((m) => m.id !== memberToDelete));
-    toast.success("Member deleted successfully");
-  } catch (err) {
-    console.error("Deletion Error:", err);
-    toast.error("Failed to delete member");
-  } finally {
-    setMemberToDelete(null);
-  }
-};
+      // Update Local State
+      setMembers((prev) => prev.filter((m) => m.id !== memberToDelete));
+      toast.success("Member deleted successfully");
+    } catch (err) {
+      console.error("Deletion Error:", err);
+      // If it's a permission error, it will show here
+      toast.error("Failed to delete member");
+    } finally {
+      setMemberToDelete(null);
+    }
+  };
 
   if (loading) {
     return (

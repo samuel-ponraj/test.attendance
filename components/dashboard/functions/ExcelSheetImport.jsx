@@ -80,10 +80,6 @@ export default function ImportExcelSheet({ open, onOpenChange, team, onSuccess }
   };
 
   const handleUpload = async () => {
-    // DEBUG: Check if user exists here
-    console.log("Current User UID:", user?.uid);
-    console.log("Team ID:", team?.id);
-
     if (!excelData.length || !team?.id || !user?.uid) {
         toast.error("Missing data or user session");
         return;
@@ -102,17 +98,21 @@ export default function ImportExcelSheet({ open, onOpenChange, team, onSuccess }
     try {
         excelData.forEach((row) => {
             const newMemberRef = doc(membersRef);
+            const emailValue = (row["email"] || row["Email"])?.toLowerCase().trim();
             
+            if (!emailValue) return; // Skip rows without email
+
             const memberPayload = {
                 id: newMemberRef.id,
                 name: row["name"] || row["Name"],
-                email: row["email"] || row["Email"],
+                email: emailValue,
                 contact: String(row["contact"] || row["Contact"] || ""),
                 createdAt: serverTimestamp(),
+                teamId: team.id, // Important: Store teamId for security rules
                 customData: {}
             };
 
-            // Custom fields logic...
+            // Custom fields logic
             customFieldsMap.forEach(field => {
                 const rowValue = Object.entries(row).find(
                     ([key]) => key.toLowerCase().trim() === field.name
@@ -122,7 +122,17 @@ export default function ImportExcelSheet({ open, onOpenChange, team, onSuccess }
                 }
             });
 
+            // WRITE 1: Team Subcollection
             batch.set(newMemberRef, memberPayload);
+
+            // WRITE 2: Global allMembers Collection
+            // Document ID is the email
+            const allMembersRef = doc(db, "allMembers", emailValue);
+            batch.set(allMembersRef, {
+                email: emailValue,
+                teamId: team.id,
+                memberId: newMemberRef.id // Store the ref for easier linking
+            });
             
             membersToUpdateUI.push({
                 ...memberPayload,
@@ -131,12 +141,10 @@ export default function ImportExcelSheet({ open, onOpenChange, team, onSuccess }
         });
 
         // 2. Perform Increments
-        // Update the specific team's count
         batch.update(teamRef, { 
             totalMembers: increment(excelData.length) 
         });
 
-        // Update the user's global count
         batch.update(userRef, {
             memberCount: increment(excelData.length)
         });

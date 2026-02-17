@@ -11,6 +11,7 @@ import { db } from "@/lib/firebase";
 import { nanoid } from "nanoid";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { toast } from "sonner";
 
 export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded }) {
   const [fullName, setFullName] = useState("");
@@ -47,7 +48,7 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
   return true;
 };
 
-  const handleAdd = async (e) => {
+ const handleAdd = async (e) => {
   e.preventDefault();
 
   if (!validateRequiredFields()) {
@@ -61,11 +62,12 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
 
   try {
     const memberId = nanoid();
+    const emailLower = email.trim().toLowerCase();
 
     const member = {
       id: memberId,
       name: fullName.trim(),
-      email: email.trim().toLowerCase(),
+      email: emailLower,
       contact: contact.trim(),
       customData: dynamicValues,
       createdAt: Timestamp.now(),
@@ -73,22 +75,32 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
 
     const teamRef = doc(db, "teams", team.id);
     const memberRef = doc(collection(db, "teams", team.id, "members"), memberId);
-    const userRef = doc(db, "users", team.admin.userId); // important
+    const userRef = doc(db, "users", team.admin.userId);
+    const allMembersRef = doc(db, "allMembers", emailLower); 
 
     await runTransaction(db, async (transaction) => {
-      // Create member
+      // 1️⃣ Create member in team
       transaction.set(memberRef, member);
 
-      // Increment team member count
+      // 2️⃣ Increment team member count
       transaction.update(teamRef, {
         totalMembers: increment(1),
       });
 
-      // Increment global user member count
+      // 3️⃣ Increment admin's global member count
       transaction.update(userRef, {
         memberCount: increment(1),
       });
+
+      // 4️⃣ Create top-level member document for login
+      transaction.set(allMembersRef, {
+        teamId: team.id,
+        email: emailLower,
+        memberId:memberRef.id
+      });
     });
+
+    toast.success("Member added successfully");
 
     onOpenChange(false);
     if (onMemberAdded) onMemberAdded();
