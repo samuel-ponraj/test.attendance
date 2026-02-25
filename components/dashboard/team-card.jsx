@@ -27,7 +27,6 @@ import { auth, app } from "@/lib/firebase";
 import { httpsCallable, getFunctions } from "firebase/functions";
 
 const TeamCardLayout = ({ teams }) => {
-
   const functions = getFunctions(app);
   const router = useRouter();
 
@@ -54,62 +53,60 @@ const TeamCardLayout = ({ teams }) => {
     if (!auth.currentUser || !selectedTeamId) return;
 
     setLoading(true);
+    try {
+      const res = await fetch("/api/team/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teamId: selectedTeamId,
+          userEmail: auth.currentUser.email,
+          userId: auth.currentUser.uid,
+        }),
+      });
 
-    const res = await fetch("/api/team/send-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        teamId: selectedTeamId,
-        userEmail: auth.currentUser.email,
-        userId: auth.currentUser.uid,
-      }),
-    });
+      const result = await res.json();
 
-    const result = await res.json();
-
-    if (result.success) {
-      toast.success("OTP sent!");
-      setOtpSent(true);
-      setOtpDialogOpen(true);
-    } else {
-      toast.error(result.error);
+      if (result.success) {
+        toast.success("OTP sent!");
+        setOtpSent(true);
+        setOtpDialogOpen(true); // Now we move to the OTP input stage
+      } else {
+        toast.error(result.error);
+      }
+    } catch (error) {
+      toast.error("Failed to send OTP");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const handleDeleteTeam = async () => {
-    console.log(selectedTeamId)
-  if (!auth.currentUser || !selectedTeamId || !otp) return;
+    if (!auth.currentUser || !selectedTeamId || !otp) return;
 
-  setLoading(true);
+    setLoading(true);
+    try {
+      const verifyDelete = httpsCallable(functions, "verifyOtpAndDeleteTeam");
 
-  try {
-    const verifyDelete = httpsCallable(functions, "verifyOtpAndDeleteTeam");
+      const result = await verifyDelete({
+        teamId: selectedTeamId,
+        otp,
+      });
 
-    const result = await verifyDelete({
-      teamId: selectedTeamId,
-      otp,
-    });
-
-    if (result.data.success) {
-      toast.success("Team deleted successfully");
-
-      setOtpDialogOpen(false);
-      setSelectedTeamId(null);
-      setOtp("");
-      setOtpSent(false);
-
-      router.refresh();
+      if (result.data.success) {
+        toast.success("Team deleted successfully");
+        setOtpDialogOpen(false);
+        // setSelectedTeamId(null); // Removed per your request
+        setOtp("");
+        setOtpSent(false);
+        router.refresh();
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error(error?.message || "Delete failed");
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-  console.error("Delete error:", error);
-  toast.error(error?.message || "Delete failed");
-}
-
-  setLoading(false);
-};
-
+  };
 
   return (
     <>
@@ -135,12 +132,8 @@ const TeamCardLayout = ({ teams }) => {
                     className="text-muted-foreground hover:text-destructive"
                     onClick={(e) => {
                       e.stopPropagation();
-
-    
-
+                      // FIX: Only set the ID. The dialog open logic is handled by the ID presence.
                       setSelectedTeamId(team.id);
-                      setOtpSent(false);
-                      setOtpDialogOpen(true);
                     }}
                   >
                     <Trash2 className="w-4 h-4" />
@@ -175,9 +168,7 @@ const TeamCardLayout = ({ teams }) => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() =>
-                    router.push(`/dashboard/teams/${team.id}`)
-                  }
+                  onClick={() => router.push(`/dashboard/teams/${team.id}`)}
                 >
                   View Team
                   <ArrowRight className="w-4 h-4 ml-1" />
@@ -188,13 +179,13 @@ const TeamCardLayout = ({ teams }) => {
         })}
       </div>
 
-      {/* Confirm Delete Dialog */}
+      {/* Confirm Delete Dialog (Step 1) */}
       <AlertDialog
-          open={!!selectedTeamId && !otpDialogOpen}
-          onOpenChange={(open) => {
-            if (!open) closeAllDialogs();
-          }}
-        >
+        open={!!selectedTeamId && !otpDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) closeAllDialogs();
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this team?</AlertDialogTitle>
@@ -204,33 +195,25 @@ const TeamCardLayout = ({ teams }) => {
           </AlertDialogHeader>
 
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <Button
               onClick={handleSendOtp}
               disabled={loading}
               className="bg-destructive text-white"
             >
               {loading ? "Sending OTP..." : "Send OTP"}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* OTP Dialog */}
+      {/* OTP Dialog (Step 2) */}
       <AlertDialog
-          open={otpDialogOpen}
-          onOpenChange={(open) => {
-            setOtpDialogOpen(open);
-
-            if (!open) {
-              setOtp("");
-              setSelectedTeamId(null);
-              setOtpSent(false);
-            }
-          }}
-        >
+        open={otpDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) closeAllDialogs();
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Enter OTP</AlertDialogTitle>
@@ -249,7 +232,7 @@ const TeamCardLayout = ({ teams }) => {
           <AlertDialogFooter>
             <Button
               variant="outline"
-              onClick={() => setOtpDialogOpen(false)}
+              onClick={closeAllDialogs}
               disabled={loading}
             >
               Cancel
