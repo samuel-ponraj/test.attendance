@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { format } from "date-fns";
 
@@ -9,10 +9,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent } from "@/components/ui/card";
 
-import { ArrowLeft, Users, CalendarIcon, CheckCircle, XCircle, UserPlus } from "lucide-react";
+import { ArrowLeft, Users, CalendarIcon, CheckCircle, XCircle, UserPlus, Clock } from "lucide-react";
 
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, setDoc, Timestamp, updateDoc, increment, serverTimestamp, runTransaction  } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, Timestamp, updateDoc, increment, serverTimestamp, runTransaction, onSnapshot  } from "firebase/firestore";
 
 import AddMemberModal from "../addMemberModal";
 import MemberRow from "../members/MemberRow";
@@ -27,8 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { updateAttendanceSummary } from "@/lib/updateAttendanceSummary";
-import { removeTeamMember } from "../../../lib/removeTeamMember"
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -65,47 +63,72 @@ export default function TeamDetailsPage() {
   const [importOpen, setImportOpen] = useState(false);
 
 
-  const fetchTeamData = async () => {
-        if (!slug) return;
-        setLoading(true);
-        try {
-          // Fetch Team
-          const teamDoc = await getDoc(doc(db, "teams", slug)); 
-          if (!teamDoc.exists()) {
-            setLoading(false);
-            return;
-          }
-          setTeam({ id: teamDoc.id, ...teamDoc.data() });
+  const fetchTeamData = useCallback(async () => {
+    if (!slug) return;
 
-          // Fetch Members
-          const membersSnap = await getDocs(collection(db, "teams", slug, "members"));
-          const membersList = membersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-          setMembers(membersList);
+    setLoading(true);
+    let unsubscribePunches = null;
 
-          // Fetch Attendance
-          const dateKey = getDateKey(selectedDate);
-          const attendanceDoc = await getDoc(doc(db, "teams", slug, "attendance", dateKey));
+    try {
+      // ✅ Fetch team doc
+      const teamDoc = await getDoc(doc(db, "teams", slug));
+      if (!teamDoc.exists()) {
+        setTeam(null);
+        setMembers([]);
+        setAttendance({});
+        setLoading(false);
+        return;
+      }
 
-          if (attendanceDoc.exists()) {
-            setAttendance(attendanceDoc.data().members || {});
-          } else {
-            setAttendance({});
-          }
-        } catch (err) {
-          console.error("Failed to fetch team data:", err);
-        } finally {
-          setLoading(false);
-        }
-      };
+      setTeam({ id: teamDoc.id, ...teamDoc.data() });
 
-      useEffect(() => {
-        fetchTeamData();
-      }, [slug, selectedDate]);
+      // ✅ Fetch team members
+      const membersSnap = await getDocs(collection(db, "teams", slug, "members"));
+      const membersList = membersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setMembers(membersList);
 
-      /* ---------------- 3. CALL ON IMPORT SUCCESS ---------------- */
-      const handleImportSuccess = () => {
-        fetchTeamData();
-      };
+      // ✅ Listen to attendance punches realtime
+      const dateKey = getDateKey(selectedDate);
+      const punchesRef = collection(db, "teams", slug, "attendance", dateKey, "punches");
+
+      unsubscribePunches = onSnapshot(punchesRef, (snapshot) => {
+        const attendanceMap = {};
+        snapshot.forEach((doc) => {
+          attendanceMap[doc.id] = doc.data();
+        });
+        setAttendance(attendanceMap);
+      });
+
+    } catch (err) {
+      console.error("Failed to fetch team data:", err);
+    } finally {
+      setLoading(false);
+    }
+
+    return unsubscribePunches;
+  }, [slug, selectedDate]);
+
+  // -----------------------------
+  // 2️⃣ useEffect to call fetchTeamData
+  // -----------------------------
+  useEffect(() => {
+    let unsubscribe = null;
+
+    fetchTeamData().then((unsub) => {
+      unsubscribe = unsub;
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [fetchTeamData]);
+
+  // -----------------------------
+  // 3️⃣ Handler to refresh after import
+  // -----------------------------
+  const handleImportSuccess = async () => {
+    await fetchTeamData();
+  };
   
 
  if (loading || !team) {
@@ -119,59 +142,117 @@ export default function TeamDetailsPage() {
 
   /* ---------------- DERIVED COUNTS ---------------- */
   let presentCount = 0;
-  let absentCount = 0;
+let absentCount = 0;
+let halfdayCount = 0;
 
-  members.forEach((m) => {
-    const entry = attendance[m.id];
-    if (!entry) return;
-    if (entry.status === "present") presentCount++;
-    else if (entry.status === "absent") absentCount++;
-  });
+members.forEach((m) => {
+  const entry = attendance[m.id];
+  if (!entry) return;
 
-  const totalCount = members.length;
-  const unmarkedCount = totalCount - presentCount - absentCount;
+  switch (entry.status) {
+    case "present":
+      presentCount++;
+      break;
+    case "absent":
+      absentCount++;
+      break;
+    case "halfday":
+      halfdayCount++;
+      break;
+  }
+});
+
+const totalCount = members.length;
+const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
 
   /* ---------------- UPDATE ATTENDANCE ---------------- */
 
  const updateAttendance = async ({ teamId, dateKey, member, status }) => {
-  const entry = {
-    id: member.id,
-    name: member.name,
-    email: member.email,
-    status,
-    markedAt: serverTimestamp(),
-  };
+  try {
+    const punchRef = doc(
+      db,
+      "teams",
+      teamId,
+      "attendance",
+      dateKey,
+      "punches",
+      member.id
+    );
 
-  const updatedAttendance = {
-    ...attendance,
-    [member.id]: entry,
-  };
+    const teamRef = doc(db, "teams", teamId);
 
-  // 🔥 Optimistic UI
-  setAttendance(updatedAttendance);
+    const snap = await getDoc(punchRef);
+    const now = serverTimestamp();
 
-  // ✅ Create / update date doc
-  await setDoc(
-    doc(db, "teams", teamId, "attendance", dateKey),
-    {
-      members: {
-        [member.id]: entry,
-      },
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+    // 🔁 Update OR Create Punch
+    if (snap.exists()) {
+      await updateDoc(punchRef, {
+        status,
+        updatedAt: now,
+      });
+    } else {
+      await setDoc(punchRef, {
+        userId: member.id,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        status,
+        entryType: "manual",
 
-  // ✅ Update team summary
-  await updateAttendanceSummary({
-  teamId: slug,
-  attendanceMap: updatedAttendance,
-  dateKey: getDateKey(selectedDate),
-});
+        punchIn: null,
+        punchOut: null,
+        totalHoursWorked: 0,
+
+        deviceInfo: {
+          platform: "manual",
+          version: null,
+        },
+
+        location: {
+          lat: null,
+          lng: null,
+        },
+
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    // 🔥 Recalculate Summary For That Date
+    const punchesSnap = await getDocs(
+      collection(db, "teams", teamId, "attendance", dateKey, "punches")
+    );
+
+    let present = 0;
+    let halfday = 0;
+    let absent = 0;
+
+    punchesSnap.forEach((doc) => {
+      const data = doc.data();
+
+      if (data.status === "present") present++;
+      if (data.status === "halfday") halfday++;
+      if (data.status === "absent") absent++;
+    });
+
+    // 🔥 Update Team Root attendanceSummary
+    await setDoc(
+        teamRef,
+        {
+          attendanceSummary: {
+            present,
+            halfday,
+            absent,
+            updatedAt: now,
+          },
+        },
+        { merge: true }
+      );
+
+  } catch (error) {
+    console.error("Attendance update failed:", error);
+  }
 };
 
-
-  /* ---------------- MEMBER REMOVAL ---------------- */
 
   const handleMemberRemoved = (memberId) => {
       setMemberToRemove(memberId);
@@ -181,34 +262,17 @@ export default function TeamDetailsPage() {
   const confirmRemoveMember = async () => {
   if (!memberToRemove || !user?.uid) return;
 
+  const functions = getFunctions();
+  const removeMemberCall = httpsCallable(functions, 'removeMember');
+
   try {
-    await runTransaction(db, async (transaction) => {
-      // 1. References
-      const memberRef = doc(db, "teams", slug, "members", memberToRemove);
-      const userRef = doc(db, "users", user.uid);
-      const teamRef = doc(db, "teams", slug);
-
-      // 2. READ: Get the member doc to find their email
-      const memberSnap = await transaction.get(memberRef);
-      if (!memberSnap.exists()) {
-        throw "Member does not exist!";
-      }
-      
-      const memberEmail = memberSnap.data().email;
-      // Reference to the global lookup collection
-      const allMembersRef = doc(db, "allMembers", memberEmail);
-
-      // 3. WRITES: Perform all deletions and updates
-      transaction.delete(memberRef);
-      transaction.delete(allMembersRef); // Delete from allMembers index
-
-      transaction.update(teamRef, {
-        totalMembers: increment(-1)
-      });
-
-      transaction.update(userRef, {
-        memberCount: increment(-1)
-      });
+    // We pass the email because we need it to target the 'allMembers' collection
+    const memberData = members.find(m => m.id === memberToRemove);
+    
+    await removeMemberCall({
+      teamId: slug,
+      memberId: memberToRemove,
+      email: memberData?.email
     });
 
     // Update Local UI State
@@ -219,10 +283,10 @@ export default function TeamDetailsPage() {
       return copy;
     });
 
-    toast.success("Member removed successfully");
+    toast.success("Member and account removed successfully");
   } catch (err) {
     console.error("Removal Error:", err);
-    toast.error("Failed to remove member");
+    toast.error("Failed to remove member completely");
   } finally {
     setMemberToRemove(null);
   }
@@ -307,6 +371,7 @@ export default function TeamDetailsPage() {
             <div className="flex flex-wrap gap-4 justify-center md:justify-start">
               <Count icon={CheckCircle} label={`${presentCount} Present`} color="success" />
               <Count icon={XCircle} label={`${absentCount} Absent`} color="destructive" />
+              <Count icon={Clock} label={`${halfdayCount} Halfday`} color="warning" />
               <Count icon={Users} label={`${unmarkedCount} Unmarked`} color="muted" />
             </div>
             <div className="flex justify-center gap-4">
@@ -320,7 +385,7 @@ export default function TeamDetailsPage() {
               </Button>
               </div>
               <Link href={`/dashboard/teams/${team.id}/members`} className="w-full">
-                <Button className="w-full">View Members</Button>
+                <Button className="w-full">Members</Button>
               </Link>
             </div>
           </div>
@@ -344,7 +409,7 @@ export default function TeamDetailsPage() {
 
 
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-  {/* Filter + Search wrapper */}
+        {/* Filter + Search wrapper */}
           <div className="flex w-full gap-2 md:w-auto md:gap-3 md:items-center">
             
             {/* Select */}
@@ -448,6 +513,7 @@ function Count({ icon: Icon, label, color }) {
   const colors = {
     success: "bg-success/10 text-success",
     destructive: "bg-destructive/10 text-destructive",
+    warning: "bg-warning/10 text-warning",
     muted: "bg-muted text-muted-foreground",
   };
 

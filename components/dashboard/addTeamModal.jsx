@@ -28,6 +28,7 @@ export default function AddTeamModal({ open, onOpenChange, addTeam }) {
   const [step, setStep] = useState("details");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [ownerName, setOwnerName] = useState("");
   const [customFields, setCustomFields] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -37,9 +38,10 @@ export default function AddTeamModal({ open, onOpenChange, addTeam }) {
     setLoading(true);
     setShowConfirm(false);
     try {
-      await addTeam(name.trim(), description.trim(), customFields);
+      await addTeam(name.trim(), description.trim(), ownerName.trim(), customFields);
       setName("");
       setDescription("");
+      setOwnerName("")
       setCustomFields([]);
       setStep("details");
       onOpenChange(false);
@@ -68,7 +70,8 @@ export default function AddTeamModal({ open, onOpenChange, addTeam }) {
                   id="teamName"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., Engineering"
+                  placeholder="Enter the Team name"
+                  required
                 />
               </div>
 
@@ -80,6 +83,18 @@ export default function AddTeamModal({ open, onOpenChange, addTeam }) {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Brief description of the team"
                   rows={3}
+                  
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ownerName">Owner Name</Label>
+                <Input
+                  id="ownerName"
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(e.target.value)}
+                  placeholder="Enter the Team owner's name"
+                  required
                 />
               </div>
 

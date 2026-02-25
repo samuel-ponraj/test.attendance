@@ -1,30 +1,51 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { doc, collection, setDoc, Timestamp, updateDoc, increment, runTransaction } from "firebase/firestore";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { doc, collection, Timestamp, increment, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { nanoid } from "nanoid";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
+import { getCountries, getCountryCallingCode } from "libphonenumber-js";
+import { getFunctions, httpsCallable } from "firebase/functions";
+
+// Generate country code options
+const countryCodeOptions = getCountries().map((iso) => ({
+  code: `+${getCountryCallingCode(iso)}`,
+  iso,
+}));
 
 export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded }) {
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [contact, setContact] = useState("");
+  const [selectedIso, setSelectedIso] = useState("IN"); 
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [dynamicValues, setDynamicValues] = useState({});
   const [loading, setLoading] = useState(false);
 
   const fields = team?.customFields || [];
 
+  // Derived value for the actual calling code for database storage
+  const countryCode = useMemo(() => {
+    const option = countryCodeOptions.find(c => c.iso === selectedIso);
+    return option ? option.code : "+1";
+  }, [selectedIso]);
+
   useEffect(() => {
     if (!open) {
-      setFullName(""); setEmail(""); setContact(""); setDynamicValues({});
+      setFirstName("");
+      setLastName("");
+      setEmail("");
+      setSelectedIso("IN"); 
+      setPhoneNumber("");
+      setDynamicValues({});
     }
   }, [open]);
 
@@ -33,129 +54,169 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
   };
 
   const validateRequiredFields = () => {
-  // Check default fields
-  if (!fullName.trim() || !email.trim()) return false;
-
-  // Check custom fields
-  for (const field of fields) {
-    if (field.required) {
-      const value = dynamicValues[field.id];
-      if (value === undefined || value === null || (typeof value === "string" && !value.trim())) {
-        return false;
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !phoneNumber.trim() || !selectedIso) return false;
+    for (const field of fields) {
+      if (field.required) {
+        const value = dynamicValues[field.id];
+        if (!value || (typeof value === "string" && !value.trim())) return false;
       }
     }
-  }
-  return true;
-};
+    return true;
+  };
 
  const handleAdd = async (e) => {
   e.preventDefault();
-
   if (!validateRequiredFields()) {
-    alert("Please fill in all required fields (marked with *)");
+    toast.error("Please fill in all required fields");
     return;
   }
-
-  if (!team?.id || !fullName.trim()) return;
 
   setLoading(true);
 
   try {
-    const memberId = nanoid();
+    const functions = getFunctions();
+    const createAccount = httpsCallable(functions, 'createMemberAccount');
+    
     const emailLower = email.trim().toLowerCase();
 
-    const member = {
-      id: memberId,
-      name: fullName.trim(),
+    const result = await createAccount({
       email: emailLower,
-      contact: contact.trim(),
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+    });
+
+    const { uid } = result.data;
+
+    // 2. Prepare Firestore Data
+    const combinedContact = `${countryCode} ${phoneNumber.trim()}`;
+    const member = {
+      id: uid,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: emailLower,
+      contact: combinedContact,
       customData: dynamicValues,
       createdAt: Timestamp.now(),
     };
 
     const teamRef = doc(db, "teams", team.id);
-    const memberRef = doc(collection(db, "teams", team.id, "members"), memberId);
+    const memberRef = doc(db, "teams", team.id, "members", uid);
     const userRef = doc(db, "users", team.admin.userId);
-    const allMembersRef = doc(db, "allMembers", emailLower); 
+    const allMembersRef = doc(db, "allMembers", emailLower);
 
+    // 3. Run Transaction for Firestore Cleanup
     await runTransaction(db, async (transaction) => {
-      // 1️⃣ Create member in team
       transaction.set(memberRef, member);
-
-      // 2️⃣ Increment team member count
-      transaction.update(teamRef, {
-        totalMembers: increment(1),
-      });
-
-      // 3️⃣ Increment admin's global member count
-      transaction.update(userRef, {
-        memberCount: increment(1),
-      });
-
-      // 4️⃣ Create top-level member document for login
+      transaction.update(teamRef, { totalMembers: increment(1) });
+      transaction.update(userRef, { memberCount: increment(1) });
       transaction.set(allMembersRef, {
         teamId: team.id,
         email: emailLower,
-        memberId:memberRef.id
+        memberId: uid,
       });
     });
 
-    toast.success("Member added successfully");
-
+    toast.success("Member added successfully.");
     onOpenChange(false);
     if (onMemberAdded) onMemberAdded();
-
   } catch (err) {
     console.error("Failed to add member:", err);
+    toast.error(err.message || "Failed to add member.");
   } finally {
     setLoading(false);
   }
 };
 
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[95vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="w-full sm:max-w-md max-h-[95vh] flex flex-col p-0 overflow-hidden mx-auto my-6 sm:my-auto">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle>Add Member to {team?.name}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleAdd} className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 pt-2 space-y-4 lg:py-3">
-            <div className="pb-1">
-              <Label className='pb-2' htmlFor="fullName">Full Name</Label>
-              <Input id="fullName" placeholder="e.g. John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-            </div>
-            <div className="pb-1">
-              <Label className='pb-2' htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="e.g. john@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required/>
-            </div>
-            <div className="pb-1">
-              <Label className='pb-2' htmlFor="contact">Contact</Label>
-              <Input id="contact" placeholder="e.g. +91 9876543210" value={contact} onChange={(e) => setContact(e.target.value)} required/>
+            
+            {/* Standard Fields */}
+            <div className="flex flex-col sm:flex-row sm:space-x-2 space-y-4 sm:space-y-0">
+              <div className="flex-1">
+                <Label className="pb-2" htmlFor="firstName">First Name</Label>
+                <Input id="firstName" placeholder="First Name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+              </div>
+              <div className="flex-1">
+                <Label className="pb-2" htmlFor="lastName">Last Name</Label>
+                <Input id="lastName" placeholder="Last Name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+              </div>
             </div>
 
+            <div className="pb-1">
+              <Label className="pb-2" htmlFor="email">Email</Label>
+              <Input id="email" type="email" placeholder="e.g. john@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
+
+            <div className="flex w-full space-x-2">
+              <div className="sm:w-1/3">
+                <Label className="pb-2" htmlFor="countryCode">Country Code</Label>
+                <Select value={selectedIso} onValueChange={setSelectedIso} required>
+                  <SelectTrigger className="w-full">
+                    <SelectValue>
+                       {selectedIso} ({countryCode})
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 overflow-auto">
+                    {countryCodeOptions.map((c) => (
+                      <SelectItem key={c.iso} value={c.iso}>
+                        {c.iso} ({c.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <Label className="pb-2" htmlFor="phoneNumber">Phone Number</Label>
+                <Input id="phoneNumber" type="tel" placeholder="9876543210" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} required />
+              </div>
+            </div>
+
+            {/* Custom Fields Section */}
             {fields.length > 0 && (
-               <div className="relative py-2">
-                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                  <div className="relative flex justify-center text-[10px] uppercase">
-                    <span className="bg-background px-2 text-muted-foreground font-medium italic">Custom Details</span>
-                  </div>
-               </div>
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                <div className="relative flex justify-center text-[10px] uppercase">
+                  <span className="bg-background px-2 text-muted-foreground font-medium italic">Custom Details</span>
+                </div>
+              </div>
             )}
 
             {fields.map((field) => (
-              <div key={field.id} className=" pb-1">
-                <Label className='pb-2' htmlFor={field.id}>{field.name} {field.required}</Label>
+              <div key={field.id} className="pb-1">
+                <Label className="pb-2" htmlFor={field.id}>
+                  {field.name} {field.required && "*"}
+                </Label>
                 {field.type === "textarea" ? (
-                  <Textarea id={field.id} value={dynamicValues[field.id] || ""} onChange={(e) => handleDynamicChange(field.id, e.target.value)} required={field.required} />
+                  <Textarea 
+                    id={field.id} 
+                    value={dynamicValues[field.id] || ""} 
+                    onChange={(e) => handleDynamicChange(field.id, e.target.value)} 
+                    required={field.required} 
+                  />
                 ) : field.type === "select" ? (
-                  <Select onValueChange={(val) => handleDynamicChange(field.id, val)} required={field.required} >
-                    <SelectTrigger className="w-full"><SelectValue placeholder={`Select ${field.name.toLowerCase()}`} /></SelectTrigger>
-                    <SelectContent>{field.options?.map((opt) => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
+                  <Select onValueChange={(val) => handleDynamicChange(field.id, val)} required={field.required}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={`Select ${field.name.toLowerCase()}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {field.options?.map((opt) => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                 ) : field.type === "radio" ? (
-                  <RadioGroup onValueChange={(val) => handleDynamicChange(field.id, val)} required={field.required} className="flex flex-row flex-wrap gap-4 pt-1">
+                  <RadioGroup 
+                    onValueChange={(val) => handleDynamicChange(field.id, val)} 
+                    required={field.required} 
+                    className="flex flex-row flex-wrap gap-4 pt-1"
+                  >
                     {field.options?.map((opt) => (
                       <div key={opt} className="flex items-center space-x-2">
                         <RadioGroupItem value={opt} id={`${field.id}-${opt}`} />
@@ -164,7 +225,13 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
                     ))}
                   </RadioGroup>
                 ) : (
-                  <Input id={field.id} type={field.type} value={dynamicValues[field.id] || ""} onChange={(e) => handleDynamicChange(field.id, e.target.value)} required={field.required} />
+                  <Input 
+                    id={field.id} 
+                    type={field.type} 
+                    value={dynamicValues[field.id] || ""} 
+                    onChange={(e) => handleDynamicChange(field.id, e.target.value)} 
+                    required={field.required} 
+                  />
                 )}
               </div>
             ))}

@@ -6,9 +6,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from '@/lib/utils';
-import { CalendarIcon, Clock } from 'lucide-react';
+import { CalendarIcon, Clock, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, startOfDay, endOfDay, parse } from "date-fns";
+import { format, startOfDay, endOfDay, parse, eachDayOfInterval, isWithinInterval } from "date-fns";
 import HistoryTable from "./HistoryTable";
 import { useTeams } from '@/app/context/TeamsContext';
 import { collection, getDocs } from "firebase/firestore";
@@ -18,10 +18,11 @@ const HistoryLayout = () => {
   const { teams } = useTeams();
   const [members, setMembers] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [loading, setLoading] = useState(false);
   
   const [selectedTeam, setSelectedTeam] = useState("all");
   const [selectedMember, setSelectedMember] = useState("all");
-  const [startDate, setStartDate] = useState();
+  const [startDate, setStartDate] = useState(); 
   const [endDate, setEndDate] = useState();
 
   useEffect(() => {
@@ -32,58 +33,86 @@ const HistoryLayout = () => {
         return;
       }
 
+      setLoading(true);
       try {
-        const membersSnapshot = await getDocs(collection(db, `teams/${selectedTeam}/members`));
-        const membersList = membersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // 1. Fetch Members
+        const membersSnap = await getDocs(collection(db, `teams/${selectedTeam}/members`));
+        const membersList = membersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setMembers(membersList);
 
-        const attendanceSnapshot = await getDocs(collection(db, `teams/${selectedTeam}/attendance`));
-        const attendanceData = attendanceSnapshot.docs.map(doc => ({
-          dateKey: doc.id,
-          memberMap: doc.data().members || {}
-        }));
-        setAttendanceRecords(attendanceData);
+        // 2. Determine which dates to fetch
+        // If no date is selected, we might want to fetch last 7 days or just today
+        const start = startDate || new Date();
+        const end = endDate || new Date();
+        
+        const dateRange = eachDayOfInterval({ start, end });
+        
+        // 3. Fetch punches for each date in the range (Direct Path)
+        const fetchPromises = dateRange.map(async (date) => {
+          const dateKey = format(date, "yyyy-MM-dd");
+          const punchesSnap = await getDocs(collection(db, `teams/${selectedTeam}/attendance/${dateKey}/punches`));
+          
+          if (punchesSnap.empty) return null;
+
+          const memberMap = {};
+          punchesSnap.forEach(doc => {
+            memberMap[doc.id] = { id: doc.id, ...doc.data() };
+          });
+
+          return { dateKey, memberMap };
+        });
+
+        const results = await Promise.all(fetchPromises);
+        setAttendanceRecords(results.filter(r => r !== null));
+
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching attendance:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchTeamData();
-  }, [selectedTeam]);
+  }, [selectedTeam, startDate, endDate]); // Refetch when team OR dates change
 
   const filteredAttendance = useMemo(() => {
     let result = [];
-    // Create a Set of current member IDs for fast lookup
     const currentMemberIds = new Set(members.map(m => m.id));
 
     attendanceRecords.forEach(day => {
-      const recordDate = parse(day.dateKey, "dd-MM-yyyy", new Date());
-      const isWithinDateRange = (!startDate || recordDate >= startOfDay(startDate)) &&
-                                (!endDate || recordDate <= endOfDay(endDate));
+      Object.values(day.memberMap).forEach(record => {
+        if (selectedMember === "all" || record.id === selectedMember) {
+          const memberMeta = members.find(m => m.id === record.id);
+          
+          result.push({
+            ...record,
+            dateDisplay: day.dateKey,
 
-      if (isWithinDateRange) {
-        Object.values(day.memberMap).forEach(record => {
-          if (selectedMember === "all" || record.id === selectedMember) {
-            result.push({
-              ...record,
-              dateDisplay: day.dateKey,
-              markedAtDate: record.markedAt?.toDate ? record.markedAt.toDate() : new Date(),
-              // Check if member still exists in the members subcollection
-              membershipStatus: currentMemberIds.has(record.id) ? "Active" : "Removed"
-            });
-          }
-        });
-      }
+            // ✅ Use snapshot name stored in punches
+            firstName: record.firstName || "-",
+            lastName: record.lastName || "-",
+
+            markedAtDate: record.markedAt?.toDate
+              ? record.markedAt.toDate()
+              : new Date(),
+
+            // Membership status can still depend on members collection
+            membershipStatus: currentMemberIds.has(record.id)
+              ? "Active"
+              : "Removed"
+          });
+        }
+      });
     });
 
     return result.sort((a, b) => b.markedAtDate - a.markedAtDate);
-  }, [attendanceRecords, selectedMember, startDate, endDate, members]);
+  }, [attendanceRecords, selectedMember, members]);
 
   const clearFilters = () => {
     setSelectedTeam("all");
     setSelectedMember("all");
-    setStartDate(undefined);
-    setEndDate(undefined);
+    setStartDate(new Date());
+    setEndDate(new Date());
   };
 
   return (
@@ -132,7 +161,7 @@ const HistoryLayout = () => {
                 <SelectContent>
                   <SelectItem value="all">All Members</SelectItem>
                   {members.map(m => (
-                    <SelectItem key={m.id} value={m.id}>{m.name || m.email || m.id}</SelectItem>
+                    <SelectItem key={m.id} value={m.id}>{m.firstName || m.email || m.id}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -143,8 +172,8 @@ const HistoryLayout = () => {
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("w-full sm:w-[180px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, "PPP") : "Pick a date"}
+                    <CalendarIcon className="h-4 w-4" />
+                    {startDate ? format(startDate, "MMMM d, yyyy") : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -158,8 +187,8 @@ const HistoryLayout = () => {
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("w-full sm:w-[180px] justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "PPP") : "Pick a date"}
+                    <CalendarIcon className=" h-4 w-4" />
+                    {endDate ? format(endDate, "MMMM d, yyyy") : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -175,10 +204,16 @@ const HistoryLayout = () => {
         </CardContent>
       </Card>
 
-      <HistoryTable
-        attendance={filteredAttendance}
-        team={teams?.find(t => t.id === selectedTeam) || { name: "All Teams" }}
-      />
+      {loading ? (
+        <div className="flex justify-center p-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <HistoryTable
+          attendance={filteredAttendance}
+          team={teams?.find(t => t.id === selectedTeam) || { name: "All Teams" }}
+        />
+      )}
     </div>
   );
 };

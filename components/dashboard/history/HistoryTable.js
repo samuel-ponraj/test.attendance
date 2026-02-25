@@ -16,7 +16,6 @@ const HistoryTable = ({ attendance = [], team }) => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [attendanceFilter, setAttendanceFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-
   const rows = attendance.filter((row) => {
   const attendanceMatch =
     attendanceFilter === "all" || row.status === attendanceFilter;
@@ -26,6 +25,7 @@ const HistoryTable = ({ attendance = [], team }) => {
 
   return attendanceMatch && statusMatch;
 });
+
   
   // Calculate Pagination values
   const totalRows = rows.length;
@@ -37,6 +37,31 @@ const HistoryTable = ({ attendance = [], team }) => {
   const capitalize = (text) =>
     text ? text.charAt(0).toUpperCase() + text.slice(1) : "-";
 
+  const formatTime = (value) => {
+  if (!value) return "-";
+  
+  try {
+    // 1. If it's a Firestore Timestamp
+    if (value.toDate && typeof value.toDate === 'function') {
+      return format(value.toDate(), "hh:mm a");
+    }
+    
+    // 2. If it's already a Date object
+    if (value instanceof Date) {
+      return format(value, "hh:mm a");
+    }
+
+    // 3. If it's a string, try to parse it
+    const parsedDate = new Date(value);
+    if (!isNaN(parsedDate.getTime())) {
+      return format(parsedDate, "hh:mm a");
+    }
+  } catch (error) {
+    console.error("Format error:", error);
+  }
+  
+  return "-";
+};
 
   const handleExportPDF = () => {
     const doc = new jsPDF({ orientation: "landscape", unit: "pt" });
@@ -45,13 +70,15 @@ const HistoryTable = ({ attendance = [], team }) => {
 
     autoTable(doc, {
       startY: 50,
-      head: [["Date", "Member", "Team", "Attendance", "Marked At", "Status"]],
+      head: [["Date", "Member", "Team", "Attendance", "Punch In", "Punch Out", "Entry Type", "Status"]],
       body: rows.map(row => [
         row.dateDisplay || "-",
-        row.name || "-",
+        `${row.firstName || ""} ${row.lastName || ""}`.trim() || "-",
         team?.name || "-",
         capitalize(row.status),
-        row.markedAtDate ? format(row.markedAtDate, "hh:mm a") : "-",
+        row.punchIn ? formatTime(row.punchIn, "hh:mm a") : "-",
+        row.punchOut ? formatTime(row.punchOut, "hh:mm a") : "-",
+        capitalize(row.entryType),
         capitalize(row.membershipStatus)
       ]),
       styles: { fontSize: 9, cellPadding: 6 },
@@ -73,6 +100,7 @@ const HistoryTable = ({ attendance = [], team }) => {
               <SelectItem value="all">All Attendance</SelectItem>
               <SelectItem value="present">Present</SelectItem>
               <SelectItem value="absent">Absent</SelectItem>
+              <SelectItem value="halfday">Half Day</SelectItem>
             </SelectContent>
           </Select>
 
@@ -110,7 +138,9 @@ const HistoryTable = ({ attendance = [], team }) => {
                 <th className="p-3 text-left">Member</th>
                 <th className="p-3 text-left">Team</th>
                 <th className="p-3 text-left">Attendance</th>
-                <th className="p-3 text-left whitespace-nowrap">Marked At</th>
+                <th className="p-3 text-left whitespace-nowrap">Punch In</th>
+                <th className="p-3 text-left whitespace-nowrap">Punch Out</th>
+                <th className="p-3 text-left">Entry Type</th>
                 <th className="p-3 text-left">Status</th>
               </tr>
             </thead>
@@ -124,19 +154,30 @@ const HistoryTable = ({ attendance = [], team }) => {
                 currentRows.map((row, index) => (
                   <tr key={index} className="border-t">
                     <td className="p-3 whitespace-nowrap">{row.dateDisplay || "-"}</td>
-                    <td className="p-3 whitespace-nowrap">{row.name || "-"}</td>
+                    <td className="p-3 whitespace-nowrap">{row.firstName} {row.lastName}</td>
                     <td className="p-3 whitespace-nowrap">{team?.name || "-"}</td>
                     <td className="p-3 whitespace-nowrap">
-                      <span className={cn(
-                        "px-2 py-1 rounded text-xs font-medium capitalize",
-                        row.status === "present" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                      )}>
-                        {row.status || "-"}
-                      </span>
+                      <span 
+                          className={cn(
+                            "px-2 py-1 rounded text-xs font-medium capitalize",
+                            row.status === "present" && "bg-success/10 text-success",
+                            row.status === "absent" && "bg-destructive/10 text-destructive"
+                          )}
+                          style={row.status === 'halfday' ? { 
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)', // #F59E0B at 10% opacity
+                            color: '#F59E0B' 
+                          } : {}}
+                        >
+                          {row.status || "-"}
+                        </span>
                     </td>
                     <td className="p-3 whitespace-nowrap text-muted-foreground">
-                      {row.markedAtDate ? format(row.markedAtDate, "hh:mm a") : "-"}
+                      {formatTime(row.punchIn)}
                     </td>
+                    <td className="p-3 whitespace-nowrap text-muted-foreground">
+                      {formatTime(row.punchOut)}
+                    </td>
+                    <td className="p-3 whitespace-nowrap">{capitalize(row.entryType)}</td>
                     <td className="p-3 whitespace-nowrap">
                       <span className={cn(
                         "px-2 py-1 rounded text-xs font-medium",
@@ -156,7 +197,7 @@ const HistoryTable = ({ attendance = [], team }) => {
         <div className="flex items-center justify-between gap-4 py-4 px-2">
           {/* Hidden on Mobile/Tab (below lg) */}
           <div className="hidden lg:block text-sm text-muted-foreground">
-            0 of {totalRows} row(s) selected.
+            0 of {totalRows} row(s) selected
           </div>
 
           <div className="flex w-full lg:w-auto items-center justify-between lg:justify-end gap-6 lg:gap-8">

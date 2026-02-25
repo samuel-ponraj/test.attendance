@@ -22,7 +22,7 @@ import { Spinner } from "@/components/ui/spinner";
 export default function DashboardPage() {
 
 
-  const { addTeam, deleteTeam, loading, teams } = useTeams()
+  const { addTeam, sendDeleteOtp, deleteTeamWithOtp, loading, teams } = useTeams()
 
   const [modalOpen, setModalOpen] = useState(false);
   const [summaryReady, setSummaryReady] = useState(false);
@@ -93,7 +93,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         ) : (
-          <TeamCardLayout teams={teams} deleteTeam={deleteTeam} />
+          <TeamCardLayout teams={teams} sendDeleteOtp={sendDeleteOtp} deleteTeamWithOtp={deleteTeamWithOtp}/>
 )}
 
       </div>

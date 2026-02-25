@@ -15,7 +15,7 @@ import { Plus } from "lucide-react";
 
 export default function Page() {
 
-  const { teams, addTeam, deleteTeam, loading } = useTeams();
+  const { teams, addTeam, sendDeleteOtp, deleteTeamWithOtp, loading } = useTeams();
   const [modalOpen, setModalOpen] = useState(false);
   return (
     
@@ -51,7 +51,7 @@ export default function Page() {
             </CardContent>
           </Card>
         ) : (
-          <TeamCardLayout teams={teams} deleteTeam={deleteTeam} />
+          <TeamCardLayout teams={teams} sendDeleteOtp={sendDeleteOtp} deleteTeamWithOtp={deleteTeamWithOtp}/>
         )}
       </div>
   )

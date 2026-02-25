@@ -5,14 +5,15 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-import { useEffect, useState } from "react";
+import Image from "next/image";
+import { cn } from '@/lib/utils';
 
 // ✅ Utility: DD-MM-YYYY
 const getDateKey = (date = new Date()) => {
   const d = String(date.getDate()).padStart(2, "0");
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const y = date.getFullYear();
-  return `${d}-${m}-${y}`;
+  return `${y}-${m}-${d}`;
 };
 
 const MemberRow = ({ 
@@ -21,46 +22,39 @@ const MemberRow = ({
   attendance = {},
   selectedDate = new Date(),
   onUpdateAttendance,
-  onRemove,
+  // onRemove,
 }) => {
+
   const dateKey = getDateKey(selectedDate);
+  const memberId = member?.id;
 
-  // ✅ Read today’s status
-  const todayStatus = attendance?.[member.id]?.status ?? null;
-const [localStatus, setLocalStatus] = useState(todayStatus);
+  const todayStatus = memberId
+    ? attendance?.[memberId]?.status ?? null
+    : null;
+
+  const handleAttendance = async (status) => {
+    if (!member || !onUpdateAttendance) return;
+
+    await onUpdateAttendance({
+      teamId,
+      dateKey,
+      member,
+      status,
+    });
+  };
 
 
+//  const handleRemove = () => {
+//   onRemove?.(member.id);
+// };
 
-useEffect(() => {
-  setLocalStatus(todayStatus);
-}, [todayStatus]);
-
-  const getInitials = (name) =>
+const getInitials = (name) =>
     name
       .split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase()
       .slice(0, 2);
-
-  const handleAttendance = async (status) => {
-  if (!onUpdateAttendance) return;
-
-  // 🔥 instant UI update
-  setLocalStatus(status);
-
-  await onUpdateAttendance({
-    teamId,
-    dateKey,
-    member,
-    status,
-  });
-};
-
-
- const handleRemove = () => {
-  onRemove?.(member.id);
-};
 
   return (
     <Card>
@@ -71,12 +65,22 @@ useEffect(() => {
     <div className="flex items-center gap-4 w-full sm:w-auto">
       <Avatar className="w-10 h-10 shrink-0">
         <AvatarFallback className="bg-accent text-accent-foreground font-medium">
-          {getInitials(member.name)}
+        {member.profileImage ? (
+          <Image src={member.profileImage} width={80} height={80} alt="Member Profile Image"/>
+        ):(
+          <>
+          {member.firstName || member.lastName 
+        ? getInitials(`${member.firstName || ''} ${member.lastName || ''}`)
+        : ''}
+        </>
+        )}
         </AvatarFallback>
       </Avatar>
 
       <div className="flex flex-col gap-1">
-        <p className="font-medium text-foreground leading-none">{member.name}</p>
+        <p className="font-medium text-foreground leading-none">
+          {`${member.firstName || ''} ${member.lastName || ''}`}
+        </p>
         <p className="text-sm text-muted-foreground">{member.email}</p>
       </div>
     </div>
@@ -84,36 +88,55 @@ useEffect(() => {
     {/* Buttons Container */}
     <div className="flex items-center justify-center sm:justify-end gap-2 w-full sm:w-auto">
       <div className="flex gap-2">
-        <Button
-          variant={localStatus  === "present" ? "default" : "outline"}
-          size="sm"
-          onClick={() => handleAttendance("present")}
-          className={
-            localStatus  === "present"
-              ? "bg-success text-white hover:bg-success"
-              : "hover:bg-success/10 hover:text-success hover:border-success"
-          }
-        >
-          <Check className="w-4 h-4 mr-1" />
-          Present
-        </Button>
+          <Button
+            variant={todayStatus === "present" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleAttendance("present")}
+            className={
+              todayStatus === "present"
+                ? "bg-success text-white hover:bg-success"
+                : "hover:bg-success/10 hover:text-success hover:border-success"
+            }
+          >
+            <Check className="w-4 h-4 " />
+            Present
+          </Button>
 
-        <Button
-          variant={localStatus  === "absent" ? "default" : "outline"}
-          size="sm"
-          onClick={() => handleAttendance("absent")}
-          className={
-            localStatus  === "absent"
-              ? "bg-destructive text-white hover:bg-destructive"
-              : "hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
-          }
-        >
-          <X className="w-4 h-4 mr-1" />
-          Absent
-        </Button>
-      </div>
+          <Button
+            variant={todayStatus === "absent" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleAttendance("absent")}
+            className={
+              todayStatus === "absent"
+                ? "bg-destructive text-white hover:bg-destructive"
+                : "hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
+            }
+          >
+            <X className="w-4 h-4" />
+            Absent
+          </Button>
 
-      {/* Responsive Delete Button */}
+          <Button
+            variant={todayStatus === "halfday" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleAttendance("halfday")}
+            // We use style for the specific hex colors when active
+            style={
+              todayStatus === "halfday" 
+                ? { backgroundColor: '#F59E0B', color: 'white', borderColor: '#F59E0B' } 
+                : {}
+            }
+            className={cn(
+              "flex items-center gap-2",
+              todayStatus !== "halfday" && "hover:bg-[#F59E0B1A] hover:text-[#F59E0B] hover:border-[#F59E0B]"
+            )}
+          >
+            <X className="w-4 h-4" />
+            Halfday
+          </Button>
+        </div>
+
+      {/* Responsive Delete Button
       <Button
         variant="ghost"
         size="icon"
@@ -121,7 +144,7 @@ useEffect(() => {
         onClick={handleRemove}
       >
         <Trash2 className="w-4 h-4" />
-      </Button>
+      </Button> */}
     </div>
   </CardContent>
 </Card>

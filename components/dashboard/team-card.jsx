@@ -20,14 +20,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { auth, app } from "@/lib/firebase";
+import { httpsCallable, getFunctions } from "firebase/functions";
 
-const TeamCardLayout = ({ teams, deleteTeam }) => {
+const TeamCardLayout = ({ teams }) => {
+
+  const functions = getFunctions(app);
   const router = useRouter();
 
-  const [deleteTeamId, setDeleteTeamId] = useState(null);
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+
+  const closeAllDialogs = () => {
+    setSelectedTeamId(null);
+    setOtpDialogOpen(false);
+    setOtp("");
+    setOtpSent(false);
+  };
 
   if (!teams || teams.length === 0) return null;
 
@@ -35,23 +50,66 @@ const TeamCardLayout = ({ teams, deleteTeam }) => {
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
   );
 
-  const handleConfirmDelete = async () => {
-    if (!deleteTeamId) return;
+  const handleSendOtp = async () => {
+    if (!auth.currentUser || !selectedTeamId) return;
 
-    try {
-      setLoading(true);
-      await deleteTeam(deleteTeamId);
+    setLoading(true);
 
-      toast.success("Team deleted successfully", {
-        description: "The team and its data were removed",
-      });
-    } catch (err) {
-      toast.error("Failed to delete team");
-    } finally {
-      setLoading(false);
-      setDeleteTeamId(null);
+    const res = await fetch("/api/team/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        teamId: selectedTeamId,
+        userEmail: auth.currentUser.email,
+        userId: auth.currentUser.uid,
+      }),
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      toast.success("OTP sent!");
+      setOtpSent(true);
+      setOtpDialogOpen(true);
+    } else {
+      toast.error(result.error);
     }
+
+    setLoading(false);
   };
+
+  const handleDeleteTeam = async () => {
+    console.log(selectedTeamId)
+  if (!auth.currentUser || !selectedTeamId || !otp) return;
+
+  setLoading(true);
+
+  try {
+    const verifyDelete = httpsCallable(functions, "verifyOtpAndDeleteTeam");
+
+    const result = await verifyDelete({
+      teamId: selectedTeamId,
+      otp,
+    });
+
+    if (result.data.success) {
+      toast.success("Team deleted successfully");
+
+      setOtpDialogOpen(false);
+      setSelectedTeamId(null);
+      setOtp("");
+      setOtpSent(false);
+
+      router.refresh();
+    }
+  } catch (error) {
+  console.error("Delete error:", error);
+  toast.error(error?.message || "Delete failed");
+}
+
+  setLoading(false);
+};
+
 
   return (
     <>
@@ -77,19 +135,20 @@ const TeamCardLayout = ({ teams, deleteTeam }) => {
                     className="text-muted-foreground hover:text-destructive"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setDeleteTeamId(team.id);
+
+    
+
+                      setSelectedTeamId(team.id);
+                      setOtpSent(false);
+                      setOtpDialogOpen(true);
                     }}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
 
-                <CardTitle className="text-lg font-semibold">
-                  {team.name}
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  {team.description}
-                </CardDescription>
+                <CardTitle>{team.name}</CardTitle>
+                <CardDescription>{team.description}</CardDescription>
               </CardHeader>
 
               <div className="px-6 pb-2 flex gap-4">
@@ -129,19 +188,18 @@ const TeamCardLayout = ({ teams, deleteTeam }) => {
         })}
       </div>
 
-      {/* Delete confirmation dialog */}
+      {/* Confirm Delete Dialog */}
       <AlertDialog
-        open={!!deleteTeamId}
-        onOpenChange={() => setDeleteTeamId(null)}
-      >
+          open={!!selectedTeamId && !otpDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) closeAllDialogs();
+          }}
+        >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete this team?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Delete this team?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. All members and attendance
-              records for this team will be permanently deleted.
+              An OTP will be sent to your email to confirm deletion.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -150,12 +208,59 @@ const TeamCardLayout = ({ teams, deleteTeam }) => {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleSendOtp}
+              disabled={loading}
+              className="bg-destructive text-white"
+            >
+              {loading ? "Sending OTP..." : "Send OTP"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* OTP Dialog */}
+      <AlertDialog
+          open={otpDialogOpen}
+          onOpenChange={(open) => {
+            setOtpDialogOpen(open);
+
+            if (!open) {
+              setOtp("");
+              setSelectedTeamId(null);
+              setOtpSent(false);
+            }
+          }}
+        >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enter OTP</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter the 6-digit OTP sent to your email.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <Input
+            placeholder="Enter OTP"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            maxLength={6}
+          />
+
+          <AlertDialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setOtpDialogOpen(false)}
               disabled={loading}
             >
-              {loading ? "Deleting..." : "Delete Team"}
-            </AlertDialogAction>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteTeam}
+              disabled={loading || otp.length !== 6}
+              className="bg-destructive text-white"
+            >
+              {loading ? "Deleting..." : "Confirm Delete"}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

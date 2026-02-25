@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Upload, FileSpreadsheet, CheckCircle2, Loader2, Info } from "lucide-react";
 import { toast } from "sonner";
@@ -21,6 +20,7 @@ import { useAuth } from '../../../app/context/AuthContext'
 // Firebase Imports
 import { db } from "@/lib/firebase"; 
 import { collection, writeBatch, doc, serverTimestamp, increment } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 export default function ImportExcelSheet({ open, onOpenChange, team, onSuccess }) {
   const [file, setFile] = useState(null);
@@ -32,13 +32,16 @@ export default function ImportExcelSheet({ open, onOpenChange, team, onSuccess }
 
   if (!team) return null;
 
-  const BASE_COLUMNS = ["s.no", "name", "email", "contact"];
+  const BASE_COLUMNS = ["s.no", "firstName", "lastName", "email", "contact"];
   const customFieldsMap = team.customFields?.map(f => ({
     id: f.id,
     name: f.name.toLowerCase().trim()
   })) || [];
 
-  const EXPECTED_COLUMNS = [...BASE_COLUMNS, ...customFieldsMap.map(f => f.name)];
+  const EXPECTED_COLUMNS = [
+  ...BASE_COLUMNS.map(c => c.toLowerCase()),
+  ...customFieldsMap.map(f => f.name)
+];
 
   const handleFileChange = (e) => {
     const selected = e.target.files?.[0];
@@ -80,90 +83,117 @@ export default function ImportExcelSheet({ open, onOpenChange, team, onSuccess }
   };
 
   const handleUpload = async () => {
-    if (!excelData.length || !team?.id || !user?.uid) {
-        toast.error("Missing data or user session");
-        return;
+  if (!excelData.length || !team?.id || !user?.uid) {
+    toast.error("Missing data or user session");
+    return;
+  }
+
+  setLoading(true);
+
+  const batch = writeBatch(db);
+  const membersRef = collection(db, "teams", team.id, "members");
+  const teamRef = doc(db, "teams", team.id);
+  const userRef = doc(db, "users", user.uid);
+
+  const membersToUpdateUI = [];
+  const errors = [];
+
+  const functions = getFunctions();
+  const createMemberAccount = httpsCallable(functions, "createMemberAccount");
+
+  try {
+    for (const row of excelData) {
+      const emailValue = (row["email"] || row["Email"])?.toLowerCase().trim();
+      if (!emailValue) continue;
+
+      const firstName = (row["firstName"] || row["FirstName"] || "").trim();
+      const lastName = (row["lastName"] || row["LastName"] || "").trim();
+      let uid
+      // ---------------------------
+      // 1️⃣ Try creating Auth account
+      // ---------------------------
+      try {
+        const result = await createMemberAccount({
+          email: emailValue,
+          firstName,
+          lastName
+        });
+        uid = result.data.uid; 
+      } catch (err) {
+        // If email already exists, just skip Auth creation but continue Firestore writes
+        if (err?.code === "already-exists") {
+          errors.push(`${emailValue} already has an Auth account.`);
+        } else {
+          console.error("Error creating Auth account:", err);
+          errors.push(`${emailValue} - ${err.message || err}`);
+          continue; // skip this row completely
+        }
+      }
+
+      // ---------------------------
+      // 2️⃣ Firestore writes
+      // ---------------------------
+      const newMemberRef = doc(membersRef, uid);
+      const memberPayload = {
+        id: uid,
+        firstName,
+        lastName,
+        email: emailValue,
+        contact: String(row["contact"] || row["Contact"] || ""),
+        createdAt: serverTimestamp(),
+        teamId: team.id,
+        customData: {},
+      };
+
+      customFieldsMap.forEach(field => {
+        const rowValue = Object.entries(row).find(
+          ([key]) => key.toLowerCase().trim() === field.name
+        )?.[1];
+        if (rowValue !== undefined) memberPayload.customData[field.id] = rowValue;
+      });
+
+      batch.set(newMemberRef, memberPayload);
+
+      const allMembersRef = doc(db, "allMembers", emailValue);
+      batch.set(allMembersRef, {
+        email: emailValue,
+        teamId: team.id,
+        memberId: newMemberRef.id,
+      });
+
+      membersToUpdateUI.push({ ...memberPayload, createdAt: new Date().toISOString() });
     }
 
-    setLoading(true);
-    const batch = writeBatch(db);
-    
-    // 1. References
-    const membersRef = collection(db, "teams", team.id, "members");
-    const teamRef = doc(db, "teams", team.id);
-    const userRef = doc(db, "users", user.uid);
-    
-    const membersToUpdateUI = [];
+    // ---------------------------
+    // 3️⃣ Batch increments
+    // ---------------------------
+    batch.update(teamRef, { totalMembers: increment(excelData.length) });
+    batch.update(userRef, { memberCount: increment(excelData.length) });
 
-    try {
-        excelData.forEach((row) => {
-            const newMemberRef = doc(membersRef);
-            const emailValue = (row["email"] || row["Email"])?.toLowerCase().trim();
-            
-            if (!emailValue) return; // Skip rows without email
+    // ---------------------------
+    // 4️⃣ Commit
+    // ---------------------------
+    await batch.commit();
 
-            const memberPayload = {
-                id: newMemberRef.id,
-                name: row["name"] || row["Name"],
-                email: emailValue,
-                contact: String(row["contact"] || row["Contact"] || ""),
-                createdAt: serverTimestamp(),
-                teamId: team.id, // Important: Store teamId for security rules
-                customData: {}
-            };
+    if (onSuccess) onSuccess(membersToUpdateUI);
 
-            // Custom fields logic
-            customFieldsMap.forEach(field => {
-                const rowValue = Object.entries(row).find(
-                    ([key]) => key.toLowerCase().trim() === field.name
-                )?.[1];
-                if (rowValue !== undefined) {
-                    memberPayload.customData[field.id] = rowValue;
-                }
-            });
-
-            // WRITE 1: Team Subcollection
-            batch.set(newMemberRef, memberPayload);
-
-            // WRITE 2: Global allMembers Collection
-            // Document ID is the email
-            const allMembersRef = doc(db, "allMembers", emailValue);
-            batch.set(allMembersRef, {
-                email: emailValue,
-                teamId: team.id,
-                memberId: newMemberRef.id // Store the ref for easier linking
-            });
-            
-            membersToUpdateUI.push({
-                ...memberPayload,
-                createdAt: new Date().toISOString() 
-            });
-        });
-
-        // 2. Perform Increments
-        batch.update(teamRef, { 
-            totalMembers: increment(excelData.length) 
-        });
-
-        batch.update(userRef, {
-            memberCount: increment(excelData.length)
-        });
-
-        // 3. Commit
-        await batch.commit();
-
-        if (onSuccess) onSuccess(membersToUpdateUI);
-
-        toast.success(`Imported ${excelData.length} members.`);
-        onOpenChange(false);
-        resetState(); 
-    } catch (error) {
-        console.error("Batch Update Failed:", error);
-        toast.error("Upload failed", { description: error.message });
-    } finally {
-        setLoading(false);
+    toast.success(`Imported ${membersToUpdateUI.length} members.`);
+    if (errors.length > 0) {
+      console.warn("Some Auth accounts were skipped:", errors);
+      toast.error("Some members were skipped for Auth creation. Check console.");
     }
+
+    onOpenChange(false);
+    resetState();
+  } catch (error) {
+    console.error("Batch Update Failed:", error);
+    toast.error("Upload failed", { description: error.message });
+  } finally {
+    setLoading(false);
+  }
 };
+
+
 
   const resetState = () => {
     setFile(null);
@@ -190,7 +220,7 @@ export default function ImportExcelSheet({ open, onOpenChange, team, onSuccess }
             </div>
             <div className="flex flex-wrap gap-1.5">
               {EXPECTED_COLUMNS.map((c) => (
-                <Badge key={c} variant="secondary" className="text-[10px] py-0 capitalize">
+                <Badge key={c} variant="secondary" className="text-[10px] py-0">
                   {c}
                 </Badge>
               ))}
@@ -211,6 +241,9 @@ export default function ImportExcelSheet({ open, onOpenChange, team, onSuccess }
               ref={fileInputRef}
               disabled={loading}
               accept=".xlsx,.xls"
+              onClick={() => {
+                  if (fileInputRef.current) fileInputRef.current.value = null;
+                }}
               onChange={handleFileChange}
               className="absolute inset-0 h-full w-full opacity-0 cursor-pointer z-50"
             />

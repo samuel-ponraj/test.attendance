@@ -30,7 +30,7 @@ import {
   updatePassword,
   onAuthStateChanged
 } from "firebase/auth";
-import { doc, updateDoc, serverTimestamp, writeBatch, collection , where, getDocs } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, writeBatch, collection , where, getDocs, query } from "firebase/firestore";
 import { Label } from "@/components/ui/label";
 import { User, Camera } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -451,7 +451,7 @@ const handleSaveProfile = async () => {
           <AlertDialog open={modalOpen} onOpenChange={setModalOpen}>
             <AlertDialogTrigger asChild>
               <Button>
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="h-4 w-4" />
                 Delete Account
               </Button>
             </AlertDialogTrigger>

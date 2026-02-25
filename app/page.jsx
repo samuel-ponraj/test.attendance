@@ -6,7 +6,7 @@ import Mockup from "@/components/home/Mockup";
 
 
 export const metadata = {
-  title: "Kingz Digital Attendance | Smart Attendance App",
+  title: "Attendance App | Kingz Digital Attendance",
   description:
     "Kingz Digital Attendance, a Smart Attendance App by Kingz Digital Solutions helps small teams and groups track attendance easily. Mark present or absent with time records and manage multiple teams effortlessly.",
   keywords: [
@@ -23,7 +23,7 @@ export const metadata = {
     "Kingz Digital Solutions"
   ],
   openGraph: {
-    title: "Kingz Digital Attendance | Smart Attendance App",
+    title: "Attendance App | Kingz Digital Attendance",
     description:
       "A simple and smart attendance app for classes, tuition centers, sports teams, and office groups. Track present & absent members with accurate time records.",
     url: "https://attendance.kingzdigitalsolutions.in",

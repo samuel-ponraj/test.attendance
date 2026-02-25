@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext"; 
+import { useAuth } from "./AuthContext"; 
 import { 
   collection, 
   doc, 
@@ -14,16 +14,21 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getDateKey } from "@/lib/DateKey";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 const TeamsContext = createContext(null);
 
 const TEAM_LIMIT = 2;
 
 export function TeamsProvider({ children }) {
+
+   const functions = getFunctions();
   const { user } = useAuth();
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [subscription, setSubscription] = useState('basic'); // Changed from userRole
+  const [subscription, setSubscription] = useState('basic'); 
+  const sendOtp = httpsCallable(functions, "sendDeleteTeamOtp");
+  const verifyOtp = httpsCallable(functions, "verifyOtpAndDeleteTeam");
 
   // Logic: Only block if subscription is NOT pro AND limit reached
   const hasReachedTeamLimit = subscription !== 'pro' && teams.length >= TEAM_LIMIT;
@@ -70,7 +75,7 @@ export function TeamsProvider({ children }) {
     };
   }, [user?.uid]);
 
-  const addTeam = async (name, description, customFields = []) => {
+  const addTeam = async (name, description, ownerName, customFields = []) => {
     if (!user) {
       console.error("No user found");
       return;
@@ -113,6 +118,7 @@ export function TeamsProvider({ children }) {
         transaction.set(teamDocRef, {
           name,
           description: description || "",
+          ownerName,
           admin: {
             email: user.email,
             userId: user.uid,
@@ -122,6 +128,7 @@ export function TeamsProvider({ children }) {
           attendanceSummary: {
             present: 0,
             absent: 0,
+            halfday: 0,
             lastUpdatedDate: todayKey,
           },
           customFields: formattedFields 
@@ -141,45 +148,15 @@ export function TeamsProvider({ children }) {
     }
   };
 
-  const deleteTeam = async (teamId) => {
-    if (!user?.uid) return;
 
-    try {
-      await runTransaction(db, async (transaction) => {
-        const teamRef = doc(db, "teams", teamId);
-        const userRef = doc(db, "users", user.uid);
-
-        const teamSnap = await transaction.get(teamRef);
-        if (!teamSnap.exists()) {
-          throw new Error("Team not found.");
-        }
-
-        const teamData = teamSnap.data();
-        const membersInThisTeam = teamData.totalMembers || 0;
-
-        transaction.delete(teamRef);
-
-        transaction.update(userRef, {
-          teamCount: increment(-1),
-          memberCount: increment(-membersInThisTeam)
-        });
-      });
-
-      return { success: true };
-    } catch (err) {
-      console.error("Delete Team Error:", err);
-      throw err;
-    }
-  };
 
   return (
     <TeamsContext.Provider
       value={{
         teams,
         loading,
-        subscription, // Exported as subscription
+        subscription, 
         addTeam,
-        deleteTeam,
         TEAM_LIMIT,
         hasReachedTeamLimit,
       }}
