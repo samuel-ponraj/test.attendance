@@ -129,88 +129,93 @@ useEffect(() => {
   }
 
   return (
-    <div className="grid grid-cols-1 px-4 lg:px-6 lg:grid-cols-2 gap-6">
-      {/* Team-wise Attendance */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Team-wise Attendance</CardTitle>
-          <CardDescription>Today's attendance by team</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={teamWiseData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="present" fill="hsl(var(--success))" radius={[4,4,0,0]} />
-              <Bar dataKey="absent" fill="#BA2C2C" radius={[4,4,0,0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+  <>
+    {teamWiseData.length === 0 ? (
+      <div className="flex items-center justify-center h-[500px] text-muted-foreground text-lg font-medium">
+        No Data Found
+      </div>
+    ) : (
+      <div className="grid grid-cols-1 px-4 lg:px-6 lg:grid-cols-2 gap-6">
+        {/* Team-wise Attendance */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Team-wise Attendance</CardTitle>
+            <CardDescription>Today's attendance by team</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={teamWiseData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="present" fill="hsl(var(--success))" radius={[4,4,0,0]} />
+                <Bar dataKey="absent" fill="#BA2C2C" radius={[4,4,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
-      {/* Attendance Distribution */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Attendance Distribution</CardTitle>
-          <CardDescription>Today's overall attendance</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[200px] sm:h-[250px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-    <Pie
-      data={pieData}
-      dataKey="value"
-      cx="50%"
-      cy="50%"
-      // Reduce radius slightly on small screens to prevent label clipping
-      innerRadius="40%" 
-      outerRadius="70%" 
-      paddingAngle={5}
-      // Use a simpler label for small screens or position it better
-      label={renderPercentageLabel}
-      labelLine={false} // Clean up the look on mobile
-    >
-      {pieData.map((_, index) => (
-        <Cell key={index} fill={COLORS[index]} />
-      ))}
-    </Pie>
-    <Tooltip />
-    {/* Ensure the legend is at the bottom to save horizontal space */}
-    <Legend verticalAlign="bottom" height={36}/>
-  </PieChart>
-          </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Attendance Rate */}
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle>Attendance Rate by Team</CardTitle>
-          <CardDescription>Percentage of members present today</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {teamWiseData.map(team => (
-            <div key={team.name} className="flex items-center gap-4">
-              <div className="w-32 truncate font-medium">{team.name}</div>
-              <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all"
-                  style={{ width: `${team.attendanceRate}%` }}
-                />
-              </div>
-              <div className="w-16 text-right text-sm font-medium">
-                {team.attendanceRate}%
-              </div>
+        {/* Attendance Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Attendance Distribution</CardTitle>
+            <CardDescription>Today's overall attendance</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[200px] sm:h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="value"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="40%"
+                    outerRadius="70%"
+                    paddingAngle={5}
+                    label={renderPercentageLabel}
+                    labelLine={false}
+                  >
+                    {pieData.map((_, index) => (
+                      <Cell key={index} fill={COLORS[index]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend verticalAlign="bottom" height={36}/>
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
-  )
+          </CardContent>
+        </Card>
+
+        {/* Attendance Rate */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Attendance Rate by Team</CardTitle>
+            <CardDescription>Percentage of members present today</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {teamWiseData.map(team => (
+              <div key={team.name} className="flex items-center gap-4">
+                <div className="w-32 truncate font-medium">{team.name}</div>
+                <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all"
+                    style={{ width: `${team.attendanceRate}%` }}
+                  />
+                </div>
+                <div className="w-16 text-right text-sm font-medium">
+                  {team.attendanceRate}%
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    )}
+  </>
+)
 }
 
 export default Analytics

@@ -92,19 +92,20 @@ export function SiteHeader() {
         </div>
 
         <div className="ml-auto flex items-center gap-4">
-          <Button
-            onClick={() => {
-              if (hasReachedTeamLimit) {
-                setShowLimitDialog(true);
-              } else {
-                setModalOpen(true);
-              }
-            }}
-          >
-            <Plus />
-            Add Team
-          </Button>
-
+          {(normalizedPath === "/dashboard" || normalizedPath === "/dashboard/teams") && (
+              <Button
+                onClick={() => {
+                  if (hasReachedTeamLimit) {
+                    setShowLimitDialog(true);
+                  } else {
+                    setModalOpen(true);
+                  }
+                }}
+              >
+                <Plus />
+                Add Team
+              </Button>
+            )}
           <ModeToggle />
 
           <AddTeamModal open={modalOpen} onOpenChange={setModalOpen} addTeam={addTeam} />
