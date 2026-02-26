@@ -23,6 +23,7 @@ export async function POST(req) {
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
 
+    try{
     // Send Email
     const { data, error } = await resend.emails.send({
       from: "Kingz Digital Solutions<noreply@kingzdigitalsolutions.in>",
@@ -43,6 +44,11 @@ export async function POST(req) {
         </div>
       `,
     });
+    }
+    catch (err) {
+  console.error("Resend send error:", err);
+  return NextResponse.json({ success: false, error: "Email sending failed" }, { status: 500 });
+}
 
     if (error) {
       console.error("Resend API Error:", error);
