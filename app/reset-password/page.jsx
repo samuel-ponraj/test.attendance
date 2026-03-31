@@ -1,17 +1,17 @@
 'use client';
-export const dynamic = "force-dynamic";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import { Loader2, ShieldCheck } from "lucide-react";
 
-export default function ResetPasswordPage() {
+// 2. Move your existing logic into a separate component
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [newPassword, setNewPassword] = useState("");
@@ -28,7 +28,6 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    // Verify the code is valid before showing the form
     verifyPasswordResetCode(auth, oobCode)
       .then((userEmail) => {
         setEmail(userEmail);
@@ -59,16 +58,22 @@ export default function ResetPasswordPage() {
     }
   };
 
-  if (!isValidCode) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
+  if (!isValidCode) return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <Loader2 className="animate-spin text-primary" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4 text-white">
       <div className="w-full max-w-md bg-gray-900/50 p-8 rounded-2xl border border-gray-800 backdrop-blur-xl">
         <div className="flex justify-center mb-4 text-primary">
-            <ShieldCheck size={48} />
+          <ShieldCheck size={48} />
         </div>
         <h1 className="text-2xl font-bold text-center mb-2">Reset Your Password</h1>
-        <p className="text-gray-400 text-center text-sm mb-6">Resetting password for: <span className="text-white">{email}</span></p>
+        <p className="text-gray-400 text-center text-sm mb-6">
+          Resetting password for: <span className="text-white">{email}</span>
+        </p>
         
         <form onSubmit={handleReset} className="space-y-4">
           <div className="space-y-2">
@@ -88,5 +93,18 @@ export default function ResetPasswordPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+// 3. Export the main page wrapped in Suspense
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="animate-spin text-primary" />
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
