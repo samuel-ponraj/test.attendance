@@ -30,7 +30,7 @@ export function TeamsProvider({ children }) {
   const sendOtp = httpsCallable(functions, "sendDeleteTeamOtp");
   const verifyOtp = httpsCallable(functions, "verifyOtpAndDeleteTeam");
 
-  // Logic: Only block if subscription is NOT pro AND limit reached
+  
   const hasReachedTeamLimit = subscription !== 'pro' && teams.length >= TEAM_LIMIT;
 
   useEffect(() => {

@@ -34,13 +34,13 @@
     "app/layout.jsx",
     "next.config.ts",
     "app/dashboard/page.jsx",
-    "components/dashboard/team-card.jsx",
-    "components/dashboard/section-cards.jsx",
+    "components/footer/team-card.jsx",
+    "components/admin/section-cards.jsx",
     "lib/attendance.ts",
     "components/app-sidebar.jsx",
     "lib/removeTeamMember.js",
     "proxy.js",
-    "components/nav-user.jsx"
-, "lib/resetAttendanceSummaryIfNeeded.js", "functions/src/index.js", "app/context/TeamsContext.js"  ],
+    "components/nav-user-admin.jsx"
+, "lib/resetAttendanceSummaryIfNeeded.js", "functions/src/index.js", "app/context/TeamsContext.js", "app/api/auth/session/route.js"  ],
   "exclude": ["node_modules"]
 }

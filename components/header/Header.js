@@ -23,7 +23,7 @@ const Header = () => {
       await logout()
       router.push('/')
     } else {
-      router.push('/login') // redirect to login page
+      router.push('/login') 
     }
   }
 
@@ -37,7 +37,7 @@ const Header = () => {
           <button onClick={handleAuthClick}>
             {user ? (
               <>
-                <LogOut className="w-4 mr-1" />
+                <LogOut className="w-4" />
                 Logout
               </>
             ) : (

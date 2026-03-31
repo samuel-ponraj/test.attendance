@@ -62,16 +62,20 @@ export const cleanupOldAttendance = onSchedule(
   }
 );
 
-/**
- * Accept invite (callable function)
- * Adds member to team and allMembers lookup
- */
+
+
 export const acceptInvite = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in");
   }
 
-  const { inviteId, phone, firstName, lastName } = request.data as { inviteId?: string; phone?: string; firstName?: string; lastName?: string };
+  const { inviteId, phone, firstName, lastName } = request.data as {
+    inviteId?: string;
+    phone?: string;
+    firstName?: string;
+    lastName?: string;
+  };
+
   const uid = request.auth.uid;
   const email = request.auth.token.email?.toLowerCase();
 
@@ -91,7 +95,8 @@ export const acceptInvite = onCall(async (request) => {
   }
 
   const invite = inviteSnap.data()!;
-  if (invite.status !== "active") {
+
+  if (invite.active !== true) {
     throw new HttpsError("failed-precondition", "Invite is not active");
   }
 
@@ -99,45 +104,34 @@ export const acceptInvite = onCall(async (request) => {
     throw new HttpsError("failed-precondition", "Invite expired");
   }
 
-  const teamRef = db.doc(`teams/${invite.teamId}`);
-  const teamMemberRef = db.doc(`teams/${invite.teamId}/members/${uid}`);
-  const allMembersRef = db.doc(`allMembers/${email}`);
+  // ✅ Check if already pending
+  const pendingRef = db.doc(`pendingMembers/${uid}`);
+  const pendingSnap = await pendingRef.get();
 
-  // Check if member already exists
-  const memberSnap = await teamMemberRef.get();
-  if (memberSnap.exists) {
-    throw new HttpsError("already-exists", "User already in team");
+  if (pendingSnap.exists) {
+    throw new HttpsError(
+      "already-exists",
+      "Application already submitted"
+    );
   }
 
-  // Transaction: Add member to team + allMembers + update counts
   try {
     await db.runTransaction(async (tx) => {
-      // 1️⃣ Add member to team
-      tx.set(teamMemberRef, {
+      tx.set(pendingRef, {
+        id: uid,
         email,
+        teamId: invite.teamId,
+        teamName: invite.teamName,
+        role: invite.role,
         firstName,
         lastName,
-        id: uid,
-        contact: phone,
-        role: invite.role || "member",
+        contact: phone || null,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // 2️⃣ Add member to allMembers lookup
-      tx.set(allMembersRef, {
-        email,
-        memberId: uid,
-        teamId: invite.teamId,
-      });
-
-      // 3️⃣ Increment invite usage
+      // 2️⃣ Increment invite usage (optional but recommended)
       tx.update(inviteRef, {
         usedCount: admin.firestore.FieldValue.increment(1),
-      });
-
-      // 4️⃣ Increment team's totalMembers
-      tx.update(teamRef, {
-        totalMembers: admin.firestore.FieldValue.increment(1),
       });
     });
 
@@ -146,7 +140,7 @@ export const acceptInvite = onCall(async (request) => {
     console.error("Transaction failed:", err);
     throw new HttpsError(
       "internal",
-      "Failed to accept invite. Please try again."
+      "Failed to submit application. Please try again."
     );
   }
 });
@@ -184,7 +178,8 @@ export const createMemberAccount = onCall(async (request) => {
 });
 
 
-export const removeMembers = onCall(async (request) => {
+export const removeMembers = onCall({ cors: true }, async (request) => {
+  
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in");
   }
@@ -216,7 +211,6 @@ export const removeMembers = onCall(async (request) => {
         const memberSnap = await tx.get(memberRef);
         
         if (memberSnap.exists) {
-          // ✅ Since Document ID is the UID, we use 'id' directly
           finalUidsToDelete.push(id);
           
           const email = memberSnap.data()?.email;

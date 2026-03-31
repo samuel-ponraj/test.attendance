@@ -14,83 +14,107 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+
+  const [email,setEmail] = useState("");
+  const [password,setPassword] = useState("");
+  const [showPassword,setShowPassword] = useState(false);
+  const [isLoading,setIsLoading] = useState(false);
 
   const { login, signInWithGoogle } = useAuth();
   const router = useRouter();
 
- 
-  const handleSubmit = async (e) => {
+  // Determine dashboard route
+  const determineRoute = async (userEmail, uid) => {
+
+    const adminDoc = await getDoc(doc(db,"users",uid));
+    if(adminDoc.exists()){
+      return "admin";
+    }
+
+    const memberDoc = await getDoc(doc(db,"allMembers",userEmail));
+    if(memberDoc.exists()){
+      return "member";
+    }
+
+    const pendingDoc = await getDoc(doc(db, "pendingMembers", uid));
+      if (pendingDoc.exists()) {
+        return "pending";
+      }
+
+    return null;
+  };
+
+
+  const handleLoginSuccess = async (user) => {
+  try {
+    const role = await determineRoute(user.email, user.uid);
+
+    if (!role) {
+      toast.error("Account not found. Please contact an admin.");
+      return;
+    }
+
+    const token = await user.getIdToken();
+
+    const response = await fetch("/api/auth/session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token }),
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to establish session");
+    }
+
+    toast.success("Welcome!");
+    router.replace(`/${role}`);
+    router.refresh();
+
+  } catch (error) {
+    console.error("Login Success Error:", error);
+    toast.error("Session sync failed. Try again.");
+  }
+};
+
+
+  const handleSubmit = async(e)=>{
     e.preventDefault();
     setIsLoading(true);
+
+    try{
+
+      const userCredential = await login(email,password);
+
+      await handleLoginSuccess(userCredential.user);
+
+    }catch(err){
+
+      toast.error("Invalid email or password");
+
+    }finally{
+
+      setIsLoading(false);
+
+    }
+  };
+
+
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
     try {
-      await login(email, password);
-      toast.success("Welcome back!");
-      router.push("/dashboard");
+      const user = await signInWithGoogle();
+      await handleLoginSuccess(user);
     } catch (err) {
-      toast.error(
-        err.code === "auth/wrong-password" || err.code === "auth/invalid-credential"
-          ? "Invalid email or password"
-          : "Login failed"
-      );
+      toast.error("Google sign in failed");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle Google login
-  const handleGoogleLogin = async () => {
-  setIsLoading(true);
-  try {
-    const user = await signInWithGoogle();
 
-    // Now user.uid will exist because we fixed the Context return
-    if (!user?.uid) {
-      throw new Error("User information could not be retrieved.");
-    }
-
-    const userRef = doc(db, "users", user.uid);
-    const docSnap = await getDoc(userRef);
-
-    if (!docSnap.exists()) {
-      await setDoc(userRef, {
-        id: user.uid,
-        firstName: user.displayName?.split(" ")[0] || "User",
-        lastName: user.displayName?.split(" ")[1] || "",
-        email: user.email,
-        provider: "google",
-        createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp(),
-        photoURL: user.photoURL || null,
-        subscription: "basic",
-        role: "admin", 
-        teamCount: 0,
-        memberCount: 0
-      });
-    } else {
-      await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true });
-    }
-
-    toast.success("Welcome!");
-    
-    // Use setTimeout to ensure state is settled before navigating
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 100);
-
-  } catch (err) {
-    console.error("Google Login Error:", err);
-    toast.error(err.message || "Google sign-in failed");
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-  // Handle forgot password
-  // Handle forgot password
   const handleForgotPassword = async () => {
     if (!email) {
       toast.error("Please enter your email address first");
@@ -99,13 +123,10 @@ const Login = () => {
 
     setIsLoading(true);
     try {
-      // Note: For security, Firebase sometimes won't tell you if an email 
-      // exists or not to prevent "email enumeration" attacks.
       await sendPasswordResetEmail(auth, email);
       toast.success("Reset link sent! Check your inbox.");
     } catch (err) {
       console.error("Reset Error:", err);
-      // Handle specific Firebase Auth errors
       if (err.code === "auth/user-not-found") {
         toast.error("No account found with this email.");
       } else if (err.code === "auth/invalid-email") {
@@ -117,6 +138,7 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="

@@ -62,7 +62,7 @@ export function FooterUserNav() {
       >
         <DropdownMenuItem asChild>
           <Link
-            href="/dashboard/account"
+            href="/admin/account"
             className="flex items-center gap-2"
           >
             <IconUserCircle size={16} />

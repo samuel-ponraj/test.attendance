@@ -3,21 +3,29 @@
 import styles from "./HomePage.module.css";
 import { ArrowRight, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import Link from "next/link";
+import { useAuth } from "@/app/context/AuthContext";
 
 const HomePage = () => {
 	const router = useRouter();
 
+	const { user, userData, loading } = useAuth();
+
 	const handleRecordAttendance = () => {
-		onAuthStateChanged(auth, (user) => {
-			if (user) {
-				router.push("/dashboard");
-			} else {
-				router.push("/login");
-			}
-		});
+		if (loading) return; 
+
+		if (!user) {
+			router.push("/login");
+			return;
+		}
+
+		if (userData?.role === "admin") {
+			router.push("/admin");
+		} else if (userData?.role === "member") {
+			router.push("/member"); // or your member route
+		} else {
+			router.push("/login"); // fallback
+		}
 	};
 
 	return (

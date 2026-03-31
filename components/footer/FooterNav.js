@@ -7,23 +7,41 @@ import {
   Users,
   History,
   BarChart3,
+  Calendar,
+  UsersRound,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { FooterUserNav } from "./FooterNavUser"
 
-const footerItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Teams", url: "/dashboard/teams", icon: Users },
-  { title: "History", url: "/dashboard/history", icon: History },
-  { title: "Analytics", url: "/dashboard/analytics", icon: BarChart3 },
+const admin = [
+  { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+  { title: "Teams", url: "/admin/teams", icon: Users },
+  { title: "History", url: "/admin/history", icon: History },
+  { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
+]
+
+const member = [
+  { title: "Dashboard", url: "/member", icon: LayoutDashboard },
+  { title: "Attendance", url: "/member/attendance", icon: Calendar },
+  { title: "Profile", url: "/member/profile", icon: UsersRound },
 ]
 
 const FooterNav = () => {
   const pathname = usePathname()
 
+  const getRoleFromPath = (path) => {
+    if (path.startsWith("/admin")) return "admin"
+    if (path.startsWith("/member")) return "member"
+    return null
+  }
+
+  const role = getRoleFromPath(pathname)
+  if (!role) return null
+
+  const footerItems = role === "admin" ? admin : member
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 p-1 z-50 border-t bg-background md:hidden ">
-      <div className="grid grid-cols-4">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background md:hidden">
+      <div className="flex items-center justify-between">
         {footerItems.map((item) => {
           const isActive = pathname === item.url
 
@@ -32,7 +50,7 @@ const FooterNav = () => {
               key={item.title}
               href={item.url}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 py-2 text-xs text-muted-foreground transition-colors",
+                "flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium text-muted-foreground transition-colors",
                 isActive && "text-primary"
               )}
             >
@@ -46,7 +64,6 @@ const FooterNav = () => {
             </Link>
           )
         })}
-        {/* <FooterUserNav /> */}
       </div>
     </nav>
   )

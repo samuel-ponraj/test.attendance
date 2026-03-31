@@ -11,7 +11,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, getDoc, addDoc, collection } from "firebase/firestore";
+import { useSearchParams } from "next/navigation";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 const SignupPage = () => {
   const [firstName, setFirstName] = useState("");
@@ -20,67 +22,113 @@ const SignupPage = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const searchParams = useSearchParams();
+  const inviteId = searchParams.get("inviteId");
+
+  const functions = getFunctions()
 
   const { signInWithGoogle } = useAuth();
   const router = useRouter();
 
-  // Signup function for email/password
-  // Optimized signup function
 const signup = async (email, password, { firstName, lastName }) => {
-  // 1. Create the user in Auth
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
-
   if (!user) throw new Error("User creation failed");
-
-  // 2. Update Profile
   await updateProfile(user, { 
     displayName: `${firstName} ${lastName}`.trim() 
-  });
-
-  // 3. Create Firestore Document
-  // We use user.uid directly to ensure it isn't undefined
-  const userRef = doc(db, "users", user.uid);
-  
-  await setDoc(userRef, {
-    id: user.uid,
-    firstName: firstName || "",
-    lastName: lastName || "",
-    email: email,
-    provider: "email",
-    createdAt: serverTimestamp(),
-    lastLogin: serverTimestamp(),
-    photoURL: user.photoURL || null,
-    subscription: "basic",
-    role: "admin", 
-    teamCount: 0,
-    memberCount: 0
   });
   
   return user;
 };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      await signup(email, password, { firstName, lastName });
-      toast.success("Account created successfully!");
-      router.push("/dashboard");
-    } catch (err) {
-      if (err.code === "auth/email-already-in-use") {
-        toast.error("Email already exists. Please log in.");
-      } else if (err.code === "auth/invalid-email") {
-        toast.error("Invalid email format.");
-      } else if (err.code === "auth/weak-password") {
-        toast.error("Password should be at least 6 characters.");
-      } else {
-        toast.error(err.message || "Signup failed");
+      e.preventDefault();
+      setIsLoading(true);
+      
+      try {
+        const user = await signup(email, password, { firstName, lastName });
+
+        if (inviteId) {
+            const memberRef = doc(db, "allMembers", email.toLowerCase());
+            const memberSnap = await getDoc(memberRef);
+
+            if (memberSnap.exists()) {
+              toast.error("Member already exists. Please login.");
+              router.push("/login");
+              return;
+            }
+
+          const inviteRef = doc(db, "invites", inviteId);
+            const inviteSnap = await getDoc(inviteRef);
+
+            if (!inviteSnap.exists()) {
+              toast.error("Invalid or expired invite link");
+              return;
+            }
+
+            const { teamId, teamName } = inviteSnap.data();
+
+            const acceptInvite = httpsCallable(functions, "acceptInvite");
+            await acceptInvite({
+              inviteId,
+              phone: null,
+              firstName,
+              lastName,
+            });
+
+            if (teamId) {
+              await addDoc(collection(db, "notifications"), {
+                title: "New Member Joined",
+                message: `${firstName} ${lastName} joined "${teamName}" via invite link`,
+                type: "member_join",
+                createdAt: serverTimestamp(),
+                teamId,
+                read: false
+              });
+
+          }
+
+          toast.success("Application submitted for approval!");
+          router.push("/application-submitted");
+        } else {
+          const userRef = doc(db, "users", user.uid);
+          await setDoc(userRef, {
+            id: user.uid,
+            firstName,
+            lastName,
+            email,
+            provider: "email",
+            createdAt: serverTimestamp(),
+            lastLogin: serverTimestamp(),
+            role: "admin", 
+            photoURL: user.photoURL || null,
+            teamCount: 0,
+            memberCount: 0,
+            subscription: "basic",
+          });
+
+          await addDoc(collection(db, "notifications"), {
+            title: "Welcome!",
+            message: "Welcome to the platform",
+            userId: user.uid,
+            createdAt: serverTimestamp(),
+            read: false,
+            type: "welcome"
+          });
+
+          toast.success("Account created successfully!");
+          router.push("/admin");
+        }
+      } catch (err) {
+        if (err.code === "auth/email-already-in-use") {
+          toast.error("Email already exists. Please log in.");
+        } else {
+          toast.error(err.message || "Signup failed");
+        }
+      } finally {
+        setIsLoading(false);
       }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
 
   // Inside SignupPage.js -> handleGoogleLogin
 
@@ -88,46 +136,58 @@ const handleGoogleLogin = async () => {
   setIsLoading(true);
   try {
     const user = await signInWithGoogle();
-
-    // Now user.uid will exist because we fixed the Context return
-    if (!user?.uid) {
-      throw new Error("User information could not be retrieved.");
-    }
-
     const userRef = doc(db, "users", user.uid);
     const docSnap = await getDoc(userRef);
 
-    if (!docSnap.exists()) {
-      // Create the document if it's a new user
+    // If they exist in 'users' already, just log them in
+    if (docSnap.exists()) {
+      await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true });
+      router.push("/admin");
+      return;
+    }
+
+    // If NOT in 'users' and has an INVITE
+    if (inviteId) {
+
+      // 🔹 Check if member already exists in allMembers
+        const memberRef = doc(db, "allMembers", email.toLowerCase());
+        const memberSnap = await getDoc(memberRef);
+
+        if (memberSnap.exists()) {
+          toast.error("Member already exists. Please login.");
+          router.push("/login");
+          return;
+        }
+
+
+      const acceptInvite = httpsCallable(functions, "acceptInvite");
+      await acceptInvite({
+        inviteId,
+        phone: null,
+        firstName: user.displayName?.split(" ")[0] || "",
+        lastName: user.displayName?.split(" ")[1] || "",
+      });
+      router.push("/application-submitted");
+    } else {
+      // Normal signup via Google
       await setDoc(userRef, {
         id: user.uid,
-        firstName: user.displayName?.split(" ")[0] || "User",
-        lastName: user.displayName?.split(" ")[1] || "",
+        firstName,
+        lastName,
         email: user.email,
         provider: "google",
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),
-        photoURL: user.photoURL || null,
-        subscription: "basic",
         role: "admin", 
+        photoURL: user.photoURL || null,
         teamCount: 0,
-        memberCount: 0
+        memberCount: 0,
+        subscription: "basic",
       });
-    } else {
-      // Update last login for existing user
-      await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true });
+      router.push("/admin");
     }
-
-    toast.success("Welcome!");
-    
-    // Use setTimeout to ensure state is settled before navigating
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 100);
-
   } catch (err) {
-    console.error("Google Login Error:", err);
-    toast.error(err.message || "Google sign-in failed");
+    toast.error("Google sign-in failed");
   } finally {
     setIsLoading(false);
   }

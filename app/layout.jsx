@@ -12,17 +12,21 @@ import { Analytics } from "@vercel/analytics/next";
 
 export default function RootLayout({ children }) {
     const pathname = usePathname();
-    const isDashboard = pathname.startsWith("/dashboard");
+    const isAdmin = pathname.startsWith("/admin");
+    const isMember = pathname.startsWith("/member");
+    const isPending = pathname.startsWith("/pending");
     const isAuthPage = pathname === "/login" || pathname === "/signup";
+    const isApplicationSubmittedPage = pathname === "/application-submitted"
+
 
     return (
         <html lang="en">
             <body className="layout">
                 <AuthProvider>
-                    {!isDashboard && !isAuthPage && <Header />}
+                    {!isAdmin && !isPending && !isApplicationSubmittedPage && !isMember && !isAuthPage && <Header />}
                     <main className="content">{children}</main>
                     <Toaster richColors position="top-center" />
-                    {!isDashboard && !isAuthPage && <Footer />}
+                    {!isAdmin && !isPending && !isApplicationSubmittedPage && !isMember && !isAuthPage && <Footer />}
                 </AuthProvider>
                 <Analytics />
             </body>

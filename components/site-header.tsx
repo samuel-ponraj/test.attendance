@@ -5,10 +5,10 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ModeToggle } from "./modeToggle"
 import { Button } from "./ui/button"
-import { Plus } from "lucide-react"
+import { Bell, Plus } from "lucide-react"
 import { useTeams } from "@/app/context/TeamsContext"
-import { useState } from "react"
-import AddTeamModal from "./dashboard/addTeamModal"
+import { useState, useEffect } from "react"
+import AddTeamModal from "./admin/addTeamModal"
 import {
   AlertDialog,
   AlertDialogContent,
@@ -19,58 +19,115 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog"
 import Link from "next/link"
+import { UserPlus, Handshake } from "lucide-react"
+import { db } from "@/lib/firebase"
+import {
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
+  updateDoc,
+  doc, limit
+} from "firebase/firestore"
+import { useRouter } from "next/navigation"
+import Notifications from "@/lib/Notifications"
 
 
+const ROUTE_CONFIG = {
+  admin: [
+    {
+      path: "/admin/teams",
+      title: "Teams",
+      description: "Manage your teams and members",
+    },
+    {
+      path: "/admin/analytics",
+      title: "Analytics",
+      description: "Team-wise attendance insights",
+    },
+    {
+      path: "/admin/invite",
+      title: "Invite Members",
+      description: "Send email invitations to join your teams",
+    },
+    {
+      path: "/admin/history",
+      title: "Attendance History",
+      description: "View detailed attendance records",
+    },
+    {
+      path: "/admin/account",
+      title: "My Account",
+      description: "Manage your account and preferences",
+    },
+    {
+      path: "/admin",
+      title: "Dashboard",
+      description: "Manage teams and track attendance",
+    },
+  ],
 
-const ROUTE_TITLES = [
-  {
-    path: "/dashboard/teams",
-    title: "Teams",
-    description: "Manage your teams and members",
-  },
-  {
-    path: "/dashboard/analytics",
-    title: "Analytics",
-    description: "Team-wise attendance insights",
-  },
-  {
-    path: "/dashboard/history",
-    title: "Attendance History",
-    description: "View detailed attendance records",
-  },
-  {
-    path: "/dashboard/account",
-    title: "My Account",
-    description: "Manage your account and preferences",
-  },
-  {
-    path: "/dashboard",
-    title: "Dashboard",
-    description: "Manage teams and track attendance",
-  }
-] as const
+  member: [
+    {
+      path: "/member/attendance",
+      title: "My Attendance",
+      description: "View your attendance history",
+    },
+    {
+      path: "/member/profile",
+      title: "Profile",
+      description: "Manage your profile",
+    },
+    {
+      path: "/member/account",
+      title: "My Account",
+      description: "Manage your account settings",
+    },
+    {
+      path: "/member",
+      title: "Overview",
+      description: "Mark attendance and view your attendance overview",
+    },
+  ],
+}
 
 const DEFAULT_ROUTE = {
-  path: "/dashboard",
+  path: "/admin",
   title: "Dashboard",
   description: "Manage teams and track attendance",
 }
 
+
+
 export function SiteHeader() {
   const pathname = usePathname()
+  const normalizedPath = pathname?.replace(/\/$/, "")
+  const router = useRouter()
+
+  // ✅ Define role FIRST
+  const role = normalizedPath?.startsWith("/admin")
+    ? "admin"
+    : normalizedPath?.startsWith("/member")
+    ? "member"
+    : null
+
+  const isAdmin = role === "admin"
+
+  // Now it's safe to use role
+  const routes = role ? ROUTE_CONFIG[role] : []
+
+  const currentRoute =
+    routes.find(
+      (route) =>
+        normalizedPath === route.path ||
+        normalizedPath?.startsWith(route.path + "/")
+    ) ?? DEFAULT_ROUTE
+
 
   const { addTeam, hasReachedTeamLimit  } = useTeams();
   const [modalOpen, setModalOpen] = useState(false);
   const [showLimitDialog, setShowLimitDialog] = useState(false);
 
-  const normalizedPath = pathname?.replace(/\/$/, "");
-
-  const currentRoute =
-    ROUTE_TITLES.find(
-      (route) =>
-        normalizedPath === route.path ||
-        normalizedPath.startsWith(route.path + "/")
-    ) ?? DEFAULT_ROUTE
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -91,8 +148,12 @@ export function SiteHeader() {
           </p>
         </div>
 
+
+
         <div className="ml-auto flex items-center gap-4">
-          {(normalizedPath === "/dashboard" || normalizedPath === "/dashboard/teams") && (
+          {isAdmin &&
+            (normalizedPath === "/admin" ||
+              normalizedPath === "/admin/teams") && (
               <Button
                 onClick={() => {
                   if (hasReachedTeamLimit) {
@@ -106,6 +167,9 @@ export function SiteHeader() {
                 Add Team
               </Button>
             )}
+          
+          <Notifications />
+
           <ModeToggle />
 
           <AddTeamModal open={modalOpen} onOpenChange={setModalOpen} addTeam={addTeam} />
