@@ -11,6 +11,8 @@ import {
   History,
   Settings,
   Calendar,
+  Form, 
+  ReceiptIndianRupee
 } from "lucide-react";
 
 import {
@@ -39,8 +41,9 @@ const navConfig = {
     main: [
       { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
       { title: "Teams", url: "/admin/teams", icon: Users },
-      { title: "Attendance History", url: "/admin/history", icon: History },
-      { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
+      { title: "Activity Logs", url: "/admin/history", icon: History },
+      { title: "Custom Forms", url: "/admin/custom-forms", icon: Form  },
+      { title: "Invoice / Billing", url: "/admin/invoice-billing", icon: ReceiptIndianRupee },
     ],
     settings: [{ title: "Account", url: "/admin/account", icon: Settings }],
   },

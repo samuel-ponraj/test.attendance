@@ -119,7 +119,6 @@ const HistoryTable = ({ attendance = [], team }) => {
           {/* Export */}
           <Button
             size="sm"
-            variant="outline"
             onClick={handleExportPDF}
             disabled={rows.length === 0}
             className="w-full h-8.8"

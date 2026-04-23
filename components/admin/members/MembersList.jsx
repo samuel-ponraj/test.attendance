@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -24,6 +24,7 @@ import { useAuth } from '../../../app/context/AuthContext'
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import Link from "next/link";
 
 const MembersList = () => {
   const { slug } = useParams(); 
@@ -136,10 +137,6 @@ const confirmDeleteMember = async () => {
     );
   }
 
-  // Extract custom field definitions
-  const customFields = team?.customFields || [];
-
-
 
   /* ---------------- SEARCH FILTER ---------------- */
   const filteredMembers = members.filter((member) => {
@@ -172,7 +169,6 @@ const confirmDeleteMember = async () => {
     "Last Name",
     "Email",
     "Contact",
-    ...customFields.map((field) => field.name),
   ];
 
   // Build table body
@@ -182,9 +178,6 @@ const confirmDeleteMember = async () => {
     member.lastName || "-",
     member.email || "-",
     member.contact || "-",
-    ...customFields.map(
-      (field) => member.customFields?.[field.id] || "-"
-    ),
   ]);
 
   autoTable(doc, {
@@ -258,25 +251,11 @@ const confirmDeleteMember = async () => {
                   onCheckedChange={toggleSelectAll}
                 />
               </th>
-              <th className="px-4 py-3 text-left">S.No</th>
               <th className="px-4 py-3 text-left">First Name</th>
               <th className="px-4 py-3 text-left">Last Name</th>
               <th className="px-4 py-3 text-left">Email</th>
               <th className="px-4 py-3 text-left">Contact</th>
-              
-              {/* --- DYNAMIC CUSTOM HEADERS --- */}
-              {customFields.map((field) => (
-                <th
-                  key={field.id}
-                  className={`px-4 py-3 text-left ${
-                    field.name.toLowerCase() === "address"
-                      ? "w-96 max-w-96"
-                      : "whitespace-nowrap"
-                  }`}
-                >
-                  {field.name}
-                </th>
-              ))}
+              <th className="px-4 py-3 text-left">Action</th>
             </tr>
           </thead>
 
@@ -285,7 +264,7 @@ const confirmDeleteMember = async () => {
               <tr>
               
                 <td
-                  colSpan={5 + customFields.length}
+                  colSpan={5}
                   className="px-4 py-6 text-center text-muted-foreground"
                 >
                   No members found
@@ -300,7 +279,6 @@ const confirmDeleteMember = async () => {
                     onCheckedChange={() => toggleSelectMember(member.id)}
                   />
                 </td>
-                  <td className="px-4 py-3">{startIndex + index + 1}</td>
                   <td className="px-4 py-3 font-medium whitespace-nowrap">
                     {member.firstName}
                   </td>
@@ -311,21 +289,13 @@ const confirmDeleteMember = async () => {
                   <td className="px-4 py-3 whitespace-nowrap">
                     {member.contact}
                   </td>
-
-                  {/* --- DYNAMIC CUSTOM DATA --- */}
-                  {customFields.map((field) => (
-                    <td
-                      key={field.id}
-                      className={`px-4 py-3 ${
-                        field.name.toLowerCase() === "address"
-                          ? "w-96 max-w-96 whitespace-normal break-words"
-                          : "whitespace-nowrap"
-                      }`}
-                    >
-                      {member.customFields?.[field.id] || "-"}
-                    </td>
-                  ))}
+                  <td className="px-4 py-3 hover:text-primary">
+                    <Link href={`/admin/teams/${team.id}/members/${member.id}`}>
+                      <Edit className="cursor-pointer" />
+                    </Link>
+                  </td>
                 </tr>
+
               ))
             )}
           </tbody>

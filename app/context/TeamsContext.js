@@ -75,78 +75,77 @@ export function TeamsProvider({ children }) {
     };
   }, [user?.uid]);
 
-  const addTeam = async (name, description, ownerName, customFields = []) => {
-    if (!user) {
-      console.error("No user found");
-      return;
-    }
+  const addTeam = async ({
+  name,
+  description,
+  ownerName,
+  industryType,
+  billingMode,
+  termCycle,
+  defaultFeeAmount,
+}) => {
+  if (!user) return;
 
-    // Client-side guard based on state
-    if (hasReachedTeamLimit) {
-      throw new Error(`Team limit of ${TEAM_LIMIT} reached for basic plan.`);
-    }
+  if (hasReachedTeamLimit) {
+    throw new Error(`Team limit of ${TEAM_LIMIT} reached for basic plan.`);
+  }
 
-    try {
-      const todayKey = getDateKey(new Date());
-      const formattedFields = customFields.map(field => ({
-        id: field.id,
-        name: field.name,
-        type: field.type,
-        required: field.required,
-        ...(field.options && { options: field.options }) 
-      }));
+  try {
+    const todayKey = getDateKey(new Date());
 
-      const newTeamId = await runTransaction(db, async (transaction) => {
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await transaction.get(userRef);
+    const newTeamId = await runTransaction(db, async (transaction) => {
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await transaction.get(userRef);
 
-        if (!userSnap.exists()) {
-          throw new Error("User profile not found!");
-        }
+      if (!userSnap.exists()) {
+        throw new Error("User profile not found!");
+      }
 
-        const userData = userSnap.data();
-        const currentCount = userData.teamCount || 0;
-        const currentSub = userData.subscription || 'basic';
+      const userData = userSnap.data();
+      const currentCount = userData.teamCount || 0;
+      const currentSub = userData.subscription || "basic";
 
-        // Server-side Enforcement within Transaction
-        if (currentSub !== 'pro' && currentCount >= TEAM_LIMIT) {
-          throw new Error("Limit reached. Upgrade to Pro for unlimited teams.");
-        }
+      if (currentSub !== "pro" && currentCount >= TEAM_LIMIT) {
+        throw new Error("Limit reached. Upgrade to Pro for unlimited teams.");
+      }
 
-        const teamDocRef = doc(collection(db, "teams"));
+      const teamDocRef = doc(collection(db, "teams"));
 
-        transaction.set(teamDocRef, {
-          name,
-          description: description || "",
-          ownerName,
-          admin: {
-            email: user.email,
-            userId: user.uid,
-          },
-          createdAt: serverTimestamp(),
-          totalMembers: 0,
-          attendanceSummary: {
-            present: 0,
-            absent: 0,
-            halfday: 0,
-            lastUpdatedDate: todayKey,
-          },
-          customFields: formattedFields 
-        });
-
-        transaction.update(userRef, {
-          teamCount: increment(1)
-        });
-
-        return teamDocRef.id;
+      transaction.set(teamDocRef, {
+        name,
+        description: description || "",
+        ownerName,
+        admin: {
+          email: user.email,
+          userId: user.uid,
+        },
+        industryType,
+        billingMode,
+        termCycle,
+        defaultFeeAmount: Number(defaultFeeAmount) || 0,
+        createdAt: serverTimestamp(),
+        totalMembers: 0,
+        attendanceSummary: {
+          present: 0,
+          absent: 0,
+          halfday: 0,
+          lastUpdatedDate: todayKey,
+        },
       });
 
-      return { success: true, id: newTeamId };
-    } catch (err) {
-      console.error("Add Team Error:", err);
-      throw err;
-    }
-  };
+      transaction.update(userRef, {
+        teamCount: increment(1),
+      });
+
+      return teamDocRef.id;
+    });
+
+    return { success: true, id: newTeamId };
+  } catch (err) {
+    console.error("Add Team Error:", err);
+    throw err;
+  }
+};
 
 
 

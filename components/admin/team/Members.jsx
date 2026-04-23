@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Users, UserPlus } from "lucide-react";
 import MemberRow from "../members/MemberRow";
+import { toast } from "sonner";
 
 export default function Members({
   members,
@@ -107,7 +108,9 @@ export default function Members({
 
       {/* Members List */}
       {members.length === 0 ? (
-        <EmptyState onAdd={() => setModalOpen(true)} />
+        <EmptyState 
+          team={team} 
+          onAdd={() => setModalOpen(true)} />
       ) : filteredMembers.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
@@ -220,7 +223,7 @@ export default function Members({
 }
 
 /* ---------- Empty State ---------- */
-function EmptyState({ onAdd }) {
+function EmptyState({ team, onAdd }) {
   return (
     <Card>
       <CardContent className="p-6 text-center space-y-4">
@@ -229,7 +232,16 @@ function EmptyState({ onAdd }) {
         <p className="text-muted-foreground">
           Add team members to start tracking attendance
         </p>
-        <Button onClick={onAdd}>
+        <Button
+          onClick={() => {
+            if (!team?.customForms?.length) {
+              toast.error("Please create and assign a custom form to proceed.");
+              return;
+            }
+
+            onAdd();
+          }}
+        >
           <UserPlus /> Add Member
         </Button>
       </CardContent>

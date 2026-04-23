@@ -15,8 +15,7 @@ import { cn } from "@/lib/utils"
 const admin = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Teams", url: "/admin/teams", icon: Users },
-  { title: "History", url: "/admin/history", icon: History },
-  { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
+  { title: "logs", url: "/admin/history", icon: History },
 ]
 
 const member = [

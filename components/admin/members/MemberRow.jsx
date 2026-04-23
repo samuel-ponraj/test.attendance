@@ -54,7 +54,6 @@ const getInitials = (name) =>
       .slice(0, 2);
 
 
-
 const getRoleStyle = (status) => {
   switch (status) {
     case "member":
@@ -68,6 +67,8 @@ const getRoleStyle = (status) => {
   }
 };
 
+
+
   return (
     <>
     <Card>
@@ -77,8 +78,8 @@ const getRoleStyle = (status) => {
     <div className="flex items-center gap-4 w-full sm:w-auto">
       <Avatar className="w-10 h-10 shrink-0">
         <AvatarFallback className="bg-accent text-accent-foreground font-medium">
-        {member.profileURL ? (
-          <Image src={member.profileURL} width={80} height={80} alt="Member Profile Image"/>
+        {member.photoURL ? (
+          <Image src={member.photoURL} width={80} height={80} alt="Member Profile Image"/>
         ):(
           <>
           {member.firstName || member.lastName 

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Users, CalendarIcon, CheckCircle, XCircle, UserPlus, Clock, CalendarDays, UserRoundCheck } from "lucide-react";
+import { ArrowLeft, Users, CalendarIcon, CheckCircle, XCircle, UserPlus, Clock, CalendarDays, UserRoundCheck, IndianRupee } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, serverTimestamp, onSnapshot  } from "firebase/firestore";
 import AddMemberModal from "../addMemberModal";
@@ -30,6 +30,7 @@ import { useAuth } from '../../../app/context/AuthContext'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Members from "./Members";
 import MembersList from "../members/MembersList";
+import BillingTab from "./BillingTab";
 
 
 
@@ -279,7 +280,7 @@ const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-6">
       {/* Back & Add */}
       <div className="flex justify-between items-center mb-4 sm:mb-4">
         <button
@@ -289,10 +290,14 @@ const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
 
-        <Button onClick={() => setModalOpen(true)}>
+        <Button
+          onClick={() => {
+            setModalOpen(true);
+          }}
+        >
           <UserPlus /> Add Member
-        </Button>
-      </div>
+          </Button>
+        </div>
 
       {/* Team Info */}
       <Card>
@@ -361,20 +366,24 @@ const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
         </CardContent>
       </Card>
       
-      <Tabs defaultValue="members" className="space-y-6">
-            <TabsList className="w-full grid grid-cols-2">
-              <TabsTrigger value="members">
+      <Tabs defaultValue="attendance" className="space-y-6">
+            <TabsList className="w-full grid grid-cols-3">
+              <TabsTrigger value="attendance">
                 <UserRoundCheck className="w-4 h-4 hidden sm:inline" />
                 Mark Attendance
               </TabsTrigger>
-              <TabsTrigger value="schedule">
+              <TabsTrigger value="members">
                 <Users className="w-4 h-4 hidden sm:inline" />
                 Members
+              </TabsTrigger>
+              <TabsTrigger value="billing">
+                <IndianRupee className="w-4 h-4 hidden sm:inline" />
+                Billing Settings
               </TabsTrigger>
             </TabsList>
 
             {/* MEMBERS TAB */}
-            <TabsContent value="members">
+            <TabsContent value="attendance">
               <Members
                 members={members}
                 selectedDate={selectedDate}
@@ -387,9 +396,13 @@ const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
             </TabsContent>
 
             {/* SCHEDULE TAB */}
-            <TabsContent value="schedule">
+            <TabsContent value="members">
               <MembersList />
               {/* <Schedule teamId={team.id}/> */}
+            </TabsContent>
+
+            <TabsContent value="billing">
+              <BillingTab teamId={team.id}/>
             </TabsContent>
         </Tabs>
 
@@ -464,14 +477,18 @@ function Count({ icon: Icon, label, color }) {
   );
 }
 
-function EmptyState({ onAdd }) {
+function EmptyState({ team, onAdd }) {
   return (
     <Card>
       <CardContent className="p-6 text-center space-y-4">
         <Users className="w-12 h-12 mx-auto text-muted-foreground" />
         <h3 className="text-lg font-medium">No members yet</h3>
         <p className="text-muted-foreground">Add team members to start tracking attendance</p>
-        <Button onClick={onAdd}>
+        <Button
+          onClick={() => {
+            onAdd();
+          }}
+        >
           <UserPlus /> Add Member
         </Button>
       </CardContent>

@@ -178,7 +178,7 @@ const TeamCardLayout = ({ teams }) => {
           );
         })}
       </div>
-
+      
       {/* Confirm Delete Dialog (Step 1) */}
       <AlertDialog
         open={!!selectedTeamId && !otpDialogOpen}

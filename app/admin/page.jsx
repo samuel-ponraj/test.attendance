@@ -1,7 +1,7 @@
 "use client";
 
 import { SectionCards } from "@/components/admin/section-cards";
-import TeamCardLayout from "@/components/admin/team-card";
+// import TeamCardLayout from "@/components/admin/team-card";
 import AddTeamModal from "@/components/admin/addTeamModal";
 import { Button } from "@/components/ui/button";
 import { Plus, Users } from "lucide-react";
@@ -15,6 +15,7 @@ import {
 import { resetAttendanceSummaryIfNeeded } from "@/lib/resetAttendanceSummaryIfNeeded";
 import { Toaster } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
+import Analytics from "../../components/admin/analytics/Analytics";
 
 
 
@@ -59,12 +60,11 @@ export default function DashboardPage() {
   return (
     <>
       <Toaster richColors position="top-center" />
-      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-4 ">
         <SectionCards teams={teams}/>
       </div>
 
-      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-        <h2 className="px-6">Your Teams</h2>
+      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-0 md:pb-6">
 
         {teams.length === 0 && !loading ? (
           <Card className="mx-6 py-0 lg:py-2 ">
@@ -96,8 +96,11 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         ) : (
-          <TeamCardLayout teams={teams} sendDeleteOtp={sendDeleteOtp} deleteTeamWithOtp={deleteTeamWithOtp}/>
-)}
+          <>
+            <Analytics />
+            {/* <TeamCardLayout teams={teams} sendDeleteOtp={sendDeleteOtp} deleteTeamWithOtp={deleteTeamWithOtp}/> */}
+          </>
+          )}
 
       </div>
     </>

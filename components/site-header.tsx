@@ -9,6 +9,7 @@ import { Bell, Plus } from "lucide-react"
 import { useTeams } from "@/app/context/TeamsContext"
 import { useState, useEffect } from "react"
 import AddTeamModal from "./admin/addTeamModal"
+import AddFormModal from "./admin/forms/customForms/AddFormModal"
 import {
   AlertDialog,
   AlertDialogContent,
@@ -19,31 +20,41 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog"
 import Link from "next/link"
-import { UserPlus, Handshake } from "lucide-react"
-import { db } from "@/lib/firebase"
-import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot,
-  updateDoc,
-  doc, limit
-} from "firebase/firestore"
 import { useRouter } from "next/navigation"
 import Notifications from "@/lib/Notifications"
 
 
-const ROUTE_CONFIG = {
+const ROUTE_CONFIG: Record<
+  string,
+  {
+    path: string
+    title: string
+    description: string
+    match?: (pathname: string) => boolean
+  }[]
+> = {
   admin: [
+    {
+      path: "/admin/teams/",
+      title: "Member Profile",
+      description: "View, edit, and manage member information",
+      match: (pathname: string) =>
+        /^\/admin\/teams\/[^/]+\/members\/[^/]+$/.test(pathname),
+    },
     {
       path: "/admin/teams",
       title: "Teams",
       description: "Manage your teams and members",
     },
     {
-      path: "/admin/analytics",
-      title: "Analytics",
-      description: "Team-wise attendance insights",
+      path: "/admin/custom-forms",
+      title: "Custom Forms",
+      description: "Design, preview, and assign to your team",
+    },
+    {
+      path: "/admin/invoice-billing",
+      title: "Invoice / Billing",
+      description: "Manage invoices and billing details",
     },
     {
       path: "/admin/invite",
@@ -117,11 +128,16 @@ export function SiteHeader() {
   const routes = role ? ROUTE_CONFIG[role] : []
 
   const currentRoute =
-    routes.find(
-      (route) =>
+    routes.find((route) => {
+      if (route.match) {
+        return route.match(normalizedPath);
+      }
+
+      return (
         normalizedPath === route.path ||
         normalizedPath?.startsWith(route.path + "/")
-    ) ?? DEFAULT_ROUTE
+      );
+    }) ?? DEFAULT_ROUTE;
 
 
   const { addTeam, hasReachedTeamLimit  } = useTeams();
@@ -143,7 +159,7 @@ export function SiteHeader() {
           <h1 className="text-base font-medium">
             {currentRoute.title}
           </h1>
-          <p className="text-xs text-muted-foreground">
+          <p className="hidden sm:block text-xs text-muted-foreground">
             {currentRoute.description}
           </p>
         </div>
@@ -152,27 +168,55 @@ export function SiteHeader() {
 
         <div className="ml-auto flex items-center gap-4">
           {isAdmin &&
-            (normalizedPath === "/admin" ||
-              normalizedPath === "/admin/teams") && (
-              <Button
-                onClick={() => {
-                  if (hasReachedTeamLimit) {
-                    setShowLimitDialog(true);
-                  } else {
-                    setModalOpen(true);
-                  }
-                }}
-              >
-                <Plus />
-                Add Team
-              </Button>
-            )}
+              (normalizedPath === "/admin" ||
+                normalizedPath === "/admin/teams" ||
+                normalizedPath === "/admin/custom-forms") && (
+                <>
+                  <Button
+                    onClick={() => {
+                      if (
+                        normalizedPath === "/admin" ||
+                        normalizedPath === "/admin/teams"
+                      ) {
+                        if (hasReachedTeamLimit) {
+                          setShowLimitDialog(true);
+                        } else {
+                          setModalOpen(true);
+                        }
+                      }
+
+                      if (normalizedPath === "/admin/custom-forms") {
+                        setModalOpen(true);
+                      }
+                    }}
+                  >
+                    <Plus />
+                    {normalizedPath === "/admin/custom-forms"
+                      ? "Create Form"
+                      : "Add Team"}
+                  </Button>
+
+                  {normalizedPath === "/admin/custom-forms" ? (
+                    <AddFormModal
+                      open={modalOpen}
+                      onOpenChange={setModalOpen}
+                    />
+                  ) : (
+                    <AddTeamModal
+                      open={modalOpen}
+                      onOpenChange={setModalOpen}
+                      addTeam={addTeam}
+                    />
+                  )}
+                </>
+)}
+
           
           <Notifications />
 
           <ModeToggle />
 
-          <AddTeamModal open={modalOpen} onOpenChange={setModalOpen} addTeam={addTeam} />
+
           <AlertDialog open={showLimitDialog} onOpenChange={setShowLimitDialog}>
               <AlertDialogContent>
                 <AlertDialogHeader>

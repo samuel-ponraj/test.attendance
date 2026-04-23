@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { useRouter } from "next/navigation";
 
 // Generate country code options
 const countryCodeOptions = getCountries().map((iso) => ({
@@ -30,7 +31,7 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
   const [phoneNumber, setPhoneNumber] = useState("");
   const [dynamicValues, setDynamicValues] = useState({});
   const [loading, setLoading] = useState(false);
-
+  const router = useRouter()
   const fields = team?.customFields || [];
 
   const countryCode = useMemo(() => {
@@ -64,6 +65,7 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
     }
     return true;
   };
+
 
  const handleAdd = async (e) => {
   e.preventDefault();
@@ -118,9 +120,12 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
       });
     });
 
-    toast.success("Member added successfully.");
-    onOpenChange(false);
     if (onMemberAdded) onMemberAdded();
+    toast.success("Member created successfully!");
+    setTimeout(() => {
+      onOpenChange(false);
+      router.push(`/admin/teams/${team.id}/members/${uid}`);
+    }, 300);
   } catch (err) {
     console.error("Failed to add member:", err);
     toast.error(err.message || "Failed to add member.");
@@ -202,69 +207,11 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
               </div>
             </RadioGroup>
           </div>
-
-            {/* Custom Fields Section */}
-            {fields.length > 0 && (
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                <div className="relative flex justify-center text-[10px] uppercase">
-                  <span className="bg-background px-2 text-muted-foreground font-medium italic">Custom Details</span>
-                </div>
-              </div>
-            )}
-
-            {fields.map((field) => (
-              <div key={field.id} className="pb-1">
-                <Label className="pb-2" htmlFor={field.id}>
-                  {field.name} {field.required && "*"}
-                </Label>
-                {field.type === "textarea" ? (
-                  <Textarea 
-                    id={field.id} 
-                    value={dynamicValues[field.id] || ""} 
-                    onChange={(e) => handleDynamicChange(field.id, e.target.value)} 
-                    required={field.required} 
-                  />
-                ) : field.type === "select" ? (
-                  <Select onValueChange={(val) => handleDynamicChange(field.id, val)} required={field.required}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={`Select ${field.name.toLowerCase()}`} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {field.options?.map((opt) => (
-                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : field.type === "radio" ? (
-                  <RadioGroup 
-                    onValueChange={(val) => handleDynamicChange(field.id, val)} 
-                    required={field.required} 
-                    className="flex flex-row flex-wrap gap-4 pt-1"
-                  >
-                    {field.options?.map((opt) => (
-                      <div key={opt} className="flex items-center space-x-2">
-                        <RadioGroupItem value={opt} id={`${field.id}-${opt}`} />
-                        <Label htmlFor={`${field.id}-${opt}`} className="font-normal cursor-pointer">{opt}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                ) : (
-                  <Input 
-                    id={field.id} 
-                    type={field.type} 
-                    value={dynamicValues[field.id] || ""} 
-                    onChange={(e) => handleDynamicChange(field.id, e.target.value)} 
-                    required={field.required} 
-                  />
-                )}
-              </div>
-            ))}
           </div>
 
           <DialogFooter className="p-4 border-t flex-row gap-2 justify-end bg-background">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancel</Button>
-            <Button type="submit" disabled={loading}>{loading ? "Adding..." : "Add Member"}</Button>
+            <Button type="submit" disabled={loading}>{loading ? "Adding..." : "Proceed"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
