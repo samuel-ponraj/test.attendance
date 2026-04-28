@@ -17,7 +17,6 @@ export default function AddTeamModal({ open, onOpenChange, addTeam }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [ownerName, setOwnerName] = useState("");
-  const [enableBilling, setEnableBilling] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
@@ -31,13 +30,11 @@ export default function AddTeamModal({ open, onOpenChange, addTeam }) {
         name: name.trim(),
         description: description.trim(),
         ownerName: ownerName.trim(),
-        enableBilling: enableBilling,
       });
 
       setName("");
       setDescription("");
       setOwnerName("");
-      setEnableBilling(false);
 
       onOpenChange(false);
     } catch (err) {
@@ -83,15 +80,6 @@ export default function AddTeamModal({ open, onOpenChange, addTeam }) {
               value={ownerName}
               onChange={(e) => setOwnerName(e.target.value)}
               placeholder="Owner name"
-            />
-          </div>
-
-          {/* Enable Billing */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Enable Billing</span>
-            <Switch
-              checked={enableBilling}
-              onCheckedChange={setEnableBilling}
             />
           </div>
 

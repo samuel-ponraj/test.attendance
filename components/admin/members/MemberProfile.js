@@ -36,6 +36,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import BillingCard from './BillingCard'
 
 const MemberProfile = ({ teamId, memberId }) => {
   const router = useRouter()
@@ -56,6 +57,9 @@ const MemberProfile = ({ teamId, memberId }) => {
 
   const [forms, setForms] = useState([])
   const [dynamicFields, setDynamicFields] = useState({})
+
+  const [memberBilling, setMemberBilling] = useState({})
+  const [teamBillingConfig, setTeamBillingConfig] = useState({})
 
   useEffect(() => {
     const fetchMember = async () => {
@@ -81,6 +85,7 @@ const MemberProfile = ({ teamId, memberId }) => {
         setPhotoURL(data.photoURL || '')
         setPhotoPreview(data.photoURL || '')
         setDynamicFields(data.customData || {})
+        setMemberBilling(data.billing || {});
       } catch (error) {
         console.error(error)
         toast.error('Failed to load member details')
@@ -102,6 +107,7 @@ const MemberProfile = ({ teamId, memberId }) => {
     if (!teamId) return
 
     const teamSnap = await getDoc(doc(db, 'teams', teamId))
+    setTeamBillingConfig(teamSnap.data()?.billingConfig || {});
     if (!teamSnap.exists()) return
 
     const formIds = teamSnap.data().customForms || []
@@ -400,9 +406,14 @@ const handleDynamicChange = (fieldId, value) => {
               ))}
             </CardContent>
           </Card>
-))}
-    </div>
-  )
-}
+          ))} 
+
+          <BillingCard 
+            billing={memberBilling} 
+            config={teamBillingConfig} 
+          />
+              </div>
+            )
+          }
 
 export default MemberProfile

@@ -280,7 +280,7 @@ const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
 
 
   return (
-    <div className="space-y-6 pb-6">
+    <div className="space-y-6 pb-4">
       {/* Back & Add */}
       <div className="flex justify-between items-center mb-4 sm:mb-4">
         <button

@@ -79,10 +79,6 @@ export function TeamsProvider({ children }) {
   name,
   description,
   ownerName,
-  industryType,
-  billingMode,
-  termCycle,
-  defaultFeeAmount,
 }) => {
   if (!user) return;
 
@@ -119,10 +115,6 @@ export function TeamsProvider({ children }) {
           email: user.email,
           userId: user.uid,
         },
-        industryType,
-        billingMode,
-        termCycle,
-        defaultFeeAmount: Number(defaultFeeAmount) || 0,
         createdAt: serverTimestamp(),
         totalMembers: 0,
         attendanceSummary: {

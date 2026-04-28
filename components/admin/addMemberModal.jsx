@@ -101,7 +101,19 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
       contact: combinedContact,
       customData: dynamicValues,
       createdAt: Timestamp.now(),
-    };
+
+      billing: {
+        totalPaid: 0,
+        totalPending: 0,
+
+        billingStartDate: Timestamp.now(),
+        lastPaymentDate: null,
+
+        isOverdue: false,
+
+        periods: []
+      }
+};
 
     const teamRef = doc(db, "teams", team.id);
     const memberRef = doc(db, "teams", team.id, "members", uid);

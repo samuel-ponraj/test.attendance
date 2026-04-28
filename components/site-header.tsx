@@ -52,9 +52,9 @@ const ROUTE_CONFIG: Record<
       description: "Design, preview, and assign to your team",
     },
     {
-      path: "/admin/invoice-billing",
-      title: "Invoice / Billing",
-      description: "Manage invoices and billing details",
+      path: "/admin/billing",
+      title: "Payment Records",
+      description: "Manage fees and member accounts",
     },
     {
       path: "/admin/invite",
