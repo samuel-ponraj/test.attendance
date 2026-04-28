@@ -35,7 +35,7 @@ import { Label } from "@/components/ui/label";
 import { User, Camera } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { updateProfile } from "firebase/auth";
-import SubscriptionCard from "../billing/SubscriptionCard";
+import SubscriptionCard from "../subscription/SubscriptionCard";
 import {  ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 
