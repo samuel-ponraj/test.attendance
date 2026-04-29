@@ -21,6 +21,11 @@ import {
   getDoc,
   serverTimestamp,
   updateDoc,
+  query,
+  collection,
+  where,
+  orderBy,
+  onSnapshot
 } from 'firebase/firestore'
 import {
   getDownloadURL,
@@ -37,6 +42,7 @@ import {
 } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import BillingCard from './BillingCard'
+import PaymentHistoryCard from './PaymentHistoryCard'
 
 const MemberProfile = ({ teamId, memberId }) => {
   const router = useRouter()
@@ -60,6 +66,7 @@ const MemberProfile = ({ teamId, memberId }) => {
 
   const [memberBilling, setMemberBilling] = useState({})
   const [teamBillingConfig, setTeamBillingConfig] = useState({})
+  const [payments, setPayments] = useState([])
 
   useEffect(() => {
     const fetchMember = async () => {
@@ -99,6 +106,27 @@ const MemberProfile = ({ teamId, memberId }) => {
       fetchCustomForms()
     }
   }, [teamId, memberId, router])
+
+  useEffect(() => {
+    if (!teamId || !memberId) return;
+
+    // Query the payments sub-collection where memberId matches
+    const q = query(
+      collection(db, 'teams', teamId, 'payments'),
+      where("memberId", "==", memberId),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const paymentData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setPayments(paymentData);
+    });
+
+    return () => unsubscribe();
+  }, [teamId, memberId]);
 
 //  Fetch Custom Forms
 
@@ -412,8 +440,10 @@ const handleDynamicChange = (fieldId, value) => {
             billing={memberBilling} 
             config={teamBillingConfig} 
           />
-              </div>
-            )
-          }
+
+          <PaymentHistoryCard payments={payments}/>
+    </div>
+  )
+}
 
 export default MemberProfile
