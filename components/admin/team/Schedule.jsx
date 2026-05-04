@@ -142,9 +142,6 @@ useEffect(() => {
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-            <h2 className="text-lg font-semibold">
-              Schedule
-            </h2>
 
 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* Summary & Save */}

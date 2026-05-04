@@ -43,6 +43,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import BillingCard from './BillingCard'
 import PaymentHistoryCard from './PaymentHistoryCard'
+import SalaryCard from "./SalaryCard";
 
 const MemberProfile = ({ teamId, memberId }) => {
   const router = useRouter()
@@ -67,6 +68,7 @@ const MemberProfile = ({ teamId, memberId }) => {
   const [memberBilling, setMemberBilling] = useState({})
   const [teamBillingConfig, setTeamBillingConfig] = useState({})
   const [payments, setPayments] = useState([])
+  const [salaryConfig, setSalaryConfig] = useState({});
 
   useEffect(() => {
     const fetchMember = async () => {
@@ -93,6 +95,7 @@ const MemberProfile = ({ teamId, memberId }) => {
         setPhotoPreview(data.photoURL || '')
         setDynamicFields(data.customData || {})
         setMemberBilling(data.billing || {});
+        setSalaryConfig(data.salaryConfig || {});
       } catch (error) {
         console.error(error)
         toast.error('Failed to load member details')
@@ -224,6 +227,7 @@ const handleDynamicChange = (fieldId, value) => {
       lastName: lastName.trim(),
       contact: contact.trim(),
       customData: dynamicFields,
+      salaryConfig,
       updatedAt: serverTimestamp(),
     })
 
@@ -250,7 +254,7 @@ const handleDynamicChange = (fieldId, value) => {
       <div className='flex items-center justify-between'>
         <button
           onClick={() => router.back()}
-          className='flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground'
+          className='flex items-center gap-2 text-muted-foreground hover:text-foreground'
         >
           <ArrowLeft className='h-4 w-4' />
           Back
@@ -265,7 +269,6 @@ const handleDynamicChange = (fieldId, value) => {
             {saving ? (
               <>
                 <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                Saving...
               </>
             ) : (
               'Save Profile'
@@ -436,10 +439,17 @@ const handleDynamicChange = (fieldId, value) => {
           </Card>
           ))} 
 
-          <BillingCard 
-            billing={memberBilling} 
-            config={teamBillingConfig} 
-          />
+          {teamBillingConfig?.billingType === "attendanceBased" ? (
+            <SalaryCard
+              teamId={teamId}
+	            memberId={memberId}
+            />
+          ) : (
+            <BillingCard
+              billing={memberBilling}
+              config={teamBillingConfig}
+            />
+          )}
 
           <PaymentHistoryCard payments={payments}/>
     </div>

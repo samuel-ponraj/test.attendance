@@ -27,10 +27,9 @@ const PaymentHistoryTable = ({ payments = [] }) => {
   };
 
   return (
-    <Card className="mt-6">
+    <Card className="">
       <CardHeader>
-        <CardTitle className="text-xl font-bold flex items-center gap-2">
-          <ReceiptText className="h-5 w-5 text-emerald-500" />
+        <CardTitle className="text-xl ">
           Payment History
         </CardTitle>
       </CardHeader>
@@ -60,7 +59,6 @@ const PaymentHistoryTable = ({ payments = [] }) => {
                     {/* Date */}
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <CalendarDays className="h-4 w-4 text-muted-foreground" />
                         {formatDateTime(payment.createdAt)}
                       </div>
                     </TableCell>
@@ -68,7 +66,6 @@ const PaymentHistoryTable = ({ payments = [] }) => {
                     {/* Member */}
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
                         {payment.memberName}
                       </div>
                     </TableCell>
@@ -82,21 +79,20 @@ const PaymentHistoryTable = ({ payments = [] }) => {
 
                     {/* Method */}
                     <TableCell>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <CreditCard className="h-4 w-4" />
+                      <div className="flex items-center ">
                         {payment.method}
                       </div>
                     </TableCell>
 
                     {/* Amount */}
-                    <TableCell className="font-bold text-emerald-600">
+                    <TableCell className="font-bold ">
                       ₹{payment.amount?.toLocaleString()}
                     </TableCell>
 
                     {/* Status */}
                     <TableCell className="text-right">
-                      <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-200">
-                        SUCCESSFUL
+                      <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 ">
+                        Success
                       </Badge>
                     </TableCell>
                   </TableRow>

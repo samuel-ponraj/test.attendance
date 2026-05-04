@@ -378,7 +378,7 @@ const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
               </TabsTrigger>
               <TabsTrigger value="billing">
                 <IndianRupee className="w-4 h-4 hidden sm:inline" />
-                Billing Settings
+                Billing
               </TabsTrigger>
             </TabsList>
 

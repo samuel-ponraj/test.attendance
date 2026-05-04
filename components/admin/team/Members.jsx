@@ -234,10 +234,6 @@ function EmptyState({ team, onAdd }) {
         </p>
         <Button
           onClick={() => {
-            if (!team?.customForms?.length) {
-              toast.error("Please create and assign a custom form to proceed.");
-              return;
-            }
 
             onAdd();
           }}

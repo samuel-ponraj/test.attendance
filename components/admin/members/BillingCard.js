@@ -5,8 +5,6 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 
 const BillingCard = ({ billing, config }) => {
-  // billing: member.billing map { totalPaid, totalPending, lastPaymentDate, isOverdue }
-  // config: team.billingConfig map { baseAmount, billingCycle, termDetails }
 
   const formatCurrency = (val) => `₹${val || 0}`;
 
@@ -24,7 +22,7 @@ const BillingCard = ({ billing, config }) => {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 ">
         {/* 1. Status Overview Snapshot */}
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 p-3 rounded-xl border bg-muted/30">
           <div className="space-y-1">
