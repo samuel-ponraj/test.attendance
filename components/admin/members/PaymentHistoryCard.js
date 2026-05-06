@@ -80,7 +80,7 @@ const PaymentHistoryTable = ({ payments = [] }) => {
                     {/* Method */}
                     <TableCell>
                       <div className="flex items-center ">
-                        {payment.method}
+                        {payment.paymentMode}
                       </div>
                     </TableCell>
 

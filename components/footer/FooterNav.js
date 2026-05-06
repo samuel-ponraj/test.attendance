@@ -9,13 +9,15 @@ import {
   BarChart3,
   Calendar,
   UsersRound,
+  ReceiptIndianRupee,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const admin = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Teams", url: "/admin/teams", icon: Users },
-  { title: "logs", url: "/admin/history", icon: History },
+  { title: "Logs", url: "/admin/history", icon: History },
+  { title: "Billing", url: "/admin/billing", icon: ReceiptIndianRupee },
 ]
 
 const member = [

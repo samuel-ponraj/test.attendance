@@ -247,10 +247,6 @@ const BillingTab = ({ teamId }) => {
 										</SelectItem>
 									</SelectContent>
 								</Select>
-
-								<p className="text-[11px] text-muted-foreground">
-									You can change billing type anytime for now.
-								</p>
 							</div>
 
 							<div className="space-y-2">
@@ -265,7 +261,7 @@ const BillingTab = ({ teamId }) => {
 							</div>
 						</div>
 
-						{billingType && (
+						{billingType === "fixed" || billingType === "attendanceBased" ? (
 							<FixedBillingSettings
 								config={fixedConfig}
 								setConfig={setFixedConfig}
@@ -294,7 +290,11 @@ const BillingTab = ({ teamId }) => {
 									{ value: "term", label: "Term" },
 								]}
 							/>
-						)}
+						) : billingType === "salary" ? (
+							<div className="rounded-xl border bg-muted/30 p-6 text-center text-sm font-medium text-muted-foreground">
+								Salary managed in member profile.
+							</div>
+							) : null}
 					</CardContent>
 				</Card>
 			)}

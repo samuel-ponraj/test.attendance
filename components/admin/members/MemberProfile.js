@@ -439,7 +439,7 @@ const handleDynamicChange = (fieldId, value) => {
           </Card>
           ))} 
 
-          {teamBillingConfig?.billingType === "attendanceBased" ? (
+          {teamBillingConfig?.billingType === "salary" ? (
             <SalaryCard
               teamId={teamId}
 	            memberId={memberId}
@@ -450,8 +450,8 @@ const handleDynamicChange = (fieldId, value) => {
               config={teamBillingConfig}
             />
           )}
-
-          <PaymentHistoryCard payments={payments}/>
+          {teamBillingConfig?.billingType !== "salary" ? (
+          <PaymentHistoryCard payments={payments}/>) : null}
     </div>
   )
 }

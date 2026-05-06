@@ -25,6 +25,7 @@ import RecordPaymentModal from "./RecordPaymentModal";
 import Fixed from "./billingType/Fixed";
 import AttendanceBased from "./billingType/AttendanceBased";
 import { Label } from "@/components/ui/label";
+import Salary from "./billingType/Salary";
 
 const PaymentRecords = () => {
   const [adminUserId, setAdminUserId] = useState(null);
@@ -141,30 +142,36 @@ const PaymentRecords = () => {
       </div>
 
       {billingType === "attendanceBased" ? (
-        <AttendanceBased
-          teamId={selectedTeamId}
-          team={currentTeam}
-          members={filteredMembers}
-          onRecordPayment={(member, attendanceSummary, billingPeriods) => {
-            setSelectedMember(member);
-            setSelectedAttendanceSummary(attendanceSummary);
-            setSelectedBillingPeriods(billingPeriods);
-            setIsModalOpen(true);
-          }}
-        />
-      ) : (
-        <Fixed
-          teamId={selectedTeamId}
-          team={currentTeam}
-          members={filteredMembers}
-          onRecordPayment={(member) => {
-            setSelectedMember(member);
-            setSelectedAttendanceSummary(null);
-            setSelectedBillingPeriods([]);
-            setIsModalOpen(true);
-          }}
-        />
-      )}
+          <AttendanceBased
+            teamId={selectedTeamId}
+            team={currentTeam}
+            members={filteredMembers}
+            onRecordPayment={(member, attendanceSummary, billingPeriods) => {
+              setSelectedMember(member);
+              setSelectedAttendanceSummary(attendanceSummary);
+              setSelectedBillingPeriods(billingPeriods);
+              setIsModalOpen(true);
+            }}
+          />
+        ) : billingType === "salary" ? (
+          <Salary
+            teamId={selectedTeamId}
+            team={currentTeam}
+            members={filteredMembers}
+          />
+        ) : (
+          <Fixed
+            teamId={selectedTeamId}
+            team={currentTeam}
+            members={filteredMembers}
+            onRecordPayment={(member) => {
+              setSelectedMember(member);
+              setSelectedAttendanceSummary(null);
+              setSelectedBillingPeriods([]);
+              setIsModalOpen(true);
+            }}
+          />
+)}
 
       <RecordPaymentModal
         isOpen={isModalOpen}
