@@ -25,7 +25,7 @@ import RecordPaymentModal from "./RecordPaymentModal";
 import Fixed from "./billingType/Fixed";
 import AttendanceBased from "./billingType/AttendanceBased";
 import { Label } from "@/components/ui/label";
-import Salary from "./billingType/Salary";
+import Salary from "./billingType/salary/Salary";
 
 const PaymentRecords = () => {
   const [adminUserId, setAdminUserId] = useState(null);
