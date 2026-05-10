@@ -1,109 +1,112 @@
-'use client'
+"use client";
 export const runtime = "nodejs";
 
 import AddTeamModal from "../../components/admin/addTeamModal";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import {
-	SidebarInset,
-	SidebarProvider,
-} from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { UIProvider, useUI } from "../context/uiContext";
 import { TeamsProvider } from "../context/TeamsContext";
 import FooterNav from "../../components/footer/FooterNav";
 import { MembersProvider } from "../context/MembersContext";
 import ProtectedRoute from "../../components/ProtectedRoute";
-
-
+import Link from "next/link";
 
 function DashboardContent({ children }) {
-	const { isAddTeamOpen, setAddTeamOpen } = useUI();
+  const { isAddTeamOpen, setAddTeamOpen } = useUI();
 
-	return (
-		<>
-			<AddTeamModal open={isAddTeamOpen} onOpenChange={setAddTeamOpen} />
+  return (
+    <>
+      <AddTeamModal open={isAddTeamOpen} onOpenChange={setAddTeamOpen} />
 
-			<SidebarProvider
-				style={{
-					"--sidebar-width": "calc(var(--spacing) * 72)",
-					"--header-height": "calc(var(--spacing) * 16)",
-				}}
-			>
-				<AppSidebar variant="inset" />
+      <SidebarProvider
+        style={{
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 16)",
+        }}
+      >
+        <AppSidebar variant="inset" />
 
-				<SidebarInset>
-					<SiteHeader />
+        <SidebarInset>
+          <div className="sticky top-0 z-50 bg-background">
+            <SiteHeader />
+          </div>
 
-					<div className="flex flex-1 flex-col">
-						<div className="@container/main flex flex-1 flex-col gap-2 pb-16 md:pb-0">
-							{children}
-						</div>
-					</div>
+          <div className="flex flex-1 flex-col pt-0">
+            <div className="@container/main flex flex-1 flex-col gap-2">
+              <div className="flex-1">{children}</div>
 
-					<FooterNav />
-				</SidebarInset>
-			</SidebarProvider>
-		</>
-	);
+              <div className="mt-auto py-2 text-center text-[10px] text-muted-foreground">
+                Powered by{" "}
+                <Link
+                  href="https://kingzdigitalsolutions.in"
+                  target="_blank"
+                  className="hover:underline"
+                >
+                  Kingz Digital Solutions
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <FooterNav />
+        </SidebarInset>
+      </SidebarProvider>
+    </>
+  );
 }
-
 
 export default function AdminLayout({ children }) {
+  const isMaintenance = process.env.NEXT_PUBLIC_MAINTENANCE === "true";
 
-	const isMaintenance =
-		process.env.NEXT_PUBLIC_MAINTENANCE === "true";
+  if (isMaintenance) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center text-center text-white"
+        style={{
+          background:
+            "radial-gradient(circle at center, #5a0000 0%, #3a0000 18%, #000 45%)",
+          fontFamily: "system-ui, sans-serif",
+        }}
+      >
+        <div className="flex flex-col items-center px-4">
+          <img
+            src="/logo/KDA-logo-white.png"
+            alt="KDS Logo"
+            width={180}
+            height={100}
+            className="mb-4"
+          />
 
+          <h1 className="tracking-[4px] text-[28px] sm:text-[42px] opacity-90">
+            Under Maintenance
+          </h1>
 
-	if (isMaintenance) {
-		return (
-			<div
-				className="min-h-screen flex items-center justify-center text-center text-white"
-				style={{
-					background:
-						"radial-gradient(circle at center, #5a0000 0%, #3a0000 18%, #000 45%)",
-					fontFamily: "system-ui, sans-serif",
-				}}
-			>
-				<div className="flex flex-col items-center px-4">
-					<img
-						src="/logo/KDA-logo-white.png"
-						alt="KDS Logo"
-						width={180}
-						height={100}
-						className="mb-4"
-					/>
+          <p className="mt-3 opacity-70">
+            We're currently updating the dashboard. Please check back soon!
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-					<h1 className="tracking-[4px] text-[28px] sm:text-[42px] opacity-90">
-						Under Maintenance
-					</h1>
-
-					<p className="mt-3 opacity-70">
-						We're currently updating the dashboard. Please check back soon!
-					</p>
-				</div>
-			</div>
-		);
-	}
-
-
-	return (
-		<ProtectedRoute allowedRole="admin">
-		<ThemeProvider
-			attribute="class"
-			defaultTheme="system"
-			enableSystem
-			disableTransitionOnChange
-		>
-			<UIProvider>
-				<TeamsProvider>
-				<MembersProvider>
-					<DashboardContent>{children}</DashboardContent>
-				</MembersProvider>
-				</TeamsProvider>
-			</UIProvider>
-		</ThemeProvider>
-		</ProtectedRoute>
-	);
+  return (
+    <ProtectedRoute allowedRole="admin">
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <UIProvider>
+          <TeamsProvider>
+            <MembersProvider>
+              <DashboardContent>{children}</DashboardContent>
+            </MembersProvider>
+          </TeamsProvider>
+        </UIProvider>
+      </ThemeProvider>
+    </ProtectedRoute>
+  );
 }
-

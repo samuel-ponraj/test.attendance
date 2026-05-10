@@ -111,25 +111,22 @@ const MemberProfile = ({ teamId, memberId }) => {
   }, [teamId, memberId, router])
 
   useEffect(() => {
-    if (!teamId || !memberId) return;
+	if (!teamId) return;
 
-    // Query the payments sub-collection where memberId matches
-    const q = query(
-      collection(db, 'teams', teamId, 'payments'),
-      where("memberId", "==", memberId),
-      orderBy("createdAt", "desc")
-    );
+	const paymentsRef = collection(db, "teams", teamId , "payments");
+	const q = query(paymentsRef, orderBy("createdAt", "desc"));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const paymentData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setPayments(paymentData);
-    });
+	const unsubscribe = onSnapshot(q, (snap) => {
+		const list = snap.docs.map((doc) => ({
+			id: doc.id,
+			...doc.data(),
+		}));
 
-    return () => unsubscribe();
-  }, [teamId, memberId]);
+		setPayments(list);
+	});
+
+	return () => unsubscribe();
+}, [teamId]);
 
 //  Fetch Custom Forms
 
@@ -446,7 +443,8 @@ const handleDynamicChange = (fieldId, value) => {
             />
           ) : (
             <BillingCard
-              billing={memberBilling}
+              teamId={teamId}
+              memberId={memberId}
               config={teamBillingConfig}
             />
           )}

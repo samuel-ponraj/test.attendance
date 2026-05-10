@@ -8,298 +8,302 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import {
-	Select,
-	SelectTrigger,
-	SelectValue,
-	SelectContent,
-	SelectItem,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@/components/ui/select";
 
 import {
-	AlertDialog,
-	AlertDialogTrigger,
-	AlertDialogContent,
-	AlertDialogHeader,
-	AlertDialogTitle,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogCancel,
-	AlertDialogAction,
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 
-import FixedBillingSettings from "./billingTab/FixedBillingSettings";
+import FixedBillingSettings from "./billingTab/BillingSettings";
+import { toast } from "sonner";
 
 const BillingTab = ({ teamId }) => {
-	const [loading, setLoading] = useState(false);
-	const [enableBilling, setEnableBilling] = useState(false);
-	const [billingType, setBillingType] = useState("");
-	const [billingStartDate, setBillingStartDate] = useState("");
-	const [teamData, setTeamData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [enableBilling, setEnableBilling] = useState(false);
+  const [billingType, setBillingType] = useState("");
+  const [billingStartDate, setBillingStartDate] = useState("");
+  const [teamData, setTeamData] = useState(null);
 
-	const [fixedConfig, setFixedConfig] = useState({
-		amountPerMember: "",
-		billingCycle: "monthly",
-		divisionsPerYear: "1",
-		dueDayOfMonth: 5,
-		dueDaysAfterStart: 30,
-		dueEveryNDays: 1,
-		graceDays: 3,
-		lateFeePerDay: 10,
-	});
+  const [fixedConfig, setFixedConfig] = useState({
+    amountPerMember: "",
+    billingCycle: "monthly",
+    divisionsPerYear: "1",
+    dueDayOfMonth: 5,
+    dueDaysAfterStart: 30,
+    dueEveryNDays: 1,
+    graceDays: 3,
+    lateFeePerDay: 10,
+    academicYears: [],
+  });
 
-	useEffect(() => {
-		const fetchTeam = async () => {
-			if (!teamId) return;
+  useEffect(() => {
+    const fetchTeam = async () => {
+      if (!teamId) return;
 
-			const ref = doc(db, "teams", teamId);
-			const snap = await getDoc(ref);
+      const ref = doc(db, "teams", teamId);
+      const snap = await getDoc(ref);
 
-			if (snap.exists()) {
-				const data = snap.data();
-				const config = data.billingConfig || {};
-				const due = config.dueConfig || {};
+      if (snap.exists()) {
+        const data = snap.data();
+        const config = data.billingConfig || {};
+        const due = config.dueConfig || {};
 
-				setTeamData(data);
-				setEnableBilling(data.enableBilling ?? false);
-				setBillingType(config.billingType || "");
+        setTeamData(data);
+        setEnableBilling(data.enableBilling ?? false);
+        setBillingType(config.billingType || "");
 
-				setFixedConfig({
-					amountPerMember: config.baseAmount ?? "",
-					billingCycle: config.billingCycle || "monthly",
-					divisionsPerYear: config.termDetails?.divisionsPerYear ?? "1",
-					dueDayOfMonth: due.dueDayOfMonth ?? 5,
-					dueDaysAfterStart: due.dueDaysAfterStart ?? 30,
-					dueEveryNDays: due.dueEveryNDays ?? 1,
-					graceDays: due.graceDays ?? 3,
-					lateFeePerDay: due.lateFeePerDay ?? 10,
-				});
+        setFixedConfig({
+          amountPerMember: config.baseAmount ?? "",
+          billingCycle: config.billingCycle || "monthly",
+          divisionsPerYear: config.termDetails?.divisionsPerYear ?? "1",
+          dueDayOfMonth: due.dueDayOfMonth ?? 5,
+          dueDaysAfterStart: due.dueDaysAfterStart ?? 30,
+          dueEveryNDays: due.dueEveryNDays ?? 1,
+          graceDays: due.graceDays ?? 3,
+          lateFeePerDay: due.lateFeePerDay ?? 10,
+          academicYears: config.academicYears || [],
+        });
 
-				if (config.billingStartDate) {
-					setBillingStartDate(
-						config.billingStartDate.toDate().toISOString().split("T")[0]
-					);
-				} else {
-					setBillingStartDate(new Date().toISOString().split("T")[0]);
-				}
-			}
-		};
+        if (config.billingStartDate) {
+          setBillingStartDate(
+            config.billingStartDate.toDate().toISOString().split("T")[0],
+          );
+        } else {
+          setBillingStartDate(new Date().toISOString().split("T")[0]);
+        }
+      }
+    };
 
-		fetchTeam();
-	}, [teamId]);
+    fetchTeam();
+  }, [teamId]);
 
-	const updateEnableBilling = async (value) => {
-		if (!teamId) return;
+  const updateEnableBilling = async (value) => {
+    if (!teamId) return;
 
-		const ref = doc(db, "teams", teamId);
+    const ref = doc(db, "teams", teamId);
 
-		setEnableBilling(value);
-		await updateDoc(ref, {
-			enableBilling: value,
-		});
-	};
+    setEnableBilling(value);
+    await updateDoc(ref, {
+      enableBilling: value,
+    });
+  };
 
-	const updateBillingSettings = async () => {
-		if (!teamId) return;
+  const updateBillingSettings = async () => {
+    if (!teamId) return;
 
-		if (!billingType) {
-			alert("Please select billing type.");
-			return;
-		}
+    if (!billingType) {
+      alert("Please select billing type.");
+      return;
+    }
 
-		setLoading(true);
+    setLoading(true);
 
-		try {
-			const ref = doc(db, "teams", teamId);
+    try {
+      const ref = doc(db, "teams", teamId);
 
-			const startDate = new Date(billingStartDate);
-			const endDate = new Date(startDate);
-			endDate.setFullYear(endDate.getFullYear() + 1);
+      const startDate = new Date(billingStartDate);
+      const endDate = new Date(startDate);
+      endDate.setFullYear(endDate.getFullYear() + 1);
 
-			const billingConfig = {
-				billingType,
-				baseAmount: Number(fixedConfig.amountPerMember) || 0,
-				billingCycle: fixedConfig.billingCycle,
-				currency: "INR",
+      const billingConfig = {
+        billingType,
+        baseAmount: Number(fixedConfig.amountPerMember) || 0,
+        billingCycle: fixedConfig.billingCycle,
+        currency: "INR",
 
-				billingStartDate: Timestamp.fromDate(startDate),
-				billingEndDate: Timestamp.fromDate(endDate),
+        billingStartDate: Timestamp.fromDate(startDate),
+        billingEndDate: Timestamp.fromDate(endDate),
 
-				nextInvoiceDate: Timestamp.now(),
+        nextInvoiceDate: Timestamp.now(),
 
-				dueConfig: {
-					dueDayOfMonth: Number(fixedConfig.dueDayOfMonth) || 5,
-					dueDaysAfterStart: Number(fixedConfig.dueDaysAfterStart) || 30,
-					dueEveryNDays: Number(fixedConfig.dueEveryNDays) || 1,
-					graceDays: Number(fixedConfig.graceDays) || 0,
-					lateFeePerDay: Number(fixedConfig.lateFeePerDay) || 0,
-				},
+        dueConfig: {
+          dueDayOfMonth: Number(fixedConfig.dueDayOfMonth) || 5,
+          dueDaysAfterStart: Number(fixedConfig.dueDaysAfterStart) || 30,
+          dueEveryNDays: Number(fixedConfig.dueEveryNDays) || 1,
+          graceDays: Number(fixedConfig.graceDays) || 0,
+          lateFeePerDay: Number(fixedConfig.lateFeePerDay) || 0,
+        },
 
-				autoGeneratePeriods: true,
+        autoGeneratePeriods: true,
 
-				termDetails:
-					fixedConfig.billingCycle === "term"
-						? {
-								currentTermName: "Active Term",
-								divisionsPerYear:
-									Number(fixedConfig.divisionsPerYear) || 1,
-								currentTermIndex: 0,
-						  }
-						: null,
-			};
+        academicYears:
+          fixedConfig.billingCycle === "term"
+            ? fixedConfig.academicYears || []
+            : [],
 
-			await updateDoc(ref, {
-				billingConfig,
-			});
+        termDetails:
+          fixedConfig.billingCycle === "term"
+            ? {
+                currentTermName: "Active Term",
+                divisionsPerYear: Number(fixedConfig.divisionsPerYear) || 1,
+                currentTermIndex: 0,
+              }
+            : null,
+      };
 
-			setBillingType(billingConfig.billingType);
-		} catch (err) {
-			console.error("Error saving billing settings:", err);
-		} finally {
-			setLoading(false);
-		}
-	};
+      await updateDoc(ref, {
+        billingConfig,
+      });
 
-	return (
-		<div className="space-y-6">
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h2 className="text-lg font-semibold">Member Billing</h2>
-					<p className="text-sm text-muted-foreground">
-						Configure fixed or attendance-based billing for this team.
-					</p>
-				</div>
+      setBillingType(billingConfig.billingType);
+      toast.success("Billing settings updated successfully!");
+    } catch (err) {
+      console.error("Error saving billing settings:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-				<div className="flex items-center gap-2">
-					<span className="text-sm font-medium">Enable Billing</span>
-					<Switch
-						checked={enableBilling}
-						onCheckedChange={updateEnableBilling}
-					/>
-				</div>
-			</div>
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Member Billing</h2>
+          <p className="text-sm text-muted-foreground">
+            Configure fixed or attendance-based billing for this team.
+          </p>
+        </div>
 
-			{!enableBilling && (
-				<div className="rounded-lg border bg-muted/30 p-6 text-center text-muted-foreground">
-					Billing is disabled for this team.
-				</div>
-			)}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">Enable Billing</span>
+          <Switch
+            checked={enableBilling}
+            onCheckedChange={updateEnableBilling}
+          />
+        </div>
+      </div>
 
-			{enableBilling && (
-				<Card>
-					<CardHeader className="flex flex-row items-center justify-between">
-						<CardTitle>Billing Settings</CardTitle>
+      {!enableBilling && (
+        <div className="rounded-lg border bg-muted/30 p-6 text-center text-muted-foreground">
+          Billing is disabled for this team.
+        </div>
+      )}
 
-						<AlertDialog>
-							<AlertDialogTrigger asChild>
-								<Button disabled={loading || !billingType}>
-									{loading ? "Saving..." : "Save Changes"}
-								</Button>
-							</AlertDialogTrigger>
+      {enableBilling && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Billing Settings</CardTitle>
 
-							<AlertDialogContent>
-								<AlertDialogHeader>
-									<AlertDialogTitle>Confirm Billing Settings</AlertDialogTitle>
-									<AlertDialogDescription>
-										This will update the billing configuration for this team.
-									</AlertDialogDescription>
-								</AlertDialogHeader>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button disabled={loading || !billingType}>
+                  {loading ? "Saving..." : "Save Changes"}
+                </Button>
+              </AlertDialogTrigger>
 
-								<AlertDialogFooter>
-									<AlertDialogCancel disabled={loading}>
-										Cancel
-									</AlertDialogCancel>
-									<AlertDialogAction
-										onClick={updateBillingSettings}
-										disabled={loading}
-									>
-										Confirm
-									</AlertDialogAction>
-								</AlertDialogFooter>
-							</AlertDialogContent>
-						</AlertDialog>
-					</CardHeader>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirm Billing Settings</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will update the billing configuration for this team.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
 
-					<CardContent className="space-y-6">
-						<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-							<div className="space-y-2">
-								<Label>Billing Type</Label>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={loading}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={updateBillingSettings}
+                    disabled={loading}
+                  >
+                    Confirm
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardHeader>
 
-								<Select value={billingType} onValueChange={setBillingType}>
-									<SelectTrigger className="w-full">
-										<SelectValue placeholder="Select billing type" />
-									</SelectTrigger>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Billing Type</Label>
 
-									<SelectContent>
-										<SelectItem value="fixed">Fixed</SelectItem>
-										<SelectItem value="attendanceBased">
-											Attendance Based
-										</SelectItem>
-										<SelectItem value="salary">
-											Salary
-										</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
+                <Select value={billingType} onValueChange={setBillingType}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select billing type" />
+                  </SelectTrigger>
 
-							<div className="space-y-2">
-								<Label>Billing Start Date</Label>
+                  <SelectContent>
+                    <SelectItem value="fixed">Fixed</SelectItem>
+                    <SelectItem value="attendanceBased">
+                      Attendance Based
+                    </SelectItem>
+                    <SelectItem value="salary">Salary</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-								<Input
-									type="date"
-									value={billingStartDate}
-									onChange={(e) => setBillingStartDate(e.target.value)}
-									className="w-full"
-								/>
-							</div>
-						</div>
+              <div className="space-y-2">
+                <Label>Billing Start Date</Label>
 
-						{billingType === "fixed" || billingType === "attendanceBased" ? (
-							<FixedBillingSettings
-								config={fixedConfig}
-								setConfig={setFixedConfig}
-								totalMembers={teamData?.totalMembers ?? 0}
-								billingType={billingType}
-								billingTypes={[
-									{ value: "fixed", label: "Fixed Billing" },
-									{
-										value: "attendanceBased",
-										label: "Attendance Based Billing",
-									},
-								]}
-								selectedBillingType={
-									billingType === "fixed"
-										? { label: "Fixed Billing" }
-										: { label: "Attendance Based Billing" }
-								}
-								isBillingTypeLocked={false}
-								setBillingType={setBillingType}
-								billingStartDate={billingStartDate}
-								setBillingStartDate={setBillingStartDate}
-								billingModes={[
-									{ value: "daily", label: "Daily" },
-									{ value: "monthly", label: "Monthly" },
-									{ value: "annual", label: "Annual" },
-									{ value: "term", label: "Term" },
-								]}
-							/>
-						) : billingType === "salary" ? (
-							<div className="rounded-xl border bg-muted/30 p-6 text-center text-sm font-medium text-muted-foreground">
-								Salary managed in member profile.
-							</div>
-							) : null}
-					</CardContent>
-				</Card>
-			)}
-		</div>
-	);
+                <Input
+                  type="date"
+                  value={billingStartDate}
+                  onChange={(e) => setBillingStartDate(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+            </div>
+
+            {billingType === "fixed" || billingType === "attendanceBased" ? (
+              <FixedBillingSettings
+                config={fixedConfig}
+                setConfig={setFixedConfig}
+                totalMembers={teamData?.totalMembers ?? 0}
+                billingType={billingType}
+                billingTypes={[
+                  { value: "fixed", label: "Fixed Billing" },
+                  {
+                    value: "attendanceBased",
+                    label: "Attendance Based Billing",
+                  },
+                ]}
+                selectedBillingType={
+                  billingType === "fixed"
+                    ? { value: "fixed", label: "Fixed Billing" }
+                    : {
+                        value: "attendanceBased",
+                        label: "Attendance Based Billing",
+                      }
+                }
+                isBillingTypeLocked={false}
+                setBillingType={setBillingType}
+                billingStartDate={billingStartDate}
+                setBillingStartDate={setBillingStartDate}
+                billingModes={[
+                  { value: "daily", label: "Daily" },
+                  { value: "monthly", label: "Monthly" },
+                  { value: "annual", label: "Annual" },
+                  { value: "term", label: "Term" },
+                ]}
+              />
+            ) : billingType === "salary" ? (
+              <div className="rounded-xl border bg-muted/30 p-6 text-center text-sm font-medium text-muted-foreground">
+                Salary managed in member profile.
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 };
 
 export default BillingTab;

@@ -129,6 +129,7 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
         teamId: team.id,
         email: emailLower,
         memberId: uid,
+        role: role,
       });
     });
 

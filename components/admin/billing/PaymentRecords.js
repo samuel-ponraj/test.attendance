@@ -33,7 +33,6 @@ const PaymentRecords = () => {
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
@@ -99,7 +98,6 @@ const PaymentRecords = () => {
   const filteredMembers = members.filter((member) =>
     `${member.firstName || ""} ${member.lastName || ""}`
       .toLowerCase()
-      .includes(searchTerm.toLowerCase()),
   );
 
   const billingType = currentTeam?.billingConfig?.billingType || "fixed";
@@ -127,17 +125,6 @@ const PaymentRecords = () => {
               ))}
             </SelectContent>
           </Select>
-        </div>
-
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-
-          <Input
-            placeholder="Search member..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
         </div>
       </div>
 
@@ -171,7 +158,7 @@ const PaymentRecords = () => {
               setIsModalOpen(true);
             }}
           />
-)}
+        )}
 
       <RecordPaymentModal
         isOpen={isModalOpen}

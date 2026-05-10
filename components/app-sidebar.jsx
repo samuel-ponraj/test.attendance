@@ -101,7 +101,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       {/* ---------- Header ---------- */}
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center justify-center gap-3 px-2 py-3">
+        <div className="flex items-center justify-center gap-3 px-2 py-[3.5px]">
           <Link href="/" onClick={closeSidebar}>
             {isCollapsed ? (
               <Image
@@ -109,6 +109,7 @@ export function AppSidebar() {
                 alt="KDS Small Logo"
                 width={30}
                 height={30}
+                className="py-[12.5px]"
               />
             ) : (
               <Image

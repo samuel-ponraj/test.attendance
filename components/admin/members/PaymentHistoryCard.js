@@ -43,7 +43,7 @@ const PaymentHistoryTable = ({ payments = [] }) => {
                 <TableHead>Period</TableHead>
                 <TableHead>Method</TableHead>
                 <TableHead>Amount</TableHead>
-                <TableHead className="text-right">Status</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -90,7 +90,7 @@ const PaymentHistoryTable = ({ payments = [] }) => {
                     </TableCell>
 
                     {/* Status */}
-                    <TableCell className="text-right">
+                    <TableCell >
                       <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 ">
                         Success
                       </Badge>

@@ -79,6 +79,7 @@ const TeamCardLayout = ({ teams }) => {
       setLoading(false);
     }
   };
+  
 
   const handleDeleteTeam = async () => {
     if (!auth.currentUser || !selectedTeamId || !otp) return;
@@ -110,7 +111,7 @@ const TeamCardLayout = ({ teams }) => {
 
   return (
     <>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 px-4 lg:px-6">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6 px-6">
         {sortedTeams.map((team) => {
           const totalPresent = team.attendanceSummary?.present || 0;
           const totalAbsent = team.attendanceSummary?.absent || 0;
