@@ -95,7 +95,11 @@ export const ensureBillingPeriods = async ({ teamId, member, periods }) => {
 
 	const newAmount = Number(period.amount || 0);
 	const oldPaid = Number(old.paid || 0);
+	const oldDiscount = Number(old.discountAmount || 0);
 	const isHoliday = period.status === "holiday";
+	const newBalance = isHoliday
+		? 0
+		: Math.max(newAmount - oldPaid - oldDiscount, 0);
 
 	await updateDoc(periodRef, {
 		periodLabel: period.periodLabel,
@@ -106,12 +110,12 @@ export const ensureBillingPeriods = async ({ teamId, member, periods }) => {
 		dayName: period.dayName || "",
 		isHoliday: !!period.isHoliday,
 		amount: newAmount,
-		balance: isHoliday ? 0 : Math.max(newAmount - oldPaid, 0),
+		balance: newBalance,
 		status: isHoliday
 			? "holiday"
-			: oldPaid >= newAmount
+			: newBalance <= 0
 				? "settled"
-				: oldPaid > 0
+				: oldPaid > 0 || oldDiscount > 0
 					? "partial"
 					: "pending",
 		updatedAt: Timestamp.now(),
@@ -146,9 +150,14 @@ export const recordFixedPayment = async ({
 
 	if (amount <= 0) return;
 
-	const payableAmount = Math.min(amount, Number(period.balance || 0));
+	const discount = Number(period.discountAmount || 0);
+	const currentBalance = Math.max(
+		Number(period.amount || 0) - Number(period.paid || 0) - discount,
+		0
+	);
+	const payableAmount = Math.min(amount, currentBalance);
 	const newPaid = Number(period.paid || 0) + payableAmount;
-	const newBalance = Number(period.amount || 0) - newPaid;
+	const newBalance = Math.max(Number(period.amount || 0) - newPaid - discount, 0);
 	const newStatus = newBalance <= 0 ? "settled" : "partial";
 
 	const periodRef = doc(

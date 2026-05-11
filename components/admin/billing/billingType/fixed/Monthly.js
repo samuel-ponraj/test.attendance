@@ -55,6 +55,7 @@ import {
 
 const Monthly = ({ teamId, team, members, initialMemberId }) => {
   const router = useRouter();
+  const backHref = teamId ? `/admin/teams/${teamId}` : "/admin/teams";
 
   const [selectedMemberId, setSelectedMemberId] = useState(initialMemberId || "");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -290,7 +291,7 @@ const Monthly = ({ teamId, team, members, initialMemberId }) => {
     <div className="space-y-5">
     <div className="w-full max-w-[600px] flex justify-start">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push(backHref)}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="w-4 h-4" /> Back

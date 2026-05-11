@@ -7,6 +7,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   increment,
   serverTimestamp,
   setDoc,
@@ -145,11 +146,36 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
           createdAt: Timestamp.now(),
         });
 
+        const periodsSnap = await getDocs(
+          collection(db, "teams", teamId, "members", memberId, "billingPeriods")
+        );
+
+        const billingSummary = periodsSnap.docs.reduce(
+          (summary, docSnap) => {
+            const period = docSnap.data();
+            const amount = Number(period.amount || 0);
+            const paid = Number(period.paid || 0);
+            const discount = Number(period.discountAmount || 0);
+
+            return {
+              totalBalance:
+                summary.totalBalance + Math.max(amount - paid - discount, 0),
+              totalDiscount: summary.totalDiscount + discount,
+            };
+          },
+          {
+            totalBalance: 0,
+            totalDiscount: 0,
+          }
+        );
+
         await setDoc(
           doc(db, "teams", teamId, "members", memberId),
           {
             billing: {
               totalPaid: increment(payableAmount),
+              totalBalance: billingSummary.totalBalance,
+              totalDiscount: billingSummary.totalDiscount,
               lastPaymentDate: Timestamp.now(),
             },
           },
@@ -186,7 +212,7 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
       );
 
       toast.success("Payment saved successfully");
-      router.push(`/admin/teams/${teamId}/billing?memberId=${memberId}`);
+      router.replace(`/admin/teams/${teamId}/billing?memberId=${memberId}`);
     } catch (error) {
       console.error("Error saving payment:", error);
       toast.error("Failed to save payment");
@@ -203,7 +229,7 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
     <div className="w-full flex flex-col items-center justify-center px-4 pt-4 space-y-2">
       <div className="w-full max-w-[600px] flex justify-start">
         <button
-          onClick={() => router.push(`/admin/teams/${teamId}/billing?memberId=${memberId}`)}
+          onClick={() => router.replace(`/admin/teams/${teamId}/billing?memberId=${memberId}`)}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="w-4 h-4" /> Back

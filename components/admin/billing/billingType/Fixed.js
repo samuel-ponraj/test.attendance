@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 const Fixed = ({ teamId, team, members, initialMemberId }) => {
   const billingCycle = team?.billingConfig?.billingCycle;
   const router = useRouter();
+  const backHref = teamId ? `/admin/teams/${teamId}` : "/admin/teams";
 
   if (billingCycle === "daily") {
     return (
@@ -59,7 +60,7 @@ const Fixed = ({ teamId, team, members, initialMemberId }) => {
     <>
       <div className="w-full max-w-[600px] flex justify-start">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push(backHref)}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="w-4 h-4" /> Back

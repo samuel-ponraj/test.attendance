@@ -284,7 +284,7 @@ const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
       {/* Back & Add */}
       <div className="flex justify-between items-center mb-4 sm:mb-4">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push("/admin/teams")}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="w-4 h-4" /> Back

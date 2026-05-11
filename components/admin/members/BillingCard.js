@@ -1,13 +1,21 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, doc, onSnapshot, Timestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+
+const getEffectiveBalance = (period) => {
+	const amount = Number(period?.amount || 0);
+	const paid = Number(period?.paid || 0);
+	const discount = Number(period?.discountAmount || 0);
+
+	return Math.max(amount - paid - discount, 0);
+};
 
 const BillingCard = ({ teamId, memberId, config }) => {
 	const [periods, setPeriods] = useState([]);
@@ -74,11 +82,58 @@ const BillingCard = ({ teamId, memberId, config }) => {
 	);
 
 	const totalBalance = activePeriods.reduce(
-		(acc, period) => acc + Number(period.balance || 0),
+		(acc, period) => acc + getEffectiveBalance(period),
 		0
 	);
 
-	const isSettled = totalBalance <= 0 && activePeriods.length > 0;
+	useEffect(() => {
+		if (!teamId || !memberId || activePeriods.length === 0) return;
+
+		const syncBalances = async () => {
+			await Promise.all(
+				activePeriods.map(async (period) => {
+					const effectiveBalance = getEffectiveBalance(period);
+					const status =
+						period.status === "holiday" || period.status === "leave"
+							? period.status
+							: effectiveBalance <= 0
+								? "settled"
+								: Number(period.paid || 0) > 0 ||
+									  Number(period.discountAmount || 0) > 0
+									? "partial"
+									: "pending";
+
+					if (
+						Number(period.balance || 0) === effectiveBalance &&
+						period.status === status
+					) {
+						return;
+					}
+
+					await updateDoc(
+						doc(
+							db,
+							"teams",
+							teamId,
+							"members",
+							memberId,
+							"billingPeriods",
+							period.id
+						),
+						{
+							balance: effectiveBalance,
+							status,
+							updatedAt: Timestamp.now(),
+						}
+					);
+				})
+			);
+		};
+
+		syncBalances().catch((error) => {
+			console.error("Failed to sync billing balances:", error);
+		});
+	}, [activePeriods, memberId, teamId]);
 
 	const rateLabel = (() => {
 		if (config?.billingCycle === "daily") {
