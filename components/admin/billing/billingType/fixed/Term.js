@@ -38,6 +38,7 @@ import {
 
 import { PiFilePdf } from "react-icons/pi";
 import { User, User2 } from "lucide-react";
+import { generateReceipt } from "../../GenerateReceipt";
 
 import {
   formatCurrency,
@@ -49,12 +50,13 @@ import {
   ensureBillingPeriods,
   recordFixedPayment,
   getStatusText,
+  getEffectiveBalance,
 } from "../BillingHelpers";
 
-const Term = ({ teamId, team, members }) => {
+const Term = ({ teamId, team, members, initialMemberId }) => {
   const router = useRouter();
 
-  const [selectedMemberId, setSelectedMemberId] = useState("");
+  const [selectedMemberId, setSelectedMemberId] = useState(initialMemberId || "");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
@@ -203,14 +205,32 @@ const Term = ({ teamId, team, members }) => {
   );
 
   const totalBalance = allTermPeriods.reduce(
-    (acc, period) => acc + Number(period.balance || 0),
+    (acc, period) => acc + getEffectiveBalance(period),
     0,
   );
 
   const openPaymentDialog = (period) => {
-    setSelectedPeriod(period);
-    setPaymentAmount(period.balance || "");
-    setIsPaymentOpen(true);
+    if (!selectedMember) return;
+
+    router.push(
+      `/admin/teams/${teamId}/billing/create-invoice?memberId=${selectedMember.id}&periodId=${period.id}`,
+    );
+  };
+
+  const downloadReceipt = async (period) => {
+    if (!selectedMember) return;
+
+    try {
+      await generateReceipt({
+        team,
+        member: selectedMember,
+        period,
+      });
+      toast.success("Receipt downloaded successfully");
+    } catch (error) {
+      console.error("Error downloading receipt:", error);
+      toast.error("Failed to download receipt");
+    }
   };
 
   const recordPayment = async () => {
@@ -245,6 +265,14 @@ const Term = ({ teamId, team, members }) => {
 
   return (
     <div className="space-y-5">
+    <div className="w-full max-w-[600px] flex justify-start">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+      </div>
       <Card>
         <CardContent>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
@@ -426,6 +454,7 @@ const Term = ({ teamId, team, members }) => {
                     Term Amount
                   </TableHead>
                   <TableHead className="text-center border-r">Paid</TableHead>
+                  <TableHead className="text-center border-r">Discount</TableHead>
                   <TableHead className="text-center border-r">
                     Balance
                   </TableHead>
@@ -438,7 +467,7 @@ const Term = ({ teamId, team, members }) => {
                 {filteredPeriods.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={9}
+                      colSpan={10}
                       className="text-center py-8 text-muted-foreground"
                     >
                       No term billing records found.
@@ -480,25 +509,25 @@ const Term = ({ teamId, team, members }) => {
                               : "—"}
                           </TableCell>
 
-                          <TableCell className="text-center border-r font-semibold">
-                            {Number(period.balance || 0) > 0
-                              ? formatCurrency(period.balance)
-                              : "Settled"}
+                          <TableCell className="text-center border-r">
+                        {period.status === "holiday" || period.isHoliday || period.status === "leave" ? "-" : formatCurrency(period.discountAmount || 0)}
+                      </TableCell>
+
+                      <TableCell className="text-center border-r font-semibold">
+                            {getEffectiveBalance(period) > 0
+                              ? formatCurrency(getEffectiveBalance(period))
+                              : formatCurrency(0)}
                           </TableCell>
 
                           <TableCell className="text-center border-r">
-                            {getStatusText(period.status)}
+                            {getStatusText(getEffectiveBalance(period) <= 0 ? "settled" : period.status)}
                           </TableCell>
 
                           <TableCell className="text-center">
-                            {period.status === "settled" ? (
+                            {(period.status === "settled" || getEffectiveBalance(period) <= 0) ? (
                               <PiFilePdf
                                 className="cursor-pointer text-2xl text-orange-500 mx-auto"
-                                onClick={() =>
-                                  router.push(
-                                    `/admin/billing/create-invoice?teamId=${teamId}&memberId=${selectedMember.id}&periodId=${period.id}`,
-                                  )
-                                }
+                                onClick={() => downloadReceipt(period)}
                               />
                             ) : (
                               <Button
@@ -572,3 +601,10 @@ const Term = ({ teamId, team, members }) => {
 };
 
 export default Term;
+
+
+
+
+
+
+

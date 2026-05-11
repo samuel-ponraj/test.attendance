@@ -1,6 +1,6 @@
 'use client'
 import TeamCardLayout from "@/components/admin/team-card"
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {  useTeams }  from '../../context/TeamsContext'
 import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,6 @@ import AddTeamModal from "@/components/admin/addTeamModal";
 import {
   Card,
   CardContent,
-  CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Plus } from "lucide-react";

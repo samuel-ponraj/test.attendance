@@ -1,30 +1,78 @@
 "use client";
 
-import { useState } from "react";
-import { Users, Trash2, ArrowRight } from "lucide-react";
+import { useMemo, useState } from "react";
+import { MoreVertical, Search, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-} from "@/components/ui/card";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { auth, app } from "@/lib/firebase";
 import { httpsCallable, getFunctions } from "firebase/functions";
+
+const getBillingKey = (team) => {
+  const billingType = team?.billingConfig?.billingType;
+  const billingCycle = team?.billingConfig?.billingCycle;
+
+  if (billingType === "salary") return "salary";
+  if (!billingType || !billingCycle) return "not_configured";
+
+  return `${billingType}_${billingCycle}`;
+};
+
+const getBillingLabel = (team) => {
+  const billingType = team?.billingConfig?.billingType;
+
+  if (billingType === "salary") return "Salary";
+  if (billingType === "fixed") return "Fixed Billing";
+  if (billingType === "attendanceBased") return "Attendance Based";
+
+  return "Not Configured";
+};
+
+const formatDate = (value) => {
+  if (!value) return "-";
+
+  const date = value?.seconds
+    ? new Date(value.seconds * 1000)
+    : new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
 
 const TeamCardLayout = ({ teams }) => {
   const functions = getFunctions(app);
@@ -34,20 +82,59 @@ const TeamCardLayout = ({ teams }) => {
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
+  const [search, setSearch] = useState("");
+  const [billingFilter, setBillingFilter] = useState("all");
 
   const closeAllDialogs = () => {
     setSelectedTeamId(null);
     setOtpDialogOpen(false);
     setOtp("");
-    setOtpSent(false);
   };
 
-  if (!teams || teams.length === 0) return null;
+  const sortedTeams = useMemo(() => {
+    return [...(teams || [])].sort((a, b) => {
+      const aTime = a.createdAt?.seconds
+        ? a.createdAt.seconds * 1000
+        : new Date(a.createdAt || 0).getTime();
+      const bTime = b.createdAt?.seconds
+        ? b.createdAt.seconds * 1000
+        : new Date(b.createdAt || 0).getTime();
 
-  const sortedTeams = [...teams].sort(
-    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-  );
+      return bTime - aTime;
+    });
+  }, [teams]);
+
+  const billingOptions = [
+    ["all", "All Billing Types"],
+    ["salary", "Salary"],
+    ["fixed", "Fixed Billing"],
+    ["attendanceBased", "Attendance Based"],
+    ["not_configured", "Not Configured"],
+  ];
+
+  const filteredTeams = sortedTeams.filter((team) => {
+    const query = search.trim().toLowerCase();
+    const matchesSearch = query
+      ? `${team.name || ""} ${team.description || ""}`
+          .toLowerCase()
+          .includes(query)
+      : true;
+
+    const matchesBilling =
+      billingFilter === "all"
+        ? true
+        : billingFilter === "fixed"
+          ? team?.billingConfig?.billingType === "fixed"
+          : billingFilter === "attendanceBased"
+            ? team?.billingConfig?.billingType === "attendanceBased"
+            : billingFilter === "salary"
+              ? team?.billingConfig?.billingType === "salary"
+              : billingFilter === "not_configured"
+                ? !team?.billingConfig?.billingType
+                : false;
+
+    return matchesSearch && matchesBilling;
+  });
 
   const handleSendOtp = async () => {
     if (!auth.currentUser || !selectedTeamId) return;
@@ -68,18 +155,17 @@ const TeamCardLayout = ({ teams }) => {
 
       if (result.success) {
         toast.success("OTP sent!");
-        setOtpSent(true);
-        setOtpDialogOpen(true); // Now we move to the OTP input stage
+        setOtpDialogOpen(true);
       } else {
         toast.error(result.error);
       }
     } catch (error) {
+      console.error("Send OTP error:", error);
       toast.error("Failed to send OTP");
     } finally {
       setLoading(false);
     }
   };
-  
 
   const handleDeleteTeam = async () => {
     if (!auth.currentUser || !selectedTeamId || !otp) return;
@@ -95,10 +181,7 @@ const TeamCardLayout = ({ teams }) => {
 
       if (result.data.success) {
         toast.success("Team deleted successfully");
-        setOtpDialogOpen(false);
-        // setSelectedTeamId(null); // Removed per your request
-        setOtp("");
-        setOtpSent(false);
+        closeAllDialogs();
         router.refresh();
       }
     } catch (error) {
@@ -109,78 +192,173 @@ const TeamCardLayout = ({ teams }) => {
     }
   };
 
+  if (!teams || teams.length === 0) return null;
+
   return (
     <>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6 px-6">
-        {sortedTeams.map((team) => {
-          const totalPresent = team.attendanceSummary?.present || 0;
-          const totalAbsent = team.attendanceSummary?.absent || 0;
+      <div className="space-y-4 px-4 lg:px-6">
+        <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_240px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search teams..."
+              className="pl-9"
+            />
+          </div>
 
-          return (
-            <Card
-              key={team.id}
-              className="group bg-card shadow-xs hover:shadow-md transition-all duration-300 gap-4 pb-4"
-            >
-              <CardHeader className="relative">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-primary" />
-                  </div>
+          <Select value={billingFilter} onValueChange={setBillingFilter}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Billing Types" />
+            </SelectTrigger>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // FIX: Only set the ID. The dialog open logic is handled by the ID presence.
-                      setSelectedTeamId(team.id);
-                    }}
+            <SelectContent>
+              {billingOptions.map(([key, label]) => (
+                <SelectItem key={key} value={key}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead className="px-4">Team</TableHead>
+                <TableHead>Billing Type</TableHead>
+                <TableHead>Members</TableHead>
+                <TableHead>Today&apos;s Attendance</TableHead>
+                <TableHead>Payroll Status</TableHead>
+                <TableHead>Created On</TableHead>
+                <TableHead className="text-right pr-4">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {filteredTeams.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="h-24 text-center text-muted-foreground"
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                    No teams found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredTeams.map((team) => {
+                  const present = Number(team.attendanceSummary?.present || 0);
+                  const absent = Number(team.attendanceSummary?.absent || 0);
+                  const halfday = Number(team.attendanceSummary?.halfday || 0);
+                  const totalMarked = present + absent + halfday;
+                  const attendanceRate =
+                    totalMarked > 0
+                      ? Math.round((present / totalMarked) * 100)
+                      : 0;
+                  const payrollDue = Boolean(team.billing?.totalBalance > 0);
 
-                <CardTitle>{team.name}</CardTitle>
-                <CardDescription>{team.description}</CardDescription>
-              </CardHeader>
+                  return (
+                    <TableRow
+                      key={team.id}
+                      onClick={() => router.push(`/admin/teams/${team.id}`)}
+                      className="cursor-pointer hover:bg-muted/50"
+                    >
+                      <TableCell className="px-4 ">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <Users className="h-4 w-4" />
+                          </div>
 
-              <div className="px-6 pb-2 flex gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-success" />
-                  <span className="text-sm text-muted-foreground">
-                    {totalPresent} Present
-                  </span>
-                </div>
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{team.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {team.description || "Manage team members"}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
 
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-destructive" />
-                  <span className="text-sm text-muted-foreground">
-                    {totalAbsent} Absent
-                  </span>
-                </div>
-              </div>
+                      <TableCell>
+                        <span className="inline-flex rounded-md border px-2 py-1 text-xs font-medium border-muted bg-muted/40 text-muted-foreground min-w-[140px] justify-center">
+                          {getBillingLabel(team)}
+                        </span>
+                      </TableCell>
 
-              <CardFooter className="flex items-center justify-between border-t !px-6 !py-4 !pb-0">
-                <span className="text-sm text-muted-foreground">
-                  {team.totalMembers} members
-                </span>
+                      <TableCell>{Number(team.totalMembers || 0)}</TableCell>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push(`/admin/teams/${team.id}`)}
-                >
-                  View Team
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              </CardFooter>
-            </Card>
-          );
-        })}
+                      <TableCell>
+                        <div className="space-y-2 min-w-[170px]">
+                          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                              {present} Present
+                            </span>
+
+                            <span className="flex items-center gap-1">
+                              <span className="h-2 w-2 rounded-full bg-red-500" />
+                              {absent} Absent
+                            </span>
+
+                            <span className="flex items-center gap-1">
+                              <span className="h-2 w-2 rounded-full bg-orange-500" />
+                              {halfday} Halfday
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <span
+                          className={`inline-flex rounded-md border px-2 py-1 text-xs font-medium ${
+                            payrollDue
+                              ? "border-amber-500/30 bg-amber-500/10 text-amber-600"
+                              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                          }`}
+                        >
+                          {payrollDue ? "Payroll Due" : "Up to date"}
+                        </span>
+                      </TableCell>
+
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(team.createdAt)}
+                      </TableCell>
+
+                      <TableCell className="pr-4">
+                        <div className="flex justify-end gap-2">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => setSelectedTeamId(team.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete Team
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          Showing {filteredTeams.length} of {teams.length} teams
+        </p>
       </div>
-      
-      {/* Confirm Delete Dialog (Step 1) */}
+
       <AlertDialog
         open={!!selectedTeamId && !otpDialogOpen}
         onOpenChange={(open) => {
@@ -196,11 +374,17 @@ const TeamCardLayout = ({ teams }) => {
           </AlertDialogHeader>
 
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={closeAllDialogs}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
             <Button
               onClick={handleSendOtp}
               disabled={loading}
-              className="bg-destructive text-white"
+              variant="destructive"
             >
               {loading ? "Sending OTP..." : "Send OTP"}
             </Button>
@@ -208,7 +392,6 @@ const TeamCardLayout = ({ teams }) => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* OTP Dialog (Step 2) */}
       <AlertDialog
         open={otpDialogOpen}
         onOpenChange={(open) => {
@@ -226,7 +409,7 @@ const TeamCardLayout = ({ teams }) => {
           <Input
             placeholder="Enter OTP"
             value={otp}
-            onChange={(e) => setOtp(e.target.value)}
+            onChange={(event) => setOtp(event.target.value)}
             maxLength={6}
           />
 
@@ -241,7 +424,7 @@ const TeamCardLayout = ({ teams }) => {
             <Button
               onClick={handleDeleteTeam}
               disabled={loading || otp.length !== 6}
-              className="bg-destructive text-white"
+              variant="destructive"
             >
               {loading ? "Deleting..." : "Confirm Delete"}
             </Button>

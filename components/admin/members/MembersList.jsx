@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -26,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getFunctions, httpsCallable } from "firebase/functions";
 import Link from "next/link";
 
-const MembersList = () => {
+const MembersList = ({setModalOpen}) => {
   const { slug } = useParams(); 
   const [team, setTeam] = useState(null);
   const [members, setMembers] = useState([]);
@@ -221,15 +221,13 @@ const confirmDeleteMember = async () => {
       </Button>
     )}
 
-    <Button
-      size="sm"
-      variant="outline"
-      onClick={handleExportPDF}
-      disabled={members.length === 0}
-      className="flex-1 md:flex-none h-9"
-    >
-      Export PDF
-    </Button>
+        <Button
+          onClick={() => {
+            setModalOpen(true);
+          }}
+        >
+          <UserPlus /> Add Member
+          </Button>
 
   </div>
 

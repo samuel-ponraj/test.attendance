@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Users, CalendarIcon, CheckCircle, XCircle, UserPlus, Clock, CalendarDays, UserRoundCheck, IndianRupee } from "lucide-react";
+import { ArrowLeft, Users, CalendarIcon, CheckCircle, XCircle, UserPlus, Clock, CalendarDays, UserRoundCheck, IndianRupee, ReceiptIndianRupee } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, serverTimestamp, onSnapshot  } from "firebase/firestore";
 import AddMemberModal from "../addMemberModal";
@@ -284,19 +284,17 @@ const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
       {/* Back & Add */}
       <div className="flex justify-between items-center mb-4 sm:mb-4">
         <button
-          onClick={() => router.push("/admin")}
+          onClick={() => router.back()}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
 
-        <Button
-          onClick={() => {
-            setModalOpen(true);
-          }}
-        >
-          <UserPlus /> Add Member
+        <Link href={`/admin/teams/${team.id}/billing`}>
+          <Button>
+            <ReceiptIndianRupee /> Payments
           </Button>
+        </Link>
         </div>
 
       {/* Team Info */}
@@ -391,13 +389,12 @@ const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
                 team={team}
                 updateAttendance={updateAttendance}
                 handleMemberRemoved={handleMemberRemoved}
-                setModalOpen={setModalOpen}
               />
             </TabsContent>
 
             {/* SCHEDULE TAB */}
             <TabsContent value="members">
-              <MembersList />
+              <MembersList setModalOpen={setModalOpen}/>
               {/* <Schedule teamId={team.id}/> */}
             </TabsContent>
 

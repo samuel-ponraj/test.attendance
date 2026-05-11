@@ -5,9 +5,9 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ModeToggle } from "./modeToggle"
 import { Button } from "./ui/button"
-import { Bell, Plus } from "lucide-react"
+import { Plus } from "lucide-react"
 import { useTeams } from "@/app/context/TeamsContext"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import AddTeamModal from "./admin/addTeamModal"
 import AddFormModal from "./admin/forms/customForms/AddFormModal"
 import {
@@ -20,7 +20,6 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import Notifications from "@/lib/Notifications"
 
 
@@ -34,6 +33,13 @@ const ROUTE_CONFIG: Record<
   }[]
 > = {
   admin: [
+    {
+      path: "/admin/teams/",
+      title: "Payments",
+      description: "Manage fees and member accounts",
+      match: (pathname: string) =>
+        /^\/admin\/teams\/[^/]+\/billing(\/.*)?$/.test(pathname),
+    },
     {
       path: "/admin/teams/",
       title: "Member Profile",
@@ -53,7 +59,7 @@ const ROUTE_CONFIG: Record<
     },
     {
       path: "/admin/billing",
-      title: "Payment Records",
+      title: "Payments",
       description: "Manage fees and member accounts",
     },
     {
@@ -113,7 +119,6 @@ const DEFAULT_ROUTE = {
 export function SiteHeader() {
   const pathname = usePathname()
   const normalizedPath = pathname?.replace(/\/$/, "")
-  const router = useRouter()
 
   // ✅ Define role FIRST
   const role = normalizedPath?.startsWith("/admin")

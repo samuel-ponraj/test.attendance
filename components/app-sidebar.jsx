@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  BarChart3,
   UsersRound,
   History,
   Settings,
@@ -32,7 +31,6 @@ import {
 import { NavUserAdmin } from "./nav-user-admin";
 import { NavUserMember } from "./nav-user-member";
 import { useTheme } from "next-themes";
-import { useTeams } from "@/app/context/TeamsContext";
 
 /* ---------------- NAV CONFIG ---------------- */
 
@@ -43,7 +41,7 @@ const navConfig = {
       { title: "Teams", url: "/admin/teams", icon: Users },
       { title: "Activity Logs", url: "/admin/history", icon: History },
       { title: "Custom Forms", url: "/admin/custom-forms", icon: Form  },
-      { title: "Billing / Payroll", url: "/admin/billing", icon: ReceiptIndianRupee },
+      { title: "Payments", url: "/admin/billing", icon: ReceiptIndianRupee },
     ],
     settings: [{ title: "Account", url: "/admin/account", icon: Settings }],
   },
@@ -62,7 +60,6 @@ const navConfig = {
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { teams } = useTeams();
   const { state, setOpenMobile } = useSidebar();
   const { theme } = useTheme();
 
@@ -94,8 +91,6 @@ export function AppSidebar() {
   const closeSidebar = () => {
     setOpenMobile(false);
   };
-
-  const isTeamsRoute = pathname.startsWith("/admin/teams");
 
   return (
     <Sidebar collapsible="icon">
@@ -150,37 +145,6 @@ export function AppSidebar() {
                       </Link>
                     </SidebarMenuButton>
 
-                    {/* -------- Teams Submenu (Admin Only) -------- */}
-                    {role === "admin" &&
-                      item.title === "Teams" &&
-                      isTeamsRoute &&
-                      !isCollapsed && (
-                        <div className="ml-7 mt-1 space-y-1">
-                          {teams?.length > 0 ? (
-                            teams.map((team) => (
-                              <Link
-                                key={team.id}
-                                href={`/admin/teams/${team.id}`}
-                                onClick={closeSidebar}
-                                className={`flex items-center gap-2 truncate rounded-md px-3 py-1.5 text-sm transition
-                                  ${
-                                    pathname === `/admin/teams/${team.id}`
-                                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                                      : "text-muted-foreground hover:bg-sidebar-accent/60"
-                                  }
-                                `}
-                              >
-                                <UsersRound className="h-3.5 w-3.5 shrink-0" />
-                                <span className="truncate">{team.name}</span>
-                              </Link>
-                            ))
-                          ) : (
-                            <span className="px-3 py-1.5 text-sm text-muted-foreground">
-                              No teams
-                            </span>
-                          )}
-                        </div>
-                      )}
                   </SidebarMenuItem>
                 );
               })}

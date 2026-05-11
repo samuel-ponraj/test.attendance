@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   collection,
+  doc,
+  getDoc,
   query,
   where,
   onSnapshot,
@@ -11,7 +14,6 @@ import {
 import { onAuthStateChanged } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
 
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -20,17 +22,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { Search } from "lucide-react";
 import RecordPaymentModal from "./RecordPaymentModal";
 import Fixed from "./billingType/Fixed";
 import AttendanceBased from "./billingType/AttendanceBased";
 import { Label } from "@/components/ui/label";
 import Salary from "./billingType/salary/Salary";
 
-const PaymentRecords = () => {
+const PaymentRecords = ({ teamId }) => {
+  const searchParams = useSearchParams();
+  const initialMemberId = searchParams.get("memberId") || "";
+
   const [adminUserId, setAdminUserId] = useState(null);
   const [teams, setTeams] = useState([]);
-  const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [selectedTeamId, setSelectedTeamId] = useState(teamId || "");
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,16 +45,40 @@ const PaymentRecords = () => {
   const [selectedBillingPeriods, setSelectedBillingPeriods] = useState([]);
 
   useEffect(() => {
+    if (teamId) {
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) setAdminUserId(user.uid);
       else setAdminUserId(null);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [teamId]);
 
   useEffect(() => {
     const fetchTeams = async () => {
+      if (teamId) {
+        const teamSnap = await getDoc(doc(db, "teams", teamId));
+
+        if (teamSnap.exists()) {
+          setTeams([
+            {
+              id: teamSnap.id,
+              ...teamSnap.data(),
+            },
+          ]);
+          setSelectedTeamId(teamSnap.id);
+        } else {
+          setTeams([]);
+          setSelectedTeamId("");
+        }
+
+        setLoading(false);
+        return;
+      }
+
       if (!adminUserId) return;
 
       const q = query(
@@ -74,7 +102,7 @@ const PaymentRecords = () => {
     };
 
     fetchTeams();
-  }, [adminUserId]);
+  }, [adminUserId, teamId]);
 
   useEffect(() => {
     if (!selectedTeamId || selectedTeamId === "none") return;
@@ -109,23 +137,25 @@ const PaymentRecords = () => {
   return (
     <div className="space-y-6 px-4 md:px-6">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-2 w-full md:w-[300px]">
-          <Label>Select Team</Label>
+        {!teamId && (
+          <div className="space-y-2 w-full md:w-[300px]">
+            <Label>Select Team</Label>
 
-          <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select Team" />
-            </SelectTrigger>
+            <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select Team" />
+              </SelectTrigger>
 
-            <SelectContent>
-              {teams.map((team) => (
-                <SelectItem key={team.id} value={team.id}>
-                  {team.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+              <SelectContent>
+                {teams.map((team) => (
+                  <SelectItem key={team.id} value={team.id}>
+                    {team.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {billingType === "attendanceBased" ? (
@@ -133,6 +163,7 @@ const PaymentRecords = () => {
             teamId={selectedTeamId}
             team={currentTeam}
             members={filteredMembers}
+            initialMemberId={initialMemberId}
             onRecordPayment={(member, attendanceSummary, billingPeriods) => {
               setSelectedMember(member);
               setSelectedAttendanceSummary(attendanceSummary);
@@ -145,12 +176,14 @@ const PaymentRecords = () => {
             teamId={selectedTeamId}
             team={currentTeam}
             members={filteredMembers}
+            initialMemberId={initialMemberId}
           />
         ) : (
           <Fixed
             teamId={selectedTeamId}
             team={currentTeam}
             members={filteredMembers}
+            initialMemberId={initialMemberId}
             onRecordPayment={(member) => {
               setSelectedMember(member);
               setSelectedAttendanceSummary(null);

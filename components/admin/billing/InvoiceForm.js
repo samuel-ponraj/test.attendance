@@ -2,106 +2,217 @@
 
 import React, { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  increment,
+  serverTimestamp,
+  setDoc,
+  Timestamp,
+  updateDoc,
+} from "firebase/firestore";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import jsPDF from "jspdf";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ArrowLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
 const InvoiceForm = ({ teamId, memberId, period }) => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const periodId = searchParams.get("periodId");
+
   const [member, setMember] = useState(null);
   const [team, setTeam] = useState(null);
+  const [billingPeriod, setBillingPeriod] = useState(null);
 
   const [amount, setAmount] = useState(0);
-  const [taxPercent, setTaxPercent] = useState(0);
   const [discountPercent, setDiscountPercent] = useState(0);
+  const [paymentMode, setPaymentMode] = useState("cash");
+  const [saving, setSaving] = useState(false);
 
-  // Calculations
-  const discountAmount = (amount * discountPercent) / 100;
-  const taxableAmount = amount - discountAmount;
-  const taxAmount = (taxableAmount * taxPercent) / 100;
-  const totalAmount = taxableAmount + taxAmount;
-  const router = useRouter();
+  const discountAmount = (Number(amount || 0) * Number(discountPercent || 0)) / 100;
+  const totalAmount = Math.max(Number(amount || 0) - discountAmount, 0);
+  const periodLabel = billingPeriod?.periodLabel || period || "";
 
   useEffect(() => {
     const fetchData = async () => {
       if (!teamId || !memberId) return;
 
       const teamSnap = await getDoc(doc(db, "teams", teamId));
-      const memberSnap = await getDoc(doc(db, "teams", teamId, "members", memberId));
+      const memberSnap = await getDoc(
+        doc(db, "teams", teamId, "members", memberId)
+      );
 
       if (teamSnap.exists()) {
         const teamData = teamSnap.data();
         setTeam(teamData);
 
         const baseAmount = teamData.billingConfig?.baseAmount || 0;
-        const divisions = teamData.billingConfig?.termDetails?.divisionsPerYear || 3;
+        const divisions =
+          teamData.billingConfig?.termDetails?.divisionsPerYear || 3;
         setAmount(Math.floor(baseAmount / divisions));
       }
 
       if (memberSnap.exists()) {
         setMember(memberSnap.data());
       }
+
+      if (periodId) {
+        const periodSnap = await getDoc(
+          doc(db, "teams", teamId, "members", memberId, "billingPeriods", periodId)
+        );
+
+        if (periodSnap.exists()) {
+          const periodData = {
+            id: periodSnap.id,
+            ...periodSnap.data(),
+          };
+          const effectiveBalance = Math.max(
+            Number(periodData.amount || 0) -
+              Number(periodData.paid || 0) -
+              Number(periodData.discountAmount || 0),
+            0
+          );
+
+          setBillingPeriod(periodData);
+          setAmount(effectiveBalance);
+          setPaymentMode(periodData.paymentMode || "cash");
+        }
+      }
     };
 
     fetchData();
-  }, [teamId, memberId]);
+  }, [teamId, memberId, periodId]);
 
   const handleSave = async () => {
-    await addDoc(
-      collection(db, "teams", teamId, "members", memberId, "invoices"),
-      {
-        periodLabel: period,
-        amount,
-        discountPercent,
-        discountAmount,
-        taxPercent,
-        taxAmount,
-        totalAmount,
-        memberName: `${member.firstName} ${member.lastName}`,
-        createdAt: serverTimestamp(),
+    if (!member || !teamId || !memberId) return;
+
+    setSaving(true);
+
+    try {
+      const payableAmount = Number(totalAmount || 0);
+
+      if (periodId && billingPeriod) {
+        const previousPaid = Number(billingPeriod.paid || 0);
+        const previousDiscount = Number(billingPeriod.discountAmount || 0);
+        const currentDiscount = Number(discountAmount || 0);
+        const newDiscount = previousDiscount + currentDiscount;
+        const periodAmount = Number(billingPeriod.amount || 0);
+        const newPaid = previousPaid + payableAmount;
+        const newBalance = Math.max(
+          periodAmount - newPaid - newDiscount,
+          0
+        );
+        const newStatus = newBalance <= 0 ? "settled" : "partial";
+
+        await updateDoc(
+          doc(db, "teams", teamId, "members", memberId, "billingPeriods", periodId),
+          {
+            paid: newPaid,
+            balance: newBalance,
+            status: newStatus,
+            lastPaymentAmount: payableAmount,
+            lastPaymentBaseAmount: Number(amount || 0),
+            discountPercent: Number(discountPercent || 0),
+            discountAmount: newDiscount,
+            totalAmount: payableAmount,
+            paymentMode,
+            lastPaymentDate: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+          }
+        );
+
+        await addDoc(collection(db, "teams", teamId, "payments"), {
+          memberId,
+          memberName: `${member.firstName || ""} ${member.lastName || ""}`.trim(),
+          periodId,
+          period: periodLabel,
+          periodLabel,
+          billingCycle: billingPeriod.billingCycle,
+          paymentMode,
+          amount: payableAmount,
+          status: "success",
+          createdAt: Timestamp.now(),
+        });
+
+        await setDoc(
+          doc(db, "teams", teamId, "members", memberId),
+          {
+            billing: {
+              totalPaid: increment(payableAmount),
+              lastPaymentDate: Timestamp.now(),
+            },
+          },
+          { merge: true }
+        );
+
+        setBillingPeriod({
+          ...billingPeriod,
+          paid: newPaid,
+          balance: newBalance,
+          status: newStatus,
+          lastPaymentAmount: payableAmount,
+          lastPaymentBaseAmount: Number(amount || 0),
+          discountPercent: Number(discountPercent || 0),
+          discountAmount: newDiscount,
+          totalAmount: payableAmount,
+          paymentMode,
+        });
       }
-    );
 
-    alert("Invoice Saved ✅");
+      await addDoc(
+        collection(db, "teams", teamId, "members", memberId, "invoices"),
+        {
+          periodId: periodId || null,
+          periodLabel,
+          amount: Number(amount || 0),
+          discountPercent: Number(discountPercent || 0),
+          discountAmount,
+          totalAmount,
+          paymentMode,
+          memberName: `${member.firstName || ""} ${member.lastName || ""}`.trim(),
+          createdAt: serverTimestamp(),
+        }
+      );
+
+      toast.success("Payment saved successfully");
+      router.push(`/admin/teams/${teamId}/billing?memberId=${memberId}`);
+    } catch (error) {
+      console.error("Error saving payment:", error);
+      toast.error("Failed to save payment");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDownload = () => {
-    const doc = new jsPDF();
-
-    doc.setFontSize(18);
-    doc.text("INVOICE", 150, 20);
-
-    doc.setFontSize(12);
-    doc.text(`Member: ${member.firstName} ${member.lastName}`, 20, 40);
-    doc.text(`Period: ${period}`, 20, 50);
-
-    doc.text(`Amount: ₹${amount}`, 20, 70);
-    doc.text(`Discount: ${discountPercent}% (-₹${discountAmount.toFixed(2)})`, 20, 80);
-    doc.text(`Tax: ${taxPercent}% (+₹${taxAmount.toFixed(2)})`, 20, 90);
-
-    doc.setFontSize(14);
-    doc.text(`Total: ₹${totalAmount.toFixed(2)}`, 20, 110);
-
-    doc.save(`invoice-${member.firstName}.pdf`);
-  };
-
-  if (!member || !team) return <div className="text-center py-10">Loading...</div>;
+  if (!member || !team) {
+    return <div className="text-center py-10">Loading...</div>;
+  }
 
   return (
-    <div className="w-full flex flex-col items-center justify-center px-4 space-y-2">
+    <div className="w-full flex flex-col items-center justify-center px-4 pt-4 space-y-2">
+      <div className="w-full max-w-[600px] flex justify-start">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push(`/admin/teams/${teamId}/billing?memberId=${memberId}`)}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-      <div className="w-full max-w-[1000px] bg-card rounded-2xl shadow p-6 md:p-8 space-y-6">
-        {/* Header */}
+      </div>
+
+      <div className="w-full max-w-[600px] bg-card rounded-2xl shadow p-6 md:p-8 space-y-6">
         <h2 className="text-2xl font-bold text-center">Create Invoice</h2>
 
-        {/* Basic Info */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="text-sm font-medium mb-1 block">Member</label>
@@ -110,14 +221,13 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
 
           <div>
             <label className="text-sm font-medium mb-1 block">Period</label>
-            <Input value={period} disabled />
+            <Input value={periodLabel} disabled />
           </div>
         </div>
 
-        {/* Financial Inputs */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium mb-1 block">Amount (₹)</label>
+            <label className="text-sm font-medium mb-1 block">Amount (Rs.)</label>
             <Input
               type="number"
               value={amount}
@@ -129,64 +239,66 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
             <label className="text-sm font-medium mb-1 block">Discount (%)</label>
             <Input
               type="number"
+              min="0"
               value={discountPercent}
-              onChange={(e) => setDiscountPercent(Number(e.target.value))}
+              onChange={(e) =>
+                setDiscountPercent(Math.max(Number(e.target.value), 0))
+              }
             />
           </div>
 
-          <div>
-            <label className="text-sm font-medium mb-1 block">Tax (%)</label>
-            <Input
-              type="number"
-              value={taxPercent}
-              onChange={(e) => setTaxPercent(Number(e.target.value))}
-            />
+          <div className="md:col-span-2">
+            <label className="text-sm font-medium mb-1 block">Payment Mode</label>
+            <Select
+              value={paymentMode}
+              onValueChange={setPaymentMode}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select payment mode" />
+              </SelectTrigger>
+
+              <SelectContent>
+                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="upi">UPI</SelectItem>
+                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                <SelectItem value="card">Card</SelectItem>
+                <SelectItem value="cheque">Cheque</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        {/* Summary Card */}
         <div className="bg-muted/40 rounded-xl p-4 space-y-2 text-sm">
           <div className="flex justify-between">
             <span>Base Amount</span>
-            <span>₹{amount.toFixed(2)}</span>
+            <span>Rs. {Number(amount || 0).toFixed(2)}</span>
           </div>
 
           <div className="flex justify-between text-red-500">
             <span>Discount</span>
-            <span>- ₹{discountAmount.toFixed(2)}</span>
+            <span>- Rs. {discountAmount.toFixed(2)}</span>
           </div>
 
           <div className="flex justify-between">
-            <span>Taxable Amount</span>
-            <span>₹{taxableAmount.toFixed(2)}</span>
-          </div>
-
-          <div className="flex justify-between text-blue-500">
-            <span>Tax</span>
-            <span>+ ₹{taxAmount.toFixed(2)}</span>
+            <span>Payment Mode</span>
+            <span className="capitalize">{paymentMode.replace("_", " ")}</span>
           </div>
 
           <div className="border-t pt-2 flex justify-between font-bold text-lg">
             <span>Total</span>
-            <span>₹{totalAmount.toFixed(2)}</span>
+            <span>Rs. {totalAmount.toFixed(2)}</span>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 w-full">
-          <Button className="w-full sm:w-1/2" onClick={handleSave}>
-                Save Invoice
-                </Button>
-
-                <Button
-                variant="outline"
-                className="w-full sm:w-1/2"
-                onClick={handleDownload}
-                >
-                Download PDF
-                </Button>
+        <div className="flex flex-col gap-3 w-full">
+          <Button
+            className="w-full"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? "Saving..." : "Save Payment"}
+          </Button>
         </div>
-
       </div>
     </div>
   );

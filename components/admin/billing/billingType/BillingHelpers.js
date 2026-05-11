@@ -211,3 +211,11 @@ export const getStatusText = (status) => {
 
 	return <span className="text-red-600 font-semibold">Pending</span>;
 };
+
+export const getEffectiveBalance = (period) => {
+	const amount = Number(period?.amount || 0);
+	const paid = Number(period?.paid || 0);
+	const discount = Number(period?.discountAmount || 0);
+
+	return Math.max(amount - paid - discount, 0);
+};

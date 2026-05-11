@@ -41,6 +41,7 @@ import {
 
 import { PiFilePdf } from "react-icons/pi";
 import { User, User2 } from "lucide-react";
+import { generateReceipt } from "../../GenerateReceipt";
 
 import {
   formatCurrency,
@@ -52,12 +53,13 @@ import {
   ensureBillingPeriods,
   recordFixedPayment,
   getStatusText,
+  getEffectiveBalance,
 } from "../BillingHelpers";
 
-const Monthly = ({ teamId, team, members }) => {
+const Monthly = ({ teamId, team, members, initialMemberId }) => {
   const router = useRouter();
 
-  const [selectedMemberId, setSelectedMemberId] = useState("");
+  const [selectedMemberId, setSelectedMemberId] = useState(initialMemberId || "");
   const [filterAttendance, setFilterAttendance] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterFromDate, setFilterFromDate] = useState("");
@@ -311,16 +313,34 @@ const Monthly = ({ teamId, team, members }) => {
   );
 
   const totalBalance = payablePeriods.reduce(
-    (acc, period) => acc + Number(period.balance || 0),
+    (acc, period) => acc + getEffectiveBalance(period),
     0,
   );
 
   const openPaymentDialog = (period) => {
     if (period.status === "leave") return;
 
-    setSelectedPeriod(period);
-    setPaymentAmount(period.balance || "");
-    setIsPaymentOpen(true);
+    if (!selectedMember) return;
+
+    router.push(
+      `/admin/teams/${teamId}/billing/create-invoice?memberId=${selectedMember.id}&periodId=${period.id}`,
+    );
+  };
+
+  const downloadReceipt = async (period) => {
+    if (!selectedMember) return;
+
+    try {
+      await generateReceipt({
+        team,
+        member: selectedMember,
+        period,
+      });
+      toast.success("Receipt downloaded successfully");
+    } catch (error) {
+      console.error("Error downloading receipt:", error);
+      toast.error("Failed to download receipt");
+    }
   };
 
   const recordPayment = async () => {
@@ -551,6 +571,7 @@ const Monthly = ({ teamId, team, members }) => {
                   <TableHead className="text-center border-r">Absent</TableHead>
                   <TableHead className="text-center border-r">Amount</TableHead>
                   <TableHead className="text-center border-r">Paid</TableHead>
+                  <TableHead className="text-center border-r">Discount</TableHead>
                   <TableHead className="text-center border-r">
                     Balance
                   </TableHead>
@@ -563,7 +584,7 @@ const Monthly = ({ teamId, team, members }) => {
                 {filteredPeriods.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={13}
+                      colSpan={14}
                       className="text-center py-8 text-muted-foreground"
                     >
                       No monthly billing records found.
@@ -609,24 +630,28 @@ const Monthly = ({ teamId, team, members }) => {
 
                       <TableCell className="text-center border-r">
                         {period.status === "leave"
-                          ? "—"
+                          ? "-"
                           : formatCurrency(period.amount)}
                       </TableCell>
 
                       <TableCell className="text-center border-r">
                         {period.status === "leave"
-                          ? "—"
+                          ? "-"
                           : Number(period.paid || 0) > 0
                             ? formatCurrency(period.paid)
                             : "—"}
                       </TableCell>
 
+                      <TableCell className="text-center border-r">
+                        {period.status === "holiday" || period.isHoliday || period.status === "leave" ? "-" : formatCurrency(period.discountAmount || 0)}
+                      </TableCell>
+
                       <TableCell className="text-center border-r font-semibold">
                         {period.status === "leave"
-                          ? "Leave"
-                          : Number(period.balance || 0) > 0
-                            ? formatCurrency(period.balance)
-                            : "Settled"}
+                          ? "-"
+                          : getEffectiveBalance(period) > 0
+                            ? formatCurrency(getEffectiveBalance(period))
+                            : formatCurrency(0)}
                       </TableCell>
 
                       <TableCell className="text-center border-r">
@@ -635,7 +660,7 @@ const Monthly = ({ teamId, team, members }) => {
                             Leave
                           </span>
                         ) : (
-                          getStatusText(period.status)
+                          getStatusText(getEffectiveBalance(period) <= 0 ? "settled" : period.status)
                         )}
                       </TableCell>
 
@@ -644,14 +669,10 @@ const Monthly = ({ teamId, team, members }) => {
                           <span className="text-sm text-muted-foreground">
                             Not Applicable
                           </span>
-                        ) : period.status === "settled" ? (
+                        ) : (period.status === "settled" || getEffectiveBalance(period) <= 0) ? (
                           <PiFilePdf
                             className="cursor-pointer text-2xl text-orange-500 mx-auto"
-                            onClick={() =>
-                              router.push(
-                                `/admin/billing/create-invoice?teamId=${teamId}&memberId=${selectedMember.id}&periodId=${period.id}`,
-                              )
-                            }
+                            onClick={() => downloadReceipt(period)}
                           />
                         ) : (
                           <Button
@@ -722,3 +743,10 @@ const Monthly = ({ teamId, team, members }) => {
 };
 
 export default Monthly;
+
+
+
+
+
+
+
