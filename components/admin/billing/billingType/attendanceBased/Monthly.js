@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { PiFilePdf } from "react-icons/pi";
-import { User, User2 } from "lucide-react";
+import { ArrowLeft, User, User2 } from "lucide-react";
 import { generateReceipt } from "../../GenerateReceipt";
 
 import {
@@ -375,6 +375,14 @@ const Monthly = ({ teamId, team, members, initialMemberId }) => {
 
   return (
     <div className="space-y-5">
+    <div className="w-full max-w-[600px] flex justify-start">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+      </div>
       <Card>
         <CardContent>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">

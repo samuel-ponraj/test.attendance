@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { PiFilePdf } from "react-icons/pi";
-import { User, User2 } from "lucide-react";
+import { ArrowLeft, User, User2 } from "lucide-react";
 import { generateReceipt } from "../../GenerateReceipt";
 
 import {
