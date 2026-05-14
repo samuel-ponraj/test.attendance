@@ -2,9 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -15,6 +15,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { generatePayslip as generateSalaryPayslip } from "@/lib/GeneratePayslip";
 
 import {
   Table,
@@ -53,8 +54,6 @@ import { User } from "lucide-react";
 import BillingContentLoader from "../BillingContentLoader";
 
 const Salary = ({ teamId, team, members }) => {
-  const router = useRouter();
-
   const [selectedMemberId, setSelectedMemberId] = useState("");
   const [salarySlips, setSalarySlips] = useState([]);
   const [salarySlipsLoading, setSalarySlipsLoading] = useState(false);
@@ -70,6 +69,15 @@ const Salary = ({ teamId, team, members }) => {
   const [filterToDate, setFilterToDate] = useState("");
   const [filterAttendance, setFilterAttendance] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [salaryPaymentDetails, setSalaryPaymentDetails] = useState({
+    basicPay: 0,
+    bonus: 0,
+    grossSalary: 0,
+    deductions: 0,
+    netSalary: 0,
+    amountPaid: 0,
+    notes: "",
+  });
 
   const selectedMember = useMemo(() => {
     if (!selectedMemberId || selectedMemberId === "placeholder") return null;
@@ -95,11 +103,11 @@ const Salary = ({ teamId, team, members }) => {
   };
 
   const formatCurrency = (value) => {
-    return `₹${Number(value || 0).toLocaleString("en-IN")}`;
+    return `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
   };
 
   const formatDate = (value) => {
-    if (!value) return "—";
+    if (!value) return "-";
 
     if (value?.seconds) {
       return new Date(value.seconds * 1000).toLocaleDateString("en-IN");
@@ -177,6 +185,8 @@ const Salary = ({ teamId, team, members }) => {
   const getStatusBadge = (status) => {
     if (status === "settled")
       return <Badge className="bg-emerald-600">Settled</Badge>;
+    if (status === "partial")
+      return <Badge className="bg-orange-500">Partial</Badge>;
     if (status === "hold") return <Badge variant="secondary">Hold</Badge>;
     return <Badge variant="destructive">Pending</Badge>;
   };
@@ -190,12 +200,18 @@ const Salary = ({ teamId, team, members }) => {
       return `${formatCurrency(salaryConfig.monthlySalary)} / month`;
     }
 
-    return "—";
+    return "-";
   };
 
   const getAnnualCTC = (salaryConfig) => {
-    if (salaryConfig?.salaryType !== "monthly") return "—";
+    if (salaryConfig?.salaryType !== "monthly") return "-";
     return formatCurrency(salaryConfig.annualCTC || 0);
+  };
+
+  const getSalaryPaidAmount = (slip) => {
+    if (!slip) return 0;
+    const netSalary = Number(slip.netSalary || 0);
+    return Math.min(Number(slip.amountPaid ?? netSalary), netSalary);
   };
 
   const getSalaryHistoryPeriods = () => {
@@ -389,14 +405,10 @@ const Salary = ({ teamId, team, members }) => {
           const { basicPay, perDaySalary, lossOfPay } =
             calculateNetSalaryFromAttendance(salaryConfig, attendance);
 
-          const specialAllowance = Number(salaryConfig.specialAllowance || 0);
           const bonus = Number(salaryConfig.bonus || 0);
-          const pf = Number(salaryConfig.pf || 0);
-          const esi = Number(salaryConfig.esi || 0);
 
-          const grossSalary = basicPay + specialAllowance + bonus;
-          const totalDeductions = pf + esi;
-          const netSalary = grossSalary - totalDeductions;
+          const grossSalary = basicPay + bonus;
+          const netSalary = grossSalary;
 
           const key = `${period.fromDate}_${period.toDate}`;
 
@@ -416,7 +428,7 @@ const Salary = ({ teamId, team, members }) => {
   };
 
   const getDailyAttendanceText = (preview) => {
-    if (!preview) return "—";
+    if (!preview) return "-";
 
     if (preview.presentDays === 1) return "present";
     if (preview.halfDays === 1) return "halfday";
@@ -446,14 +458,11 @@ const Salary = ({ teamId, team, members }) => {
     const { basicPay, perDaySalary, lossOfPay } =
       calculateNetSalaryFromAttendance(salaryConfig, attendance);
 
-    const specialAllowance = Number(salaryConfig.specialAllowance || 0);
     const bonus = Number(salaryConfig.bonus || 0);
-    const pf = Number(salaryConfig.pf || 0);
-    const esi = Number(salaryConfig.esi || 0);
 
-    const grossSalary = basicPay + specialAllowance + bonus;
-    const totalDeductions = pf + esi;
-    const netSalary = grossSalary - totalDeductions;
+    const grossSalary = basicPay + bonus;
+    const deductions = 0;
+    const netSalary = grossSalary - deductions;
 
     return {
       memberId: member.id,
@@ -481,13 +490,10 @@ const Salary = ({ teamId, team, members }) => {
       lossOfPay: Math.round(lossOfPay),
       basicPay: Math.round(basicPay),
 
-      specialAllowance,
       bonus,
-      pf,
-      esi,
 
       grossSalary: Math.round(grossSalary),
-      totalDeductions,
+      deductions,
       netSalary: Math.round(netSalary),
 
       status: "pending",
@@ -495,32 +501,6 @@ const Salary = ({ teamId, team, members }) => {
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };
-  };
-
-  const generatePayslip = async () => {
-    if (!selectedMember || !selectedPeriod) return;
-
-    setLoading(true);
-
-    try {
-      const slipData = await calculateSalary(selectedMember, selectedPeriod);
-
-      const slipId = getSlipId(
-        selectedMember.id,
-        selectedPeriod.fromDate,
-        selectedPeriod.toDate,
-      );
-
-      await setDoc(doc(db, "teams", teamId, "salarySlips", slipId), slipData, {
-        merge: true,
-      });
-
-      await fetchSalarySlips();
-    } catch (error) {
-      console.error("Error generating payslip:", error);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const markAsPaid = async () => {
@@ -537,19 +517,36 @@ const Salary = ({ teamId, team, members }) => {
 
       const slipRef = doc(db, "teams", teamId, "salarySlips", slipId);
       const slipSnap = await getDoc(slipRef);
+      const netSalary = Number(salaryPaymentDetails.netSalary || 0);
+      const amountPaid = Math.min(
+        Math.max(Number(salaryPaymentDetails.amountPaid || 0), 0),
+        netSalary,
+      );
+      const paymentDetails = {
+        ...salaryPaymentDetails,
+        amountPaid,
+      };
+      const status =
+        amountPaid >= netSalary ? "settled" : "partial";
 
       if (!slipSnap.exists()) {
         const slipData = await calculateSalary(selectedMember, selectedPeriod);
 
         await setDoc(slipRef, {
           ...slipData,
-          status: "settled",
+          ...paymentDetails,
+          status,
           paidAt: Timestamp.now(),
           updatedAt: Timestamp.now(),
         });
       } else {
         await updateDoc(slipRef, {
-          status: "settled",
+          ...paymentDetails,
+          pf: deleteField(),
+          esi: deleteField(),
+          specialAllowance: deleteField(),
+          totalDeductions: deleteField(),
+          status,
           paidAt: Timestamp.now(),
           updatedAt: Timestamp.now(),
         });
@@ -603,18 +600,18 @@ const Salary = ({ teamId, team, members }) => {
     }
   };
 
-  const openPayslip = () => {
-    if (!selectedMember || !selectedPeriod) return;
+  const downloadPayslip = async (slip = selectedSlip) => {
+    if (!selectedMember || !slip) return;
 
-    const slipId = getSlipId(
-      selectedMember.id,
-      selectedPeriod.fromDate,
-      selectedPeriod.toDate,
-    );
-
-    router.push(
-      `/admin/billing/salary-payslip?teamId=${teamId}&memberId=${selectedMember.id}&slipId=${slipId}`,
-    );
+    try {
+      await generateSalaryPayslip({
+        team,
+        member: selectedMember,
+        slip,
+      });
+    } catch (error) {
+      console.error("Error downloading payslip:", error);
+    }
   };
 
   const openActionModal = (period) => {
@@ -659,6 +656,66 @@ const Salary = ({ teamId, team, members }) => {
   const selectedSlip = selectedPeriod ? getMemberSlip(selectedPeriod) : null;
   const salaryConfig = selectedMember?.salaryConfig || {};
   const contentLoading = salarySlipsLoading || attendancePreviewLoading;
+  const selectedPreview = selectedPeriod
+    ? attendancePreview[`${selectedPeriod.fromDate}_${selectedPeriod.toDate}`]
+    : null;
+
+  useEffect(() => {
+    if (!isModalOpen || !selectedPeriod || !selectedMember) return;
+
+    const bonus = Number(selectedSlip?.bonus ?? salaryConfig.bonus ?? 0);
+    const basicPay = Number(
+      selectedSlip?.basicPay ?? selectedPreview?.netSalary ?? 0,
+    );
+    const grossSalary = Number(selectedSlip?.grossSalary ?? basicPay + bonus);
+    const deductions = Number(selectedSlip?.deductions ?? 0);
+    const netSalary = Number(
+      selectedSlip?.netSalary ?? Math.max(grossSalary - deductions, 0),
+    );
+
+    const amountPaid = Number(selectedSlip?.amountPaid ?? netSalary);
+
+    setSalaryPaymentDetails({
+      basicPay,
+      bonus,
+      grossSalary,
+      deductions,
+      netSalary,
+      amountPaid: Math.min(amountPaid, netSalary),
+      notes: selectedSlip?.notes || "",
+    });
+  }, [
+    isModalOpen,
+    salaryConfig.bonus,
+    selectedMember,
+    selectedPeriod,
+    selectedPreview?.netSalary,
+    selectedSlip,
+  ]);
+
+  const updateSalaryPaymentField = (field, value) => {
+    setSalaryPaymentDetails((prev) => {
+      const next = {
+        ...prev,
+        [field]: field === "notes" ? value : Number(value || 0),
+      };
+
+      if (["basicPay", "bonus", "grossSalary", "deductions"].includes(field)) {
+        if (["basicPay", "bonus"].includes(field)) {
+          next.grossSalary =
+            Number(next.basicPay || 0) + Number(next.bonus || 0);
+        }
+
+        next.netSalary = Math.max(
+          next.grossSalary - Number(next.deductions || 0),
+          0,
+        );
+        next.amountPaid = next.netSalary;
+      }
+
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-5">
@@ -814,7 +871,7 @@ const Salary = ({ teamId, team, members }) => {
                 <div className="rounded-lg border bg-muted/30 p-3">
                   <p className="text-xs text-muted-foreground">Salary Type</p>
                   <p className="font-semibold capitalize">
-                    {salaryConfig.salaryType || "—"}
+                    {salaryConfig.salaryType || "-"}
                   </p>
                 </div>
 
@@ -828,29 +885,6 @@ const Salary = ({ teamId, team, members }) => {
                 <div className="rounded-lg border bg-muted/30 p-3">
                   <p className="text-xs text-muted-foreground">Annual CTC</p>
                   <p className="font-semibold">{getAnnualCTC(salaryConfig)}</p>
-                </div>
-
-                <div className="rounded-lg border bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">PF</p>
-                  <p className="font-semibold">
-                    {formatCurrency(salaryConfig.pf)}
-                  </p>
-                </div>
-
-                <div className="rounded-lg border bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">ESI</p>
-                  <p className="font-semibold">
-                    {formatCurrency(salaryConfig.esi)}
-                  </p>
-                </div>
-
-                <div className="rounded-lg border bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">
-                    Special Allowance
-                  </p>
-                  <p className="font-semibold">
-                    {formatCurrency(salaryConfig.specialAllowance)}
-                  </p>
                 </div>
 
                 <div className="rounded-lg border bg-muted/30 p-3">
@@ -877,10 +911,18 @@ const Salary = ({ teamId, team, members }) => {
                   <TableHead className="text-center border-r">
                     Attendance
                   </TableHead>
+                  <TableHead className="text-center border-r">Bonus</TableHead>
+                  <TableHead className="text-center border-r">
+                    Deductions
+                  </TableHead>
                   <TableHead className="text-center border-r">
                     Net Salary
                   </TableHead>
+                  <TableHead className="text-center border-r">
+                    Amount Paid
+                  </TableHead>
                   <TableHead className="text-center border-r">Status</TableHead>
+                  <TableHead className="text-center border-r">Notes</TableHead>
                   <TableHead className="text-center">Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -900,11 +942,11 @@ const Salary = ({ teamId, team, members }) => {
                       </TableCell>
 
                       <TableCell className="text-center border-r">
-                        {preview?.totalDaysInMonth || "—"}
+                        {preview?.totalDaysInMonth || "-"}
                       </TableCell>
 
                       <TableCell className="text-center border-r">
-                        {preview?.totalWorkingDays || "—"}
+                        {preview?.totalWorkingDays || "-"}
                       </TableCell>
 
                       <TableCell className="border-r p-0">
@@ -939,8 +981,20 @@ const Salary = ({ teamId, team, members }) => {
                             </div>
                           )
                         ) : (
-                          <div className="py-3 text-center">—</div>
+                          <div className="py-3 text-center">-</div>
                         )}
+                      </TableCell>
+
+                      <TableCell className="text-center font-semibold border-r">
+                        {slip
+                          ? formatCurrency(slip.bonus || 0)
+                          : formatCurrency(salaryConfig.bonus || 0)}
+                      </TableCell>
+
+                      <TableCell className="text-center font-semibold border-r">
+                        {slip
+                          ? formatCurrency(slip.deductions || 0)
+                          : formatCurrency(0)}
                       </TableCell>
 
                       <TableCell className="text-center font-bold border-r">
@@ -948,15 +1002,23 @@ const Salary = ({ teamId, team, members }) => {
                           ? formatCurrency(slip.netSalary)
                           : preview
                             ? formatCurrency(preview.netSalary)
-                            : "—"}
+                            : "-"}
+                      </TableCell>
+
+                      <TableCell className="text-center font-bold border-r">
+                        {slip ? formatCurrency(getSalaryPaidAmount(slip)) : "-"}
                       </TableCell>
 
                       <TableCell className="text-center border-r">
                         {noAttendance
                           ? "-"
                           : dailyAbsent
-                            ? "—"
+                            ? "-"
                             : getStatusBadge(slip?.status)}
+                      </TableCell>
+
+                      <TableCell className="text-center border-r">
+                        {slip?.notes || "-"}
                       </TableCell>
 
                       <TableCell className="text-center">
@@ -969,13 +1031,27 @@ const Salary = ({ teamId, team, members }) => {
                             Not Applicable
                           </span>
                         ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openActionModal(period)}
-                          >
-                            Action
-                          </Button>
+                          <div className="flex flex-wrap justify-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openActionModal(period)}
+                            >
+                              Action
+                            </Button>
+
+                            {slip &&
+                              ["settled", "partial"].includes(slip.status) && (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => downloadPayslip(slip)}
+                                >
+                                  <PiFilePdf className="mr-2 text-lg" />
+                                  Payslip
+                                </Button>
+                              )}
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
@@ -988,7 +1064,7 @@ const Salary = ({ teamId, team, members }) => {
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Salary Action</DialogTitle>
             <DialogDescription>
@@ -1045,25 +1121,49 @@ const Salary = ({ teamId, team, members }) => {
 
             {selectedAction === "pay" && (
               <div className="rounded-lg border p-4 space-y-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {[
+                    ["basicPay", "Basic Pay"],
+                    ["bonus", "Bonus"],
+                    ["grossSalary", "Gross Salary"],
+                    ["deductions", "Deductions"],
+                    ["netSalary", "Net Salary"],
+                    ["amountPaid", "Amount Paid"],
+                  ].map(([field, label]) => (
+                    <div key={field} className="space-y-2">
+                      <Label>{label}</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={salaryPaymentDetails[field] || 0}
+                        readOnly={field === "netSalary"}
+                        onChange={(event) =>
+                          updateSalaryPaymentField(field, event.target.value)
+                        }
+                      />
+                    </div>
+                  ))}
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Notes</Label>
+                    <Input
+                      value={salaryPaymentDetails.notes}
+                      onChange={(event) =>
+                        updateSalaryPaymentField("notes", event.target.value)
+                      }
+                      placeholder="Add salary payment notes"
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
+                  Net Salary is calculated as Gross Salary - Deductions.
+                </div>
+
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={generatePayslip}
-                    disabled={loading}
-                  >
-                    {selectedSlip ? "Regenerate Payslip" : "Generate Payslip"}
-                  </Button>
-
                   <Button onClick={markAsPaid} disabled={loading}>
-                    Mark as Settled
+                    Save Payment
                   </Button>
-
-                  {selectedSlip && (
-                    <Button variant="secondary" onClick={openPayslip}>
-                      <PiFilePdf className="mr-2 text-lg" />
-                      Download Payslip
-                    </Button>
-                  )}
                 </div>
               </div>
             )}
@@ -1093,3 +1193,4 @@ const Salary = ({ teamId, team, members }) => {
 };
 
 export default Salary;
+

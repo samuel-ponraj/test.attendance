@@ -6,6 +6,8 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  LayoutGrid,
+  List,
   MoreVertical,
   Search,
   Trash2,
@@ -83,6 +85,7 @@ const TeamCardLayout = ({ teams }) => {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [billingFilter, setBillingFilter] = useState("all");
+  const [viewMode, setViewMode] = useState("list");
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -208,8 +211,8 @@ const TeamCardLayout = ({ teams }) => {
   return (
     <>
       <div className="space-y-4 px-4 lg:px-6">
-        <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_240px]">
-          <div className="relative">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 md:grid-cols-[minmax(220px,1fr)_240px_auto]">
+          <div className="relative col-span-2 md:col-span-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
@@ -229,7 +232,7 @@ const TeamCardLayout = ({ teams }) => {
               setCurrentPage(1);
             }}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full min-w-0">
               <SelectValue placeholder="All Billing Types" />
             </SelectTrigger>
 
@@ -241,140 +244,282 @@ const TeamCardLayout = ({ teams }) => {
               ))}
             </SelectContent>
           </Select>
+
+          <div className="flex h-10 shrink-0 items-center rounded-md border bg-background p-1">
+            <Button
+              type="button"
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setViewMode("list")}
+              aria-label="List view"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+
+            <Button
+              type="button"
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setViewMode("grid")}
+              aria-label="Grid view"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
-          <Table>
-            <TableHeader className="bg-muted/50">
-              <TableRow>
-                <TableHead className="px-4">Team</TableHead>
-                <TableHead>Billing Type</TableHead>
-                <TableHead>Members</TableHead>
-                <TableHead>Today&apos;s Attendance</TableHead>
-                <TableHead>Payroll Status</TableHead>
-                <TableHead>Created On</TableHead>
-                <TableHead className="text-right pr-4">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {filteredTeams.length === 0 ? (
+        {viewMode === "list" ? (
+          <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
+            <Table>
+              <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    No teams found.
-                  </TableCell>
+                  <TableHead className="px-4">Team</TableHead>
+                  <TableHead>Billing Type</TableHead>
+                  <TableHead>Members</TableHead>
+                  <TableHead>Today&apos;s Attendance</TableHead>
+                  <TableHead>Payroll Status</TableHead>
+                  <TableHead>Created On</TableHead>
+                  <TableHead className="text-right pr-4">Actions</TableHead>
                 </TableRow>
-              ) : (
-                paginatedTeams.map((team) => {
-                  const present = Number(team.attendanceSummary?.present || 0);
-                  const absent = Number(team.attendanceSummary?.absent || 0);
-                  const halfday = Number(team.attendanceSummary?.halfday || 0);
-                  const payrollDue = Boolean(team.billing?.totalBalance > 0);
+              </TableHeader>
 
-                  return (
-                    <TableRow
-                      key={team.id}
-                      onClick={() => router.push(`/admin/teams/${team.id}`)}
-                      className="cursor-pointer hover:bg-muted/50"
+              <TableBody>
+                {filteredTeams.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="h-24 text-center text-muted-foreground"
                     >
-                      <TableCell className="px-4 ">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                            <Users className="h-4 w-4" />
+                      No teams found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedTeams.map((team) => {
+                    const present = Number(
+                      team.attendanceSummary?.present || 0
+                    );
+                    const absent = Number(team.attendanceSummary?.absent || 0);
+                    const halfday = Number(
+                      team.attendanceSummary?.halfday || 0
+                    );
+                    const payrollDue = Boolean(team.billing?.totalBalance > 0);
+
+                    return (
+                      <TableRow
+                        key={team.id}
+                        onClick={() => router.push(`/admin/teams/${team.id}`)}
+                        className="cursor-pointer hover:bg-muted/50"
+                      >
+                        <TableCell className="px-4 ">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                              <Users className="h-4 w-4" />
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">
+                                {team.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {team.description || "Manage team members"}
+                              </p>
+                            </div>
                           </div>
+                        </TableCell>
 
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">{team.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {team.description || "Manage team members"}
-                            </p>
+                        <TableCell>
+                          <span className="inline-flex rounded-md border px-2 py-1 text-xs font-medium border-muted bg-muted/40 text-muted-foreground min-w-[140px] justify-center">
+                            {getBillingLabel(team)}
+                          </span>
+                        </TableCell>
+
+                        <TableCell>{Number(team.totalMembers || 0)}</TableCell>
+
+                        <TableCell>
+                          <div className="space-y-2 min-w-[170px]">
+                            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                {present} Present
+                              </span>
+
+                              <span className="flex items-center gap-1">
+                                <span className="h-2 w-2 rounded-full bg-red-500" />
+                                {absent} Absent
+                              </span>
+
+                              <span className="flex items-center gap-1">
+                                <span className="h-2 w-2 rounded-full bg-orange-500" />
+                                {halfday} Halfday
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
+                        </TableCell>
 
-                      <TableCell>
-                        <span className="inline-flex rounded-md border px-2 py-1 text-xs font-medium border-muted bg-muted/40 text-muted-foreground min-w-[140px] justify-center">
-                          {getBillingLabel(team)}
-                        </span>
-                      </TableCell>
+                        <TableCell>
+                          <span
+                            className={`inline-flex rounded-md border px-2 py-1 text-xs font-medium ${
+                              payrollDue
+                                ? "border-amber-500/30 bg-amber-500/10 text-amber-600"
+                                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                            }`}
+                          >
+                            {payrollDue ? "Payroll Due" : "Up to date"}
+                          </span>
+                        </TableCell>
 
-                      <TableCell>{Number(team.totalMembers || 0)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {formatDate(team.createdAt)}
+                        </TableCell>
 
-                      <TableCell>
-                        <div className="space-y-2 min-w-[170px]">
-                          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                              {present} Present
-                            </span>
+                        <TableCell className="pr-4">
+                          <div className="flex justify-end gap-2">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
 
-                            <span className="flex items-center gap-1">
-                              <span className="h-2 w-2 rounded-full bg-red-500" />
-                              {absent} Absent
-                            </span>
-
-                            <span className="flex items-center gap-1">
-                              <span className="h-2 w-2 rounded-full bg-orange-500" />
-                              {halfday} Halfday
-                            </span>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setSelectedTeamId(team.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete Team
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                        </div>
-                      </TableCell>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        ) : filteredTeams.length === 0 ? (
+          <div className="rounded-lg border bg-card px-4 py-12 text-center text-sm text-muted-foreground shadow-sm">
+            No teams found.
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {paginatedTeams.map((team) => {
+              const present = Number(team.attendanceSummary?.present || 0);
+              const absent = Number(team.attendanceSummary?.absent || 0);
+              const halfday = Number(team.attendanceSummary?.halfday || 0);
+              const payrollDue = Boolean(team.billing?.totalBalance > 0);
 
-                      <TableCell>
-                        <span
-                          className={`inline-flex rounded-md border px-2 py-1 text-xs font-medium ${
-                            payrollDue
-                              ? "border-amber-500/30 bg-amber-500/10 text-amber-600"
-                              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
-                          }`}
+              return (
+                <div
+                  key={team.id}
+                  onClick={() => router.push(`/admin/teams/${team.id}`)}
+                  className="cursor-pointer rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Users className="h-4 w-4" />
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{team.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {team.description || "Manage team members"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          onClick={(event) => event.stopPropagation()}
                         >
-                          {payrollDue ? "Payroll Due" : "Up to date"}
-                        </span>
-                      </TableCell>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
 
-                      <TableCell className="text-muted-foreground">
-                        {formatDate(team.createdAt)}
-                      </TableCell>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelectedTeamId(team.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete Team
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
 
-                      <TableCell className="pr-4">
-                        <div className="flex justify-end gap-2">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={(event) => event.stopPropagation()}
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <span className="inline-flex rounded-md border border-muted bg-muted/40 px-2 py-1 text-xs font-medium text-muted-foreground">
+                      {getBillingLabel(team)}
+                    </span>
+                    <span
+                      className={`inline-flex rounded-md border px-2 py-1 text-xs font-medium ${
+                        payrollDue
+                          ? "border-amber-500/30 bg-amber-500/10 text-amber-600"
+                          : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                      }`}
+                    >
+                      {payrollDue ? "Payroll Due" : "Up to date"}
+                    </span>
+                  </div>
 
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setSelectedTeamId(team.id);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                Delete Team
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Members</p>
+                      <p className="font-medium">
+                        {Number(team.totalMembers || 0)}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Created On
+                      </p>
+                      <p className="font-medium">{formatDate(team.createdAt)}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-3 border-t pt-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      {present} Present
+                    </span>
+
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-red-500" />
+                      {absent} Absent
+                    </span>
+
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-orange-500" />
+                      {halfday} Halfday
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-4 px-2 py-4">
           <div className="hidden text-sm text-muted-foreground lg:block">

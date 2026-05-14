@@ -7,7 +7,7 @@ import { ModeToggle } from "./modeToggle"
 import { Button } from "./ui/button"
 import { Plus } from "lucide-react"
 import { useTeams } from "@/app/context/TeamsContext"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import AddTeamModal from "./admin/addTeamModal"
 import AddFormModal from "./admin/forms/customForms/AddFormModal"
 import {
@@ -21,6 +21,9 @@ import {
 } from "@/components/ui/alert-dialog"
 import Link from "next/link"
 import Notifications from "@/lib/Notifications"
+import { useMembers } from "@/app/context/MembersContext"
+import { db } from "@/lib/firebase"
+import { doc, onSnapshot } from "firebase/firestore"
 
 
 const ROUTE_CONFIG: Record<
@@ -101,6 +104,11 @@ const ROUTE_CONFIG: Record<
       description: "Manage your account settings",
     },
     {
+      path: "/member/payments",
+      title: "Payments",
+      description: "View receipts, manage billing, and make payments",
+    },
+    {
       path: "/member",
       title: "Overview",
       description: "Mark attendance and view your attendance overview",
@@ -119,6 +127,8 @@ const DEFAULT_ROUTE = {
 export function SiteHeader() {
   const pathname = usePathname()
   const normalizedPath = pathname?.replace(/\/$/, "")
+  const { members } = useMembers()
+  const [memberBillingType, setMemberBillingType] = useState("")
 
   // ✅ Define role FIRST
   const role = normalizedPath?.startsWith("/admin")
@@ -128,11 +138,22 @@ export function SiteHeader() {
     : null
 
   const isAdmin = role === "admin"
+  const memberTeamId = members?.[0]?.teamId
+
+  useEffect(() => {
+    if (role !== "member" || !memberTeamId) return
+
+    const unsubscribe = onSnapshot(doc(db, "teams", memberTeamId), (snapshot) => {
+      setMemberBillingType(snapshot.data()?.billingConfig?.billingType || "")
+    })
+
+    return () => unsubscribe()
+  }, [memberTeamId, role])
 
   // Now it's safe to use role
   const routes = role ? ROUTE_CONFIG[role] : []
 
-  const currentRoute =
+  const currentRouteBase =
     routes.find((route) => {
       if (route.match) {
         return route.match(normalizedPath);
@@ -143,6 +164,16 @@ export function SiteHeader() {
         normalizedPath?.startsWith(route.path + "/")
       );
     }) ?? DEFAULT_ROUTE;
+  const currentRoute =
+    role === "member" &&
+    normalizedPath === "/member/payments" &&
+    memberBillingType === "salary"
+      ? {
+          ...currentRouteBase,
+          title: "Payroll",
+          description: "View salary details and download payslips",
+        }
+      : currentRouteBase
 
 
   const { addTeam, hasReachedTeamLimit  } = useTeams();

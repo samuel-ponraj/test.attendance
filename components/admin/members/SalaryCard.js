@@ -22,9 +22,6 @@ const defaultSalaryConfig = {
   dailyRate: 0,
   monthlySalary: 0,
   annualCTC: 0,
-  pf: 0,
-  esi: 0,
-  specialAllowance: 0,
   bonus: 0,
 };
 
@@ -101,9 +98,6 @@ const SalaryCard = ({ teamId, memberId }) => {
         dailyRate: Number(salaryConfig.dailyRate) || 0,
         monthlySalary: Number(salaryConfig.monthlySalary) || 0,
         annualCTC: Number(salaryConfig.annualCTC) || 0,
-        pf: Number(salaryConfig.pf) || 0,
-        esi: Number(salaryConfig.esi) || 0,
-        specialAllowance: Number(salaryConfig.specialAllowance) || 0,
         bonus: Number(salaryConfig.bonus) || 0,
         updatedAt: new Date(),
       };
@@ -223,36 +217,6 @@ const SalaryCard = ({ teamId, memberId }) => {
               </div>
             </>
           )}
-
-          <div className="space-y-2">
-            <Label>PF</Label>
-            <Input
-              type="number"
-              min={0}
-              value={salaryConfig.pf}
-              onChange={(e) => updateField("pf", e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>ESI</Label>
-            <Input
-              type="number"
-              min={0}
-              value={salaryConfig.esi}
-              onChange={(e) => updateField("esi", e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Special Allowance</Label>
-            <Input
-              type="number"
-              min={0}
-              value={salaryConfig.specialAllowance}
-              onChange={(e) => updateField("specialAllowance", e.target.value)}
-            />
-          </div>
 
           <div className="space-y-2">
             <Label>Bonus</Label>

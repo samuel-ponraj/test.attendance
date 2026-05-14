@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -31,6 +32,9 @@ import {
 import { NavUserAdmin } from "./nav-user-admin";
 import { NavUserMember } from "./nav-user-member";
 import { useTheme } from "next-themes";
+import { useMembers } from "@/app/context/MembersContext";
+import { db } from "@/lib/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 
 /* ---------------- NAV CONFIG ---------------- */
 
@@ -51,6 +55,7 @@ const navConfig = {
       { title: "Overview", url: "/member", icon: LayoutDashboard },
       { title: "Attendance", url: "/member/attendance", icon: Calendar },
       { title: "Profile", url: "/member/profile", icon: UsersRound },
+      { title: "Payments", url: "/member/payments", icon: ReceiptIndianRupee },
     ],
     settings: [{ title: "Account", url: "/member/account", icon: Settings }],
   },
@@ -62,6 +67,8 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { state, setOpenMobile } = useSidebar();
   const { theme } = useTheme();
+  const { members } = useMembers();
+  const [memberBillingType, setMemberBillingType] = useState("");
 
   const isCollapsed = state === "collapsed";
   const isLight = theme === "light";
@@ -75,9 +82,27 @@ export function AppSidebar() {
 
   const role = getRoleFromPath(pathname);
 
+  const memberTeamId = members?.[0]?.teamId;
+
+  useEffect(() => {
+    if (role !== "member" || !memberTeamId) return;
+
+    const unsubscribe = onSnapshot(doc(db, "teams", memberTeamId), (snapshot) => {
+      setMemberBillingType(snapshot.data()?.billingConfig?.billingType || "");
+    });
+
+    return () => unsubscribe();
+  }, [memberTeamId, role]);
+
   if (!role) return null;
 
-  const mainNavItems = navConfig[role].main;
+  const mainNavItems = navConfig[role].main.map((item) =>
+    role === "member" &&
+    item.url === "/member/payments" &&
+    memberBillingType === "salary"
+      ? { ...item, title: "Payroll" }
+      : item,
+  );
   const settingsItems = navConfig[role].settings;
 
   /* ---------- ACTIVE CHECK ---------- */

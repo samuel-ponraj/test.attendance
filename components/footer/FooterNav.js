@@ -11,6 +11,10 @@ import {
   ReceiptIndianRupee,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useEffect, useState } from "react"
+import { useMembers } from "@/app/context/MembersContext"
+import { db } from "@/lib/firebase"
+import { doc, onSnapshot } from "firebase/firestore"
 
 const admin = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
@@ -27,6 +31,8 @@ const member = [
 
 const FooterNav = () => {
   const pathname = usePathname()
+  const { members } = useMembers()
+  const [memberBillingType, setMemberBillingType] = useState("")
 
   const getRoleFromPath = (path) => {
     if (path.startsWith("/admin")) return "admin"
@@ -35,9 +41,28 @@ const FooterNav = () => {
   }
 
   const role = getRoleFromPath(pathname)
+  const memberTeamId = members?.[0]?.teamId
+
+  useEffect(() => {
+    if (role !== "member" || !memberTeamId) return
+
+    const unsubscribe = onSnapshot(doc(db, "teams", memberTeamId), (snapshot) => {
+      setMemberBillingType(snapshot.data()?.billingConfig?.billingType || "")
+    })
+
+    return () => unsubscribe()
+  }, [memberTeamId, role])
+
   if (!role) return null
 
-  const footerItems = role === "admin" ? admin : member
+  const footerItems =
+    role === "admin"
+      ? admin
+      : member.map((item) =>
+          item.url === "/member/payments" && memberBillingType === "salary"
+            ? { ...item, title: "Payroll" }
+            : item
+        )
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden">

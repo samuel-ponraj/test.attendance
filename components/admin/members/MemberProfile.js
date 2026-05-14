@@ -68,7 +68,6 @@ const MemberProfile = ({ teamId, memberId }) => {
   const [memberBilling, setMemberBilling] = useState({})
   const [teamBillingConfig, setTeamBillingConfig] = useState({})
   const [payments, setPayments] = useState([])
-  const [salaryConfig, setSalaryConfig] = useState({});
 
   useEffect(() => {
     const fetchMember = async () => {
@@ -95,7 +94,6 @@ const MemberProfile = ({ teamId, memberId }) => {
         setPhotoPreview(data.photoURL || '')
         setDynamicFields(data.customData || {})
         setMemberBilling(data.billing || {});
-        setSalaryConfig(data.salaryConfig || {});
       } catch (error) {
         console.error(error)
         toast.error('Failed to load member details')
@@ -224,7 +222,6 @@ const handleDynamicChange = (fieldId, value) => {
       lastName: lastName.trim(),
       contact: contact.trim(),
       customData: dynamicFields,
-      salaryConfig,
       updatedAt: serverTimestamp(),
     })
 

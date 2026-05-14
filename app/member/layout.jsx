@@ -14,6 +14,7 @@ import { MembersProvider } from "../context/MembersContext";
 import { AttendanceProvider } from "../context/attendanceContext";
 import { UserProvider } from "../context/userContext";
 import ProtectedRoute from "../../components/ProtectedRoute";
+import Link from "next/link";
 
 export const metadata = {
   title: "Kingz Digital Attendance",
@@ -35,9 +36,20 @@ function DashboardContent({ children }) {
 				<SidebarInset>
 					<SiteHeader />
 
-					<div className="flex flex-1 flex-col">
-						<div className="@container/main flex flex-1 flex-col gap-2 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
-							{children}
+					<div className="flex flex-1 flex-col pt-0 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+						<div className="@container/main flex flex-1 flex-col gap-2">
+							<div className="flex-1">{children}</div>
+
+							<div className="mt-auto py-2 text-center text-[10px] text-muted-foreground">
+								Powered by{" "}
+								<Link
+									href="https://kingzdigitalsolutions.in/"
+									target="_blank"
+									className="hover:underline"
+								>
+									Kingz Digital Solutions
+								</Link>
+							</div>
 						</div>
 					</div>
 

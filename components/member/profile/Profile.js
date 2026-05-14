@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Phone, Mail, Users, Clock, Calendar, User, Camera } from "lucide-react";
+import { Phone, Mail, Users, Clock, Calendar, User, Camera, CreditCard } from "lucide-react";
 import { useMembers } from "../../../app/context/MembersContext";
-import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
+import { collection, doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
 import { db, storage } from "@/lib/firebase";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getAuth, updateProfile } from "firebase/auth";
@@ -21,6 +21,227 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+const formatCurrency = (value) =>
+  `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
+
+const formatDate = (value) => {
+  if (!value) return "Not configured";
+
+  const date = value?.seconds
+    ? new Date(value.seconds * 1000)
+    : new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "Not configured";
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const formatLabel = (value) => {
+  if (!value) return "Not configured";
+
+  return String(value)
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const getEffectiveBalance = (period) => {
+  const amount = Number(period?.amount || 0);
+  const paid = Number(period?.paid || 0);
+  const discount = Number(period?.discountAmount || 0);
+
+  return Math.max(amount - paid - discount, 0);
+};
+
+const ReadOnlyField = ({ label, value, className = "" }) => (
+  <div className={`space-y-2 ${className}`}>
+    <Label className="text-gray-400">{label}</Label>
+    <Input
+      value={value || "Not configured"}
+      readOnly
+      tabIndex={-1}
+      className="cursor-default border-gray-700 bg-transparent font-medium focus-visible:ring-0"
+    />
+  </div>
+);
+
+const BillingDetailsCard = ({ member, team, authEmail }) => {
+  const [periods, setPeriods] = useState([]);
+
+  const memberEmail = member?.email?.toLowerCase();
+  const isOwnProfile = Boolean(authEmail && memberEmail && authEmail === memberEmail);
+  const teamId = member?.teamId;
+  const memberId = member?.id;
+  const config = useMemo(() => team?.billingConfig || {}, [team?.billingConfig]);
+  const salaryConfig = useMemo(
+    () => member?.salaryConfig || {},
+    [member?.salaryConfig]
+  );
+  const billingType = config?.billingType || "";
+
+  useEffect(() => {
+    if (!isOwnProfile || !teamId || !memberId || billingType === "salary") {
+      return;
+    }
+
+    const periodsRef = collection(
+      db,
+      "teams",
+      teamId,
+      "members",
+      memberId,
+      "billingPeriods"
+    );
+
+    const unsubscribe = onSnapshot(periodsRef, (snapshot) => {
+      setPeriods(
+        snapshot.docs.map((periodDoc) => ({
+          id: periodDoc.id,
+          ...periodDoc.data(),
+        }))
+      );
+    });
+
+    return () => unsubscribe();
+  }, [billingType, isOwnProfile, memberId, teamId]);
+
+  const activePeriods = useMemo(() => {
+    if (!isOwnProfile || billingType === "salary") return [];
+
+    const cycle = config?.billingCycle;
+
+    if (!cycle) return [];
+
+    if (cycle === "term") {
+      const validTermKeys = new Set(
+        (config?.academicYears || []).flatMap((yearItem) =>
+          (yearItem.terms || []).map(
+            (term) => `${yearItem.academicYear}_term_${term.termNo}`
+          )
+        )
+      );
+
+      return periods.filter(
+        (period) =>
+          period.billingCycle === "term" && validTermKeys.has(period.periodKey)
+      );
+    }
+
+    return periods.filter((period) => period.billingCycle === cycle);
+  }, [billingType, config, isOwnProfile, periods]);
+
+  const totals = useMemo(
+    () =>
+      activePeriods.reduce(
+        (summary, period) => ({
+          amount: summary.amount + Number(period.amount || 0),
+          paid: summary.paid + Number(period.paid || 0),
+          discount: summary.discount + Number(period.discountAmount || 0),
+          balance: summary.balance + getEffectiveBalance(period),
+        }),
+        { amount: 0, paid: 0, discount: 0, balance: 0 }
+      ),
+    [activePeriods]
+  );
+
+  const rateLabel = (() => {
+    if (billingType === "salary") {
+      if (salaryConfig?.salaryType === "daily") {
+        return `${formatCurrency(salaryConfig.dailyRate)} / day`;
+      }
+
+      if (salaryConfig?.salaryType === "monthly") {
+        return `${formatCurrency(salaryConfig.monthlySalary)} / month`;
+      }
+
+      return "Not configured";
+    }
+
+    if (config?.billingCycle === "daily") {
+      return `${formatCurrency(config?.baseAmount)} / day`;
+    }
+
+    if (config?.billingCycle === "monthly") {
+      return `${formatCurrency(config?.baseAmount)} / month`;
+    }
+
+    if (config?.billingCycle === "annual") {
+      return `${formatCurrency(config?.baseAmount)} / year`;
+    }
+
+    if (config?.billingCycle === "term") {
+      return `${formatCurrency(config?.baseAmount)} / term`;
+    }
+
+    return "Not configured";
+  })();
+
+  if (!isOwnProfile) return null;
+
+  return (
+    <Card className="w-full">
+      <CardHeader className="flex flex-row items-center gap-3 border-b pb-4">
+        <CreditCard className="h-5 w-5 text-primary" />
+        <CardTitle>Billing Details</CardTitle>
+      </CardHeader>
+
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <ReadOnlyField label="Billing Type" value={formatLabel(billingType)} />
+          <ReadOnlyField
+            label={billingType === "salary" ? "Salary Type" : "Billing Cycle"}
+            value={
+              billingType === "salary"
+                ? formatLabel(salaryConfig?.salaryType)
+                : formatLabel(config?.billingCycle)
+            }
+          />
+          <ReadOnlyField label="Rate" value={rateLabel} />
+          <ReadOnlyField
+            label={billingType === "salary" ? "Joining Date" : "Billing Start Date"}
+            value={
+              billingType === "salary"
+                ? formatDate(salaryConfig?.joiningDate)
+                : formatDate(config?.billingStartDate)
+            }
+          />
+
+          {billingType !== "salary" && (
+            <>
+              <ReadOnlyField label="Total Amount" value={formatCurrency(totals.amount)} />
+              <ReadOnlyField label="Total Paid" value={formatCurrency(totals.paid)} />
+              <ReadOnlyField label="Discount" value={formatCurrency(totals.discount)} />
+              <ReadOnlyField label="Balance" value={formatCurrency(totals.balance)} />
+              <ReadOnlyField
+                label="Status"
+                value={totals.balance > 0 ? "Payment Due" : "Settled"}
+              />
+            </>
+          )}
+
+          {billingType === "salary" && (
+            <>
+              <ReadOnlyField
+                label="Monthly Salary"
+                value={formatCurrency(salaryConfig?.monthlySalary)}
+              />
+              <ReadOnlyField
+                label="Annual CTC"
+                value={formatCurrency(salaryConfig?.annualCTC)}
+              />
+              <ReadOnlyField label="Bonus" value={formatCurrency(salaryConfig?.bonus)} />
+            </>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const MemberProfileDesktop = () => {
   const auth = getAuth();
@@ -222,6 +443,7 @@ const MemberProfileDesktop = () => {
   // EXTRACT DATA FOR RENDERING (Prevents Doubling)
   const primaryData = memberTeams[0] || { member: {}, team: {} };
   const { member, team } = primaryData;
+  const authEmail = auth.currentUser?.email?.toLowerCase() || "";
 
       const calculateProgress = () => {
       const basicFields = [
@@ -481,6 +703,12 @@ const MemberProfileDesktop = () => {
 
               </CardContent>
             </Card>
+
+            <BillingDetailsCard
+              member={member}
+              team={team}
+              authEmail={authEmail}
+            />
 
             {forms.map((form) => (
               <Card key={form.id} className="w-full">
