@@ -41,6 +41,7 @@ import {
 import { PiFilePdf } from "react-icons/pi";
 import { ArrowLeft, User, User2 } from "lucide-react";
 import { generateReceipt } from "../../GenerateReceipt";
+import BillingContentLoader from "../BillingContentLoader";
 
 import {
 	formatCurrency,
@@ -66,6 +67,7 @@ const Daily = ({ teamId, team, members, initialMemberId }) => {
 	const [filterToDate, setFilterToDate] = useState("");
 
 	const [billingPeriods, setBillingPeriods] = useState([]);
+	const [periodsLoading, setPeriodsLoading] = useState(false);
 	const [selectedPeriod, setSelectedPeriod] = useState(null);
 	const [paymentAmount, setPaymentAmount] = useState("");
 	const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -179,20 +181,26 @@ const Daily = ({ teamId, team, members, initialMemberId }) => {
 	const loadPeriods = async () => {
 		if (!selectedMember || !scheduleLoaded) return;
 
-		const generated = await getDailyPeriods();
+		setPeriodsLoading(true);
 
-		await ensureBillingPeriods({
-			teamId,
-			member: selectedMember,
-			periods: generated,
-		});
+		try {
+			const generated = await getDailyPeriods();
 
-		const data = await fetchBillingPeriods({
-			teamId,
-			memberId: selectedMember.id,
-		});
+			await ensureBillingPeriods({
+				teamId,
+				member: selectedMember,
+				periods: generated,
+			});
 
-		setBillingPeriods(data);
+			const data = await fetchBillingPeriods({
+				teamId,
+				memberId: selectedMember.id,
+			});
+
+			setBillingPeriods(data);
+		} finally {
+			setPeriodsLoading(false);
+		}
 	};
 
 	useEffect(() => {
@@ -437,6 +445,8 @@ const Daily = ({ teamId, team, members, initialMemberId }) => {
 						</p>
 					</CardContent>
 				</Card>
+			) : periodsLoading ? (
+				<BillingContentLoader />
 			) : (
 				<>
 					<Card className="gap-2">

@@ -33,7 +33,7 @@ function DashboardContent({ children }) {
             <SiteHeader />
           </div>
 
-          <div className="flex flex-1 flex-col pt-0">
+          <div className="flex flex-1 flex-col pt-0 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
             <div className="@container/main flex flex-1 flex-col gap-2">
               <div className="flex-1">{children}</div>
 
@@ -84,7 +84,7 @@ export default function AdminLayout({ children }) {
           </h1>
 
           <p className="mt-3 opacity-70">
-            We're currently updating the dashboard. Please check back soon!
+            We&apos;re currently updating the dashboard. Please check back soon!
           </p>
         </div>
       </div>

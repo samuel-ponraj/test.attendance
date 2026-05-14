@@ -42,6 +42,7 @@ import {
 import { PiFilePdf } from "react-icons/pi";
 import { ArrowLeft, User, User2 } from "lucide-react";
 import { generateReceipt } from "../../GenerateReceipt";
+import BillingContentLoader from "../BillingContentLoader";
 
 import {
   formatCurrency,
@@ -67,6 +68,7 @@ const Monthly = ({ teamId, team, members, initialMemberId }) => {
   const [filterToDate, setFilterToDate] = useState("");
 
   const [billingPeriods, setBillingPeriods] = useState([]);
+  const [periodsLoading, setPeriodsLoading] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -211,47 +213,53 @@ const Monthly = ({ teamId, team, members, initialMemberId }) => {
   const loadPeriods = async () => {
     if (!selectedMember) return;
 
-    const generated = await getMonthlyPeriods();
+    setPeriodsLoading(true);
 
-    await ensureBillingPeriods({
-      teamId,
-      member: selectedMember,
-      periods: generated,
-    });
+    try {
+      const generated = await getMonthlyPeriods();
 
-    const data = await fetchBillingPeriods({
-      teamId,
-      memberId: selectedMember.id,
-    });
+      await ensureBillingPeriods({
+        teamId,
+        member: selectedMember,
+        periods: generated,
+      });
 
-    const mergedData = data.map((item) => {
-      const generatedItem = generated.find((period) => period.id === item.id);
+      const data = await fetchBillingPeriods({
+        teamId,
+        memberId: selectedMember.id,
+      });
 
-      if (!generatedItem) return item;
+      const mergedData = data.map((item) => {
+        const generatedItem = generated.find((period) => period.id === item.id);
 
-      const paid = Number(item.paid || 0);
-      const amount = Number(generatedItem.amount || 0);
-      const discount = Number(item.discountAmount || 0);
-      const balance = Math.max(amount - paid - discount, 0);
+        if (!generatedItem) return item;
 
-      return {
-        ...item,
-        ...generatedItem,
-        paid,
-        discountAmount: discount,
-        balance,
-        status:
-          amount <= 0
-            ? "leave"
-            : paid >= amount
-              ? "settled"
-              : paid > 0
-                ? "partial"
-                : "pending",
-      };
-    });
+        const paid = Number(item.paid || 0);
+        const amount = Number(generatedItem.amount || 0);
+        const discount = Number(item.discountAmount || 0);
+        const balance = Math.max(amount - paid - discount, 0);
 
-    setBillingPeriods(mergedData);
+        return {
+          ...item,
+          ...generatedItem,
+          paid,
+          discountAmount: discount,
+          balance,
+          status:
+            amount <= 0
+              ? "leave"
+              : paid >= amount
+                ? "settled"
+                : paid > 0
+                  ? "partial"
+                  : "pending",
+        };
+      });
+
+      setBillingPeriods(mergedData);
+    } finally {
+      setPeriodsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -500,6 +508,8 @@ const Monthly = ({ teamId, team, members, initialMemberId }) => {
             </p>
           </CardContent>
         </Card>
+      ) : periodsLoading ? (
+        <BillingContentLoader />
       ) : (
         <>
           <Card className="gap-2">

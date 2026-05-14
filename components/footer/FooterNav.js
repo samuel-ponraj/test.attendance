@@ -40,7 +40,7 @@ const FooterNav = () => {
   const footerItems = role === "admin" ? admin : member
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden">
       <div className="flex items-center justify-between">
         {footerItems.map((item) => {
           const isActive = pathname === item.url

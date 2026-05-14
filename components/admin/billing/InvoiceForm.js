@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Copy, Send, Share2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
@@ -39,11 +39,25 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
   const [amount, setAmount] = useState(0);
   const [discountPercent, setDiscountPercent] = useState(0);
   const [paymentMode, setPaymentMode] = useState("cash");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [useOtherNumber, setUseOtherNumber] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const discountAmount = (Number(amount || 0) * Number(discountPercent || 0)) / 100;
+  const discountAmount =
+    (Number(amount || 0) * Number(discountPercent || 0)) / 100;
   const totalAmount = Math.max(Number(amount || 0) - discountAmount, 0);
   const periodLabel = billingPeriod?.periodLabel || period || "";
+  const memberName =
+    `${member?.firstName || ""} ${member?.lastName || ""}`.trim();
+  const normalizedContact = (member?.contact || "").replace(/\D/g, "");
+  const razorpayLink = `https://rzp.io/i/kda-${teamId}-${memberId}-${periodId || "invoice"}?amount=${Math.round(totalAmount * 100)}`;
+  const whatsappMessage = `Hello ${memberName || "Customer"},
+
+Please pay Rs. ${totalAmount.toFixed(2)} for ${periodLabel || "your invoice"} using this payment link:
+Link: ${razorpayLink}
+
+Thank you,
+Kingz Digital Solutions`;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -51,7 +65,7 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
 
       const teamSnap = await getDoc(doc(db, "teams", teamId));
       const memberSnap = await getDoc(
-        doc(db, "teams", teamId, "members", memberId)
+        doc(db, "teams", teamId, "members", memberId),
       );
 
       if (teamSnap.exists()) {
@@ -65,12 +79,22 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
       }
 
       if (memberSnap.exists()) {
-        setMember(memberSnap.data());
+        const memberData = memberSnap.data();
+        setMember(memberData);
+        setWhatsappNumber((memberData.contact || "").replace(/\D/g, ""));
       }
 
       if (periodId) {
         const periodSnap = await getDoc(
-          doc(db, "teams", teamId, "members", memberId, "billingPeriods", periodId)
+          doc(
+            db,
+            "teams",
+            teamId,
+            "members",
+            memberId,
+            "billingPeriods",
+            periodId,
+          ),
         );
 
         if (periodSnap.exists()) {
@@ -82,7 +106,7 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
             Number(periodData.amount || 0) -
               Number(periodData.paid || 0) -
               Number(periodData.discountAmount || 0),
-            0
+            0,
           );
 
           setBillingPeriod(periodData);
@@ -94,6 +118,85 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
 
     fetchData();
   }, [teamId, memberId, periodId]);
+
+  const handleCopyPaymentLink = async () => {
+    try {
+      await navigator.clipboard.writeText(razorpayLink);
+      toast.success("Payment link copied");
+    } catch (error) {
+      console.error("Copy failed:", error);
+      toast.error("Failed to copy payment link");
+    }
+  };
+
+  const handleSharePaymentLink = async () => {
+    
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Payment Link",
+          text: whatsappMessage,
+          url: razorpayLink,
+        });
+        return;
+      }
+
+      await navigator.clipboard.writeText(whatsappMessage);
+      toast.success("Share message copied");
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        console.error("Share failed:", error);
+        toast.error("Failed to share payment link");
+      }
+    }
+  };
+
+  const handleSendWhatsapp = async () => {
+    if (!whatsappNumber.trim()) {
+      toast.error("Enter a WhatsApp number");
+      return;
+    }
+  
+  
+    try {
+      const res = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: whatsappNumber,
+          memberName,
+          amount: totalAmount.toFixed(2),
+          periodLabel,
+          razorpayLink,
+        }),
+      });
+
+      const data = await res.json();
+
+      console.log("META STATUS:", res.status);
+console.log("META RESPONSE:", JSON.stringify(data, null, 2));
+
+      if (!res.ok) {
+        console.error("WhatsApp API response:", data);
+        throw new Error(
+          data.code
+            ? `${data.error || "Failed to send WhatsApp message"} (${data.code})`
+            : data.error || "Failed to send WhatsApp message",
+        );
+      }
+
+      toast.success(
+        data.status === "accepted"
+          ? "WhatsApp request accepted by Meta"
+          : "WhatsApp message submitted",
+      );
+    } catch (error) {
+      console.error("WhatsApp send error:", error);
+      toast.error(error.message || "Failed to send WhatsApp message");
+    }
+  };
 
   const handleSave = async () => {
     if (!member || !teamId || !memberId) return;
@@ -110,14 +213,19 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
         const newDiscount = previousDiscount + currentDiscount;
         const periodAmount = Number(billingPeriod.amount || 0);
         const newPaid = previousPaid + payableAmount;
-        const newBalance = Math.max(
-          periodAmount - newPaid - newDiscount,
-          0
-        );
+        const newBalance = Math.max(periodAmount - newPaid - newDiscount, 0);
         const newStatus = newBalance <= 0 ? "settled" : "partial";
 
         await updateDoc(
-          doc(db, "teams", teamId, "members", memberId, "billingPeriods", periodId),
+          doc(
+            db,
+            "teams",
+            teamId,
+            "members",
+            memberId,
+            "billingPeriods",
+            periodId,
+          ),
           {
             paid: newPaid,
             balance: newBalance,
@@ -130,12 +238,13 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
             paymentMode,
             lastPaymentDate: Timestamp.now(),
             updatedAt: Timestamp.now(),
-          }
+          },
         );
 
         await addDoc(collection(db, "teams", teamId, "payments"), {
           memberId,
-          memberName: `${member.firstName || ""} ${member.lastName || ""}`.trim(),
+          memberName:
+            `${member.firstName || ""} ${member.lastName || ""}`.trim(),
           periodId,
           period: periodLabel,
           periodLabel,
@@ -147,7 +256,14 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
         });
 
         const periodsSnap = await getDocs(
-          collection(db, "teams", teamId, "members", memberId, "billingPeriods")
+          collection(
+            db,
+            "teams",
+            teamId,
+            "members",
+            memberId,
+            "billingPeriods",
+          ),
         );
 
         const billingSummary = periodsSnap.docs.reduce(
@@ -166,7 +282,7 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
           {
             totalBalance: 0,
             totalDiscount: 0,
-          }
+          },
         );
 
         await setDoc(
@@ -179,7 +295,7 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
               lastPaymentDate: Timestamp.now(),
             },
           },
-          { merge: true }
+          { merge: true },
         );
 
         setBillingPeriod({
@@ -206,9 +322,10 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
           discountAmount,
           totalAmount,
           paymentMode,
-          memberName: `${member.firstName || ""} ${member.lastName || ""}`.trim(),
+          memberName:
+            `${member.firstName || ""} ${member.lastName || ""}`.trim(),
           createdAt: serverTimestamp(),
-        }
+        },
       );
 
       toast.success("Payment saved successfully");
@@ -229,7 +346,11 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
     <div className="w-full flex flex-col items-center justify-center px-4 pt-4 space-y-2">
       <div className="w-full max-w-[600px] flex justify-start">
         <button
-          onClick={() => router.replace(`/admin/teams/${teamId}/billing?memberId=${memberId}`)}
+          onClick={() =>
+            router.replace(
+              `/admin/teams/${teamId}/billing?memberId=${memberId}`,
+            )
+          }
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="w-4 h-4" /> Back
@@ -253,7 +374,9 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium mb-1 block">Amount (Rs.)</label>
+            <label className="text-sm font-medium mb-1 block">
+              Amount (Rs.)
+            </label>
             <Input
               type="number"
               value={amount}
@@ -262,7 +385,9 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Discount (%)</label>
+            <label className="text-sm font-medium mb-1 block">
+              Discount (%)
+            </label>
             <Input
               type="number"
               min="0"
@@ -274,11 +399,10 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
           </div>
 
           <div className="md:col-span-2">
-            <label className="text-sm font-medium mb-1 block">Payment Mode</label>
-            <Select
-              value={paymentMode}
-              onValueChange={setPaymentMode}
-            >
+            <label className="text-sm font-medium mb-1 block">
+              Payment Mode
+            </label>
+            <Select value={paymentMode} onValueChange={setPaymentMode}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select payment mode" />
               </SelectTrigger>
@@ -286,13 +410,95 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
               <SelectContent>
                 <SelectItem value="cash">Cash</SelectItem>
                 <SelectItem value="upi">UPI</SelectItem>
-                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                <SelectItem value="card">Card</SelectItem>
-                <SelectItem value="cheque">Cheque</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
+
+        {paymentMode === "upi" && (
+          <div className="rounded-xl border bg-muted/30 p-4 space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Razorpay Payment Link
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  value={razorpayLink}
+                  readOnly
+                  className="font-mono text-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopyPaymentLink}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleSharePaymentLink}
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium block">
+                Send WhatsApp Message
+              </label>
+
+              <div className="flex flex-col gap-2 rounded-lg border bg-background p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Default number:{" "}
+                    <span className="font-medium text-foreground">
+                      {normalizedContact || "Not available"}
+                    </span>
+                  </p>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const next = !useOtherNumber;
+                      setUseOtherNumber(next);
+                      setWhatsappNumber(next ? "" : normalizedContact);
+                    }}
+                  >
+                    {useOtherNumber
+                      ? "Use member number"
+                      : "Not this number? Use other"}
+                  </Button>
+                </div>
+
+                <Input
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value)}
+                  placeholder="Enter WhatsApp number"
+                />
+
+                <p className="whitespace-pre-line text-xs text-muted-foreground">
+                  Message: {whatsappMessage}
+                </p>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2"
+                onClick={handleSendWhatsapp}
+              >
+                <Send className="h-4 w-4" />
+                Send to Member
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="bg-muted/40 rounded-xl p-4 space-y-2 text-sm">
           <div className="flex justify-between">
@@ -317,11 +523,7 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
         </div>
 
         <div className="flex flex-col gap-3 w-full">
-          <Button
-            className="w-full"
-            onClick={handleSave}
-            disabled={saving}
-          >
+          <Button className="w-full" onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save Payment"}
           </Button>
         </div>

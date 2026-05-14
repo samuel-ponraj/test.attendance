@@ -3,6 +3,7 @@ import HomePage from "../components/home/HomePage"
 import UseCasesSection from "@/components/home/UseCase";
 import HowItWorksSection from "@/components/home/HowItWorks";
 import Mockup from "@/components/home/Mockup";
+import BillingFeatures from "@/components/home/BillingFeatures";
 
 
 export const metadata = {
@@ -61,6 +62,7 @@ export default function Home() {
     <div className="">
       <HomePage />
       <Features />
+      <BillingFeatures />
       <HowItWorksSection />
       <Mockup />
       <UseCasesSection />

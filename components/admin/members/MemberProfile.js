@@ -357,6 +357,19 @@ const handleDynamicChange = (fieldId, value) => {
         </CardContent>
       </Card>
 
+      {teamBillingConfig?.billingType === "salary" ? (
+            <SalaryCard
+              teamId={teamId}
+	            memberId={memberId}
+            />
+          ) : (
+            <BillingCard
+              teamId={teamId}
+              memberId={memberId}
+              config={teamBillingConfig}
+            />
+          )}
+
       {/* Custom Forms */}
 
       {forms.map((form) => (
@@ -435,19 +448,6 @@ const handleDynamicChange = (fieldId, value) => {
             </CardContent>
           </Card>
           ))} 
-
-          {teamBillingConfig?.billingType === "salary" ? (
-            <SalaryCard
-              teamId={teamId}
-	            memberId={memberId}
-            />
-          ) : (
-            <BillingCard
-              teamId={teamId}
-              memberId={memberId}
-              config={teamBillingConfig}
-            />
-          )}
           {teamBillingConfig?.billingType !== "salary" ? (
           <PaymentHistoryCard payments={payments}/>) : null}
     </div>

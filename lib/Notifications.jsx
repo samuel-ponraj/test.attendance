@@ -18,9 +18,6 @@ import {
   updateDoc,
   doc,
   limit,
-  collectionGroup,
-  where,
-  getDocs,
   getDoc
 } from "firebase/firestore"
 
@@ -55,8 +52,10 @@ export default function Notifications() {
 
     } else {
 
-     const memberRef = doc(db, "allMembers", user.email)
+    const memberRef = doc(db, "allMembers", user.email?.toLowerCase())
     const memberSnap = await getDoc(memberRef)
+
+    if (!memberSnap.exists()) return
 
     const teamId = memberSnap.data().teamId
 
@@ -117,46 +116,58 @@ export default function Notifications() {
   const unreadCount = notifications.filter(n => !n.read).length
 
 
+const markNotificationAsRead = async (notification) => {
+  if (notification.read) return
+
+  if (role === "admin") {
+    await updateDoc(
+      doc(db, "notifications", notification.id),
+      { read: true }
+    )
+    return
+  }
+
+  const user = auth.currentUser
+  if (!user) return
+
+  const memberRef = doc(db, "allMembers", user.email?.toLowerCase())
+  const memberSnap = await getDoc(memberRef)
+
+  if (!memberSnap.exists()) return
+
+  const { teamId } = memberSnap.data()
+
+  await updateDoc(
+    doc(
+      db,
+      "teams",
+      teamId,
+      "members",
+      user.uid,
+      "notifications",
+      notification.id
+    ),
+    { read: true }
+  )
+}
+
+
+const handleMarkAsRead = async (event, notification) => {
+  event.stopPropagation()
+
+  try {
+    await markNotificationAsRead(notification)
+  } catch (error) {
+    console.error("Mark as read failed:", error)
+  }
+}
+
+
 const handleNotificationClick = async (notification) => {
 
   try {
 
-    if (!notification.read) {
-
-      if (role === "admin") {
-
-        await updateDoc(
-          doc(db, "notifications", notification.id),
-          { read: true }
-        )
-
-      } else {
-
-        const user = auth.currentUser
-        if (!user) return
-
-        // Fetch teamId from allMembers
-        const memberRef = doc(db, "allMembers", user.email.toLowerCase())
-        const memberSnap = await getDoc(memberRef)
-
-        if (!memberSnap.exists()) return
-
-        const { teamId } = memberSnap.data()
-
-        await updateDoc(
-          doc(
-            db,
-            "teams",
-            teamId,
-            "members",
-            user.uid,
-            "notifications",
-            notification.id
-          ),
-          { read: true }
-        )
-      }
-    }
+    await markNotificationAsRead(notification)
 
     /* Navigation logic */
 
@@ -242,6 +253,16 @@ const handleNotificationClick = async (notification) => {
                   <p className="text-xs text-muted-foreground line-clamp-2">
                     {n.message}
                   </p>
+
+                  {!n.read && (
+                    <button
+                      type="button"
+                      onClick={(event) => handleMarkAsRead(event, n)}
+                      className="mt-2 text-xs font-medium text-primary hover:underline"
+                    >
+                      Mark as Read
+                    </button>
+                  )}
                 </div>
 
                 {!isStatic && (

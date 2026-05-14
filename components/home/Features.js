@@ -1,68 +1,102 @@
-import { Users, ClipboardCheck, BarChart3, Shield, Clock, Smartphone } from 'lucide-react';
-import styles from './Features.module.css'
+import {
+  Users,
+  ClipboardCheck,
+  BarChart3,
+  Shield,
+  Clock,
+  Smartphone,
+  ReceiptIndianRupee,
+  CalendarDays,
+  FileText,
+} from "lucide-react";
 
 const features = [
   {
     icon: Users,
-    title: 'Team Management',
-    description: 'Create and organize multiple teams with ease. Add or remove members as your organization grows.',
+    title: "Team Management",
+    description:
+      "Create and organize multiple teams with ease. Add or remove members as your organization grows.",
   },
   {
     icon: ClipboardCheck,
-    title: 'Quick Attendance',
-    description: 'Mark attendance with a single click. Present or absent status is recorded instantly.',
+    title: "Quick Attendance",
+    description:
+      "Mark attendance with a single click. Present, absent, and half-day statuses are recorded instantly.",
   },
   {
     icon: BarChart3,
-    title: 'Visual Dashboard',
-    description: 'Get a clear overview of all teams and their attendance status at a glance.',
+    title: "Visual Dashboard",
+    description:
+      "Get a clear overview of teams, members, attendance status, and billing balances at a glance.",
   },
   {
     icon: Shield,
-    title: 'Admin Controls',
-    description: 'Secure admin access ensures only authorized personnel can manage attendance records.',
+    title: "Admin Controls",
+    description:
+      "Secure admin access ensures only authorized personnel can manage teams, records, and payments.",
   },
   {
     icon: Clock,
-    title: 'Real-time Updates',
-    description: 'Attendance records are updated in real-time, keeping everyone on the same page.',
+    title: "Real-time Updates",
+    description:
+      "Attendance and payment records stay current, keeping admins and teams on the same page.",
   },
   {
     icon: Smartphone,
-    title: 'Responsive Design',
-    description: 'Access the platform from any device — desktop, tablet, or mobile phone.',
+    title: "Responsive Design",
+    description:
+      "Access the platform from any device, including desktop, tablet, and mobile phone.",
+  },
+  {
+    icon: ReceiptIndianRupee,
+    title: "Smart Billing",
+    description:
+      "Enable fixed, attendance-based, or salary billing so fees match the way your team actually works.",
+  },
+  {
+    icon: CalendarDays,
+    title: "Flexible Billing Cycles",
+    description:
+      "Set up daily, monthly, annual, or term-based billing periods with clear start dates.",
+  },
+  {
+    icon: FileText,
+    title: "Receipts & Records",
+    description:
+      "Record payments, apply discounts, track balances, and download clean payment receipts.",
   },
 ];
 
 const Features = () => {
   return (
-    <section id="features" className={`py-15 ${styles.featuresSection}`}>
-      <div className={`container mx-auto px-4 ${styles.container} `}>
-        <div className="text-center mb-16">
-          <span className={styles.badge}>Features</span>
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+    <section id="features" className="bg-[#0d0d0d] px-4 py-20 text-white">
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="mb-16 text-center">
+          <span className="mb-3 inline-block text-xs font-semibold uppercase tracking-[0.15em] text-[#9d1c1b]">
+            Features
+          </span>
+          <h2 className="mb-4 text-3xl font-bold sm:text-4xl">
             Everything You Need
           </h2>
-          <p className={` max-w-2xl mx-auto ${styles.headingDescription}`}>
-            Powerful features designed to make attendance tracking simple and efficient for teams of any size.
+          <p className="mx-auto max-w-2xl text-lg leading-8 text-neutral-400">
+            Powerful features designed to make attendance, billing, and team
+            management simple for organizations of any size.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
           {features.map((feature, index) => (
             <div
               key={feature.title}
-              className=" rounded-xl p-6 shadow-card hover:shadow-medium transition-all duration-300 hover:-translate-y-1 animate-fade-in"
-              style={{ animationDelay: `${index * 0.1}s`, boxShadow: 'rgba(149, 157, 165, 0.2) 0px 8px 24px' }}
+              className="rounded-lg border border-white/10 bg-white/[0.03] p-6 shadow-[0_8px_24px_rgba(149,157,165,0.12)] transition-all duration-300 hover:-translate-y-1 hover:border-[#9d1c1b]/50 hover:bg-white/[0.06]"
+              style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 ${styles.icon}`}>
-                <feature.icon className="w-6 h-6  " />
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-[#9d1c1b]/10 text-[#9d1c1b]">
+                <feature.icon className="h-6 w-6" />
               </div>
 
-              <h3 className="text-xl font-semibold mb-2">
-                {feature.title}
-              </h3>
-              <p className={styles.featureDescription}>
+              <h3 className="mb-2 text-xl font-semibold">{feature.title}</h3>
+              <p className="leading-7 text-neutral-400">
                 {feature.description}
               </p>
             </div>

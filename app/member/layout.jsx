@@ -10,7 +10,6 @@ import {
 import { UIProvider } from "../context/uiContext";
 import { TeamsProvider } from "../context/TeamsContext";
 import FooterNav from "../../components/footer/FooterNav";
-import SplashLoader from "../../components/SplashLoader";
 import { MembersProvider } from "../context/MembersContext";
 import { AttendanceProvider } from "../context/attendanceContext";
 import { UserProvider } from "../context/userContext";
@@ -37,7 +36,7 @@ function DashboardContent({ children }) {
 					<SiteHeader />
 
 					<div className="flex flex-1 flex-col">
-						<div className="@container/main flex flex-1 flex-col gap-2 pb-16 md:pb-0">
+						<div className="@container/main flex flex-1 flex-col gap-2 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
 							{children}
 						</div>
 					</div>
@@ -80,7 +79,7 @@ export default function MemberLayout({ children }) {
 					</h1>
 
 					<p className="mt-3 opacity-70">
-						We're currently updating the dashboard. Please check back soon!
+						We&apos;re currently updating the dashboard. Please check back soon!
 					</p>
 				</div>
 			</div>

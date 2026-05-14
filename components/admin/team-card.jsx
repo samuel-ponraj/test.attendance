@@ -1,7 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MoreVertical, Search, Trash2, Users } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  MoreVertical,
+  Search,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -37,16 +46,6 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { auth, app } from "@/lib/firebase";
 import { httpsCallable, getFunctions } from "firebase/functions";
-
-const getBillingKey = (team) => {
-  const billingType = team?.billingConfig?.billingType;
-  const billingCycle = team?.billingConfig?.billingCycle;
-
-  if (billingType === "salary") return "salary";
-  if (!billingType || !billingCycle) return "not_configured";
-
-  return `${billingType}_${billingCycle}`;
-};
 
 const getBillingLabel = (team) => {
   const billingType = team?.billingConfig?.billingType;
@@ -84,6 +83,8 @@ const TeamCardLayout = ({ teams }) => {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [billingFilter, setBillingFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const closeAllDialogs = () => {
     setSelectedTeamId(null);
@@ -135,6 +136,16 @@ const TeamCardLayout = ({ teams }) => {
 
     return matchesSearch && matchesBilling;
   });
+
+  const totalRows = filteredTeams.length;
+  const totalPages = Math.ceil(totalRows / rowsPerPage);
+  const safeCurrentPage =
+    totalPages > 0 ? Math.min(currentPage, totalPages) : 1;
+  const startIndex = (safeCurrentPage - 1) * rowsPerPage;
+  const paginatedTeams = filteredTeams.slice(
+    startIndex,
+    startIndex + rowsPerPage
+  );
 
   const handleSendOtp = async () => {
     if (!auth.currentUser || !selectedTeamId) return;
@@ -202,13 +213,22 @@ const TeamCardLayout = ({ teams }) => {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Search teams..."
               className="pl-9"
             />
           </div>
 
-          <Select value={billingFilter} onValueChange={setBillingFilter}>
+          <Select
+            value={billingFilter}
+            onValueChange={(value) => {
+              setBillingFilter(value);
+              setCurrentPage(1);
+            }}
+          >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="All Billing Types" />
             </SelectTrigger>
@@ -248,15 +268,10 @@ const TeamCardLayout = ({ teams }) => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredTeams.map((team) => {
+                paginatedTeams.map((team) => {
                   const present = Number(team.attendanceSummary?.present || 0);
                   const absent = Number(team.attendanceSummary?.absent || 0);
                   const halfday = Number(team.attendanceSummary?.halfday || 0);
-                  const totalMarked = present + absent + halfday;
-                  const attendanceRate =
-                    totalMarked > 0
-                      ? Math.round((present / totalMarked) * 100)
-                      : 0;
                   const payrollDue = Boolean(team.billing?.totalBalance > 0);
 
                   return (
@@ -329,7 +344,11 @@ const TeamCardLayout = ({ teams }) => {
                         <div className="flex justify-end gap-2">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="icon">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={(event) => event.stopPropagation()}
+                              >
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -337,7 +356,10 @@ const TeamCardLayout = ({ teams }) => {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
                                 variant="destructive"
-                                onClick={() => setSelectedTeamId(team.id)}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setSelectedTeamId(team.id);
+                                }}
                               >
                                 <Trash2 className="h-4 w-4" />
                                 Delete Team
@@ -354,9 +376,85 @@ const TeamCardLayout = ({ teams }) => {
           </Table>
         </div>
 
-        <p className="text-sm text-muted-foreground">
-          Showing {filteredTeams.length} of {teams.length} teams
-        </p>
+        <div className="flex items-center justify-between gap-4 px-2 py-4">
+          <div className="hidden text-sm text-muted-foreground lg:block">
+            Showing {totalRows === 0 ? 0 : startIndex + 1} to{" "}
+            {Math.min(startIndex + rowsPerPage, totalRows)} of {totalRows} teams
+          </div>
+
+          <div className="flex w-full items-center justify-between gap-6 lg:w-auto lg:justify-end lg:gap-8">
+            <div className="hidden items-center gap-2 lg:flex">
+              <p className="text-sm font-medium">Rows per page</p>
+
+              <Select
+                value={`${rowsPerPage}`}
+                onValueChange={(value) => {
+                  setRowsPerPage(Number(value));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="h-8 w-[70px]">
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent align="end">
+                  {[10, 20, 30, 40, 50].map((pageSize) => (
+                    <SelectItem key={pageSize} value={`${pageSize}`}>
+                      {pageSize}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center justify-center text-sm font-medium">
+              Page {totalPages === 0 ? 0 : safeCurrentPage} of{" "}
+              {totalPages || 1}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="hidden h-8 w-8 p-0 lg:flex"
+                onClick={() => setCurrentPage(1)}
+                disabled={safeCurrentPage === 1}
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={() =>
+                  setCurrentPage((page) => Math.max(page - 1, 1))
+                }
+                disabled={safeCurrentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={() =>
+                  setCurrentPage((page) => Math.min(page + 1, totalPages || 1))
+                }
+                disabled={safeCurrentPage === totalPages || totalPages === 0}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+
+              <Button
+                variant="outline"
+                className="hidden h-8 w-8 p-0 lg:flex"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={safeCurrentPage === totalPages || totalPages === 0}
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <AlertDialog

@@ -51,7 +51,11 @@ export const AuthProvider = ({ children }) => {
               firstName: data.firstName || authFirstName,
               lastName: data.lastName || authLastName });
           } else {
-            const memberRef = doc(db, "allMembers", firebaseUser.email);
+            const memberRef = doc(
+              db,
+              "allMembers",
+              firebaseUser.email?.toLowerCase()
+            );
             const memberSnap = await getDoc(memberRef);
             
             if (memberSnap.exists()) {

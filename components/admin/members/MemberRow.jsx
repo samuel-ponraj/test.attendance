@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Check, X, Trash2 } from "lucide-react";
+import { Check, X } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -43,7 +43,6 @@ const MemberRow = ({
       status,
     });
   };
-
 
 const getInitials = (name) =>
     name

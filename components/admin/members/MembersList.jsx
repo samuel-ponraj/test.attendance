@@ -1,14 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit, UserPlus } from "lucide-react";
+import { useParams } from "next/navigation";
+import {
+  Bell,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Edit,
+  UserPlus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +38,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const MembersList = ({setModalOpen}) => {
   const { slug } = useParams(); 
@@ -37,6 +52,8 @@ const MembersList = ({setModalOpen}) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [search, setSearch] = useState("");
+  const [profileStatusFilter, setProfileStatusFilter] = useState("all");
+  const [customFormFields, setCustomFormFields] = useState([]);
 
   /* ---------------- FETCH DATA ---------------- */
   useEffect(() => {
@@ -47,7 +64,23 @@ const MembersList = ({setModalOpen}) => {
       try {
         const teamDoc = await getDoc(doc(db, "teams", slug));
         if (teamDoc.exists()) {
-          setTeam({ id: teamDoc.id, ...teamDoc.data() });
+          const teamData = { id: teamDoc.id, ...teamDoc.data() };
+          setTeam(teamData);
+
+          const formIds = teamData.customForms || [];
+          if (formIds.length) {
+            const formSnaps = await Promise.all(
+              formIds.map((id) => getDoc(doc(db, "customForms", id)))
+            );
+
+            setCustomFormFields(
+              formSnaps
+                .filter((snap) => snap.exists())
+                .flatMap((snap) => snap.data().customFields || [])
+            );
+          } else {
+            setCustomFormFields([]);
+          }
         }
 
         // 2. Fetch Members
@@ -83,6 +116,47 @@ const toggleSelectAll = () => {
     setSelectedMembers([]);
   } else {
     setSelectedMembers(members.map((m) => m.id));
+  }
+};
+
+const getProfileCompletion = (member) => {
+  const basicFields = [member.firstName, member.lastName, member.contact];
+  const totalFields = basicFields.length + customFormFields.length;
+
+  if (totalFields === 0) return 0;
+
+  const completedBasic = basicFields.filter(
+    (value) => value && String(value).trim() !== ""
+  ).length;
+
+  const completedCustom = customFormFields.filter((field) => {
+    const value = member.customData?.[field.id];
+    return value && (typeof value === "string" ? value.trim() !== "" : true);
+  }).length;
+
+  return Math.round(((completedBasic + completedCustom) / totalFields) * 100);
+};
+
+const isProfileComplete = (member) => getProfileCompletion(member) === 100;
+
+const notifyProfileCompletion = async (member) => {
+  try {
+    await addDoc(
+      collection(db, "teams", slug, "members", member.id, "notifications"),
+      {
+        title: "Complete your profile",
+        message:
+          "Please update your profile details and complete all required profile form fields.",
+        type: "profile_update_required",
+        createdAt: serverTimestamp(),
+        read: false,
+      }
+    );
+
+    toast.success("Profile completion notification sent");
+  } catch (error) {
+    console.error("Failed to notify member:", error);
+    toast.error("Failed to send notification");
   }
 };
 
@@ -139,15 +213,21 @@ const confirmDeleteMember = async () => {
 
 
   /* ---------------- SEARCH FILTER ---------------- */
-  const filteredMembers = members.filter((member) => {
+const filteredMembers = members.filter((member) => {
   const query = search.toLowerCase();
 
-  return (
+  const matchesSearch =
     member.firstName?.toLowerCase().includes(query) ||
     member.lastName?.toLowerCase().includes(query) ||
     member.email?.toLowerCase().includes(query) ||
-    member.contact?.toLowerCase().includes(query)
-  );
+    member.contact?.toLowerCase().includes(query);
+
+  if (!matchesSearch) return false;
+
+  if (profileStatusFilter === "all") return true;
+
+  const complete = isProfileComplete(member);
+  return profileStatusFilter === "complete" ? complete : !complete;
 });
 
   const totalRows = filteredMembers.length;
@@ -156,57 +236,42 @@ const confirmDeleteMember = async () => {
   const endIndex = startIndex + rowsPerPage;
   const currentRows = filteredMembers.slice(startIndex, endIndex);
 
-  const handleExportPDF = () => {
-  const doc = new jsPDF({ orientation: "landscape", unit: "pt" });
-
-  doc.setFontSize(14);
-  doc.text("Members List", 40, 30);
-
-  // Build dynamic headers
-  const headers = [
-    "S. No",
-    "First Name",
-    "Last Name",
-    "Email",
-    "Contact",
-  ];
-
-  // Build table body
-  const body = filteredMembers.map((member, index) => [
-    index + 1,
-    member.firstName || "-",
-    member.lastName || "-",
-    member.email || "-",
-    member.contact || "-",
-  ]);
-
-  autoTable(doc, {
-    startY: 50,
-    head: [headers],
-    body: body,
-    styles: {
-      fontSize: 9,
-      cellPadding: 6,
-    },
-  });
-
-  doc.save("members-list.pdf");
-};
-
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold">Members List</h2>
       <div className="flex flex-col gap-3 mb-3 md:flex-row md:items-center md:justify-between">
 
   {/* Search */}
+  <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
   <div className="w-full md:w-[300px]">
     <input
       type="text"
       placeholder="Search by name, email or contact"
       value={search}
-      onChange={(e) => setSearch(e.target.value)}
+      onChange={(e) => {
+        setSearch(e.target.value);
+        setCurrentPage(1);
+      }}
       className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
     />
+  </div>
+
+  <Select
+    value={profileStatusFilter}
+    onValueChange={(value) => {
+      setProfileStatusFilter(value);
+      setCurrentPage(1);
+    }}
+  >
+    <SelectTrigger className="w-full md:w-48">
+      <SelectValue placeholder="Profile Status" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all">All Profiles</SelectItem>
+      <SelectItem value="complete">Complete</SelectItem>
+      <SelectItem value="incomplete">Incomplete</SelectItem>
+    </SelectContent>
+  </Select>
   </div>
 
   {/* Buttons */}
@@ -253,6 +318,7 @@ const confirmDeleteMember = async () => {
               <th className="px-4 py-3 text-left">Last Name</th>
               <th className="px-4 py-3 text-left">Email</th>
               <th className="px-4 py-3 text-left">Contact</th>
+              <th className="px-4 py-3 text-left">Profile Status</th>
               <th className="px-4 py-3 text-left">Action</th>
             </tr>
           </thead>
@@ -262,14 +328,14 @@ const confirmDeleteMember = async () => {
               <tr>
               
                 <td
-                  colSpan={5}
+                  colSpan={7}
                   className="px-4 py-6 text-center text-muted-foreground"
                 >
                   No members found
                 </td>
               </tr>
             ) : (
-              currentRows.map((member, index) => (
+              currentRows.map((member) => (
                 <tr key={member.id} className="border-t hover:bg-muted/50">
                 <td className="px-4 py-3">
                   <Checkbox
@@ -287,10 +353,38 @@ const confirmDeleteMember = async () => {
                   <td className="px-4 py-3 whitespace-nowrap">
                     {member.contact}
                   </td>
-                  <td className="px-4 py-3 hover:text-primary">
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        isProfileComplete(member)
+                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                          : "border-orange-500/30 bg-orange-500/10 text-orange-600"
+                      )}
+                    >
+                      {isProfileComplete(member) ? "Complete" : "Incomplete"}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
                     <Link href={`/admin/teams/${team.id}/members/${member.id}`}>
-                      <Edit className="cursor-pointer" />
+                      <Button variant="outline" size="icon">
+                        <Edit className="h-4 w-4" />
+                      </Button>
                     </Link>
+
+                    {!isProfileComplete(member) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => notifyProfileCompletion(member)}
+                        className="gap-2"
+                      >
+                        <Bell className="h-4 w-4" />
+                        Notify
+                      </Button>
+                    )}
+                    </div>
                   </td>
                 </tr>
 

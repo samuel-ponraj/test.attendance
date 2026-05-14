@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Phone, Mail, Edit2, Users, Clock, Calendar, User, Camera } from "lucide-react";
+import { Phone, Mail, Users, Clock, Calendar, User, Camera } from "lucide-react";
 import { useMembers } from "../../../app/context/MembersContext";
 import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
 import { db, storage } from "@/lib/firebase";
@@ -12,6 +12,15 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getAuth, updateProfile } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const MemberProfileDesktop = () => {
   const auth = getAuth();
@@ -26,7 +35,29 @@ const MemberProfileDesktop = () => {
   const [memberTeams, setMemberTeams] = useState([]);
   const [formData, setFormData] = useState({});
   const [customValues, setCustomValues] = useState({});
+  const [forms, setForms] = useState([]);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const fetchCustomForms = async (formIds = []) => {
+    if (!formIds.length) {
+      setForms([]);
+      return;
+    }
+
+    const formSnaps = await Promise.all(
+      formIds.map((id) => getDoc(doc(db, "customForms", id)))
+    );
+
+    setForms(
+      formSnaps
+        .filter((snap) => snap.exists())
+        .map((snap) => ({
+          id: snap.id,
+          title: snap.data().title || "Custom Form",
+          fields: snap.data().customFields || [],
+        }))
+    );
+  };
 
   // REAL-TIME SYNC
   useEffect(() => {
@@ -52,8 +83,10 @@ const MemberProfileDesktop = () => {
               lastName: member.lastName || "",
               contact: member.contact || "",
             });
-            setCustomValues(member.customFields || {});
+            setCustomValues(member.customData || {});
           }
+
+          fetchCustomForms(teamData.customForms || []);
         }
       });
     });
@@ -151,8 +184,9 @@ const MemberProfileDesktop = () => {
       firstName: formData.firstName.trim(),
       lastName: formData.lastName.trim(),
       contact: formData.contact.trim(),
-      customFields: customValues || {},
+      customData: customValues || {},
       profileCompleted: isProfileComplete,
+      profileCompletion: progress,
       updatedAt: new Date(),
     };
 
@@ -160,6 +194,7 @@ const MemberProfileDesktop = () => {
 
     await updateDoc(allMemberRef, { 
       profileCompleted: isProfileComplete,
+      profileCompletion: progress,
       updatedAt: new Date() 
     });
 
@@ -195,7 +230,7 @@ const MemberProfileDesktop = () => {
         formData.contact
       ];
 
-      const customFields = team?.customFields || [];
+      const customFields = forms.flatMap((form) => form.fields || []);
 
       const totalFields = basicFields.length + customFields.length;
       if (totalFields === 0) return 0;
@@ -444,48 +479,98 @@ const MemberProfileDesktop = () => {
                   </div>
                 </div>
 
-                {/* Dynamic Fields */}
-                {team?.customFields?.map((field) => {
-                  const value = customValues[field.id] || "";
-                  return (
-                    <div key={field.id} className="space-y-2">
-                      <Label className="text-gray-400">
-                        {field.name}
-                        {field.required && <span className="text-red-500 ml-1">*</span>}
-                      </Label>
-                      {field.type === "textarea" ? (
-                        <textarea
-                          value={value}
-                          onChange={(e) => handleCustomChange(field.id, e.target.value)}
-                          className="w-full bg-transparent border border-gray-700 rounded-md p-3 text-sm resize-none"
-                          rows={4}
-                        />
-                      ) : field.type === "radio" || field.type === "select" ? (
-                        <div className="flex flex-wrap gap-2">
-                          {field.options?.map((opt) => (
-                            <button
-                              type="button"
-                              key={opt}
-                              onClick={() => handleCustomChange(field.id, opt)}
-                              className={`px-3 py-1 rounded-full text-sm border 
-                                ${value === opt ? "bg-primary text-white border-primary" : "border-gray-600 text-gray-400"}`}
-                            >
-                              {opt}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <Input
-                          value={value}
-                          onChange={(e) => handleCustomChange(field.id, e.target.value)}
-                          className="bg-transparent border-gray-700"
-                        />
-                      )}
-                    </div>
-                  );
-                })}
               </CardContent>
             </Card>
+
+            {forms.map((form) => (
+              <Card key={form.id} className="w-full">
+                <CardHeader className="border-b pb-4">
+                  <CardTitle>{form.title}</CardTitle>
+                </CardHeader>
+
+                <CardContent className="space-y-6">
+                  {form.fields.map((field) => {
+                    const value = customValues[field.id] || "";
+
+                    return (
+                      <div key={field.id} className="space-y-2">
+                        <Label className="text-gray-400">
+                          {field.name}
+                          {field.required && (
+                            <span className="ml-1 text-red-500">*</span>
+                          )}
+                        </Label>
+
+                        {field.type === "textarea" ? (
+                          <Textarea
+                            value={value}
+                            onChange={(e) =>
+                              handleCustomChange(field.id, e.target.value)
+                            }
+                            className="bg-transparent border-gray-700"
+                          />
+                        ) : field.type === "select" ? (
+                          <Select
+                            value={value}
+                            onValueChange={(val) =>
+                              handleCustomChange(field.id, val)
+                            }
+                          >
+                            <SelectTrigger className="w-full bg-transparent border-gray-700">
+                              <SelectValue
+                                placeholder={`Select ${field.name.toLowerCase()}`}
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {field.options?.map((opt) => (
+                                <SelectItem key={opt} value={opt}>
+                                  {opt}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : field.type === "radio" ? (
+                          <RadioGroup
+                            value={value}
+                            onValueChange={(val) =>
+                              handleCustomChange(field.id, val)
+                            }
+                            className="flex flex-row flex-wrap gap-4 pt-1"
+                          >
+                            {field.options?.map((opt) => (
+                              <div
+                                key={opt}
+                                className="flex items-center space-x-2"
+                              >
+                                <RadioGroupItem
+                                  value={opt}
+                                  id={`${field.id}-${opt}`}
+                                />
+                                <Label
+                                  htmlFor={`${field.id}-${opt}`}
+                                  className="cursor-pointer font-normal"
+                                >
+                                  {opt}
+                                </Label>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                        ) : (
+                          <Input
+                            type={field.type}
+                            value={value}
+                            onChange={(e) =>
+                              handleCustomChange(field.id, e.target.value)
+                            }
+                            className="bg-transparent border-gray-700"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </div>

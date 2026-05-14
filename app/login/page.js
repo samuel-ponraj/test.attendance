@@ -31,7 +31,7 @@ const Login = () => {
       return "admin";
     }
 
-    const memberDoc = await getDoc(doc(db,"allMembers",userEmail));
+    const memberDoc = await getDoc(doc(db,"allMembers",userEmail?.toLowerCase()));
     if(memberDoc.exists()){
       return "member";
     }

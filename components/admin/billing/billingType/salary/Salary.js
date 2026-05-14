@@ -50,12 +50,16 @@ import {
 
 import { PiFilePdf } from "react-icons/pi";
 import { User } from "lucide-react";
+import BillingContentLoader from "../BillingContentLoader";
 
 const Salary = ({ teamId, team, members }) => {
   const router = useRouter();
 
   const [selectedMemberId, setSelectedMemberId] = useState("");
   const [salarySlips, setSalarySlips] = useState([]);
+  const [salarySlipsLoading, setSalarySlipsLoading] = useState(false);
+  const [attendancePreviewLoading, setAttendancePreviewLoading] =
+    useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
   const [selectedAction, setSelectedAction] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -142,19 +146,25 @@ const Salary = ({ teamId, team, members }) => {
   const fetchSalarySlips = async () => {
     if (!teamId || !selectedMemberId) return;
 
-    const q = query(
-      collection(db, "teams", teamId, "salarySlips"),
-      where("memberId", "==", selectedMemberId),
-    );
+    setSalarySlipsLoading(true);
 
-    const snap = await getDocs(q);
+    try {
+      const q = query(
+        collection(db, "teams", teamId, "salarySlips"),
+        where("memberId", "==", selectedMemberId),
+      );
 
-    setSalarySlips(
-      snap.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      })),
-    );
+      const snap = await getDocs(q);
+
+      setSalarySlips(
+        snap.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        })),
+      );
+    } finally {
+      setSalarySlipsLoading(false);
+    }
   };
 
   const getMemberSlip = (period) => {
@@ -361,42 +371,48 @@ const Salary = ({ teamId, team, members }) => {
   const fetchAttendancePreview = async (periods) => {
     if (!teamId || !selectedMember) return;
 
-    const result = {};
+    setAttendancePreviewLoading(true);
 
-    await Promise.all(
-      periods.map(async (period) => {
-        const attendance = await fetchAttendanceSummary(
-          selectedMember.id,
-          period.fromDate,
-          period.toDate,
-        );
+    try {
+      const result = {};
 
-        const salaryConfig = selectedMember.salaryConfig || {};
+      await Promise.all(
+        periods.map(async (period) => {
+          const attendance = await fetchAttendanceSummary(
+            selectedMember.id,
+            period.fromDate,
+            period.toDate,
+          );
 
-        const { basicPay, perDaySalary, lossOfPay } =
-          calculateNetSalaryFromAttendance(salaryConfig, attendance);
+          const salaryConfig = selectedMember.salaryConfig || {};
 
-        const specialAllowance = Number(salaryConfig.specialAllowance || 0);
-        const bonus = Number(salaryConfig.bonus || 0);
-        const pf = Number(salaryConfig.pf || 0);
-        const esi = Number(salaryConfig.esi || 0);
+          const { basicPay, perDaySalary, lossOfPay } =
+            calculateNetSalaryFromAttendance(salaryConfig, attendance);
 
-        const grossSalary = basicPay + specialAllowance + bonus;
-        const totalDeductions = pf + esi;
-        const netSalary = grossSalary - totalDeductions;
+          const specialAllowance = Number(salaryConfig.specialAllowance || 0);
+          const bonus = Number(salaryConfig.bonus || 0);
+          const pf = Number(salaryConfig.pf || 0);
+          const esi = Number(salaryConfig.esi || 0);
 
-        const key = `${period.fromDate}_${period.toDate}`;
+          const grossSalary = basicPay + specialAllowance + bonus;
+          const totalDeductions = pf + esi;
+          const netSalary = grossSalary - totalDeductions;
 
-        result[key] = {
-          ...attendance,
-          perDaySalary: Math.round(perDaySalary),
-          lossOfPay: Math.round(lossOfPay),
-          netSalary: Math.round(netSalary),
-        };
-      }),
-    );
+          const key = `${period.fromDate}_${period.toDate}`;
 
-    setAttendancePreview(result);
+          result[key] = {
+            ...attendance,
+            perDaySalary: Math.round(perDaySalary),
+            lossOfPay: Math.round(lossOfPay),
+            netSalary: Math.round(netSalary),
+          };
+        }),
+      );
+
+      setAttendancePreview(result);
+    } finally {
+      setAttendancePreviewLoading(false);
+    }
   };
 
   const getDailyAttendanceText = (preview) => {
@@ -642,6 +658,7 @@ const Salary = ({ teamId, team, members }) => {
 
   const selectedSlip = selectedPeriod ? getMemberSlip(selectedPeriod) : null;
   const salaryConfig = selectedMember?.salaryConfig || {};
+  const contentLoading = salarySlipsLoading || attendancePreviewLoading;
 
   return (
     <div className="space-y-5">
@@ -758,6 +775,8 @@ const Salary = ({ teamId, team, members }) => {
             </p>
           </CardContent>
         </Card>
+      ) : contentLoading ? (
+        <BillingContentLoader />
       ) : (
         <>
           <Card className="gap-4">
