@@ -15,7 +15,7 @@ const getParam = (params, ...keys) => {
 };
 
 const getRedirectUrl = (origin, teamId, memberId, status = "success") =>
-  `${origin}/payment-status?payment=${status}&teamId=${teamId}&memberId=${memberId}`;
+  `${origin}/admin/teams/${teamId}/billing?memberId=${memberId}&payment=${status}`;
 
 export async function GET(req) {
   const url = new URL(req.url);
@@ -93,6 +93,6 @@ export async function GET(req) {
       return NextResponse.redirect(getRedirectUrl(origin, teamId, memberId, "failed"));
     }
 
-    return NextResponse.redirect(`${origin}/payment-status?payment=failed`);
+    return NextResponse.redirect(`${origin}/admin/billing?payment=failed`);
   }
 }
