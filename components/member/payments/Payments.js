@@ -91,6 +91,18 @@ const formatDateTime = (value) => {
   });
 };
 
+const toDateKey = (value) => {
+  const date = value?.seconds ? new Date(value.seconds * 1000) : new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
 const formatLabel = (value) => {
   if (!value) return "-";
 
@@ -188,6 +200,7 @@ const Payments = () => {
   const billingType = billingConfig?.billingType || "";
   const billingCycle = billingConfig?.billingCycle || "";
   const isSalaryBilling = billingType === "salary";
+  const memberJoinedDateKey = toDateKey(member?.createdAt);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -227,6 +240,24 @@ const Payments = () => {
           id: periodDoc.id,
           ...periodDoc.data(),
         }))
+        .filter((period) => {
+          if (!memberJoinedDateKey) return true;
+          return (period.toDate || period.fromDate || "") >= memberJoinedDateKey;
+        })
+        .map((period) => {
+          if (
+            !memberJoinedDateKey ||
+            !period.fromDate ||
+            period.fromDate >= memberJoinedDateKey
+          ) {
+            return period;
+          }
+
+          return {
+            ...period,
+            fromDate: memberJoinedDateKey,
+          };
+        })
         .sort((a, b) => {
           const aTime = a.fromDate?.seconds
             ? a.fromDate.seconds * 1000
@@ -242,7 +273,7 @@ const Payments = () => {
     });
 
     return () => unsubscribe();
-  }, [isSalaryBilling, memberId, teamId]);
+  }, [isSalaryBilling, memberId, memberJoinedDateKey, teamId]);
 
   useEffect(() => {
     if (!teamId || !memberId) return;

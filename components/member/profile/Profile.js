@@ -550,6 +550,10 @@ const MemberProfileDesktop = () => {
           <span className="break-all">{member.email}</span>
         </span>
       </div>
+      <div className="mt-2 flex items-center gap-2 text-sm text-gray-400">
+        <Calendar className="w-4 h-4 text-primary shrink-0" />
+        <span>Joined {formatDate(member.createdAt)}</span>
+      </div>
     </div>
   </div>
 

@@ -24,7 +24,6 @@ import {
   query,
   collection,
   where,
-  orderBy,
   onSnapshot
 } from 'firebase/firestore'
 import {
@@ -58,6 +57,7 @@ const MemberProfile = ({ teamId, memberId }) => {
   const [contact, setContact] = useState('')
   const [role, setRole] = useState('member')
   const [photoURL, setPhotoURL] = useState('')
+  const [createdAt, setCreatedAt] = useState(null)
 
   const [photoPreview, setPhotoPreview] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
@@ -91,6 +91,7 @@ const MemberProfile = ({ teamId, memberId }) => {
         setContact(data.contact || '')
         setRole(data.role || 'member')
         setPhotoURL(data.photoURL || '')
+        setCreatedAt(data.createdAt || null)
         setPhotoPreview(data.photoURL || '')
         setDynamicFields(data.customData || {})
         setMemberBilling(data.billing || {});
@@ -109,22 +110,49 @@ const MemberProfile = ({ teamId, memberId }) => {
   }, [teamId, memberId, router])
 
   useEffect(() => {
-	if (!teamId) return;
+	if (!teamId || !memberId) return;
 
 	const paymentsRef = collection(db, "teams", teamId , "payments");
-	const q = query(paymentsRef, orderBy("createdAt", "desc"));
+	const q = query(paymentsRef, where("memberId", "==", memberId));
 
 	const unsubscribe = onSnapshot(q, (snap) => {
-		const list = snap.docs.map((doc) => ({
-			id: doc.id,
-			...doc.data(),
-		}));
+		const list = snap.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+      .sort((a, b) => {
+        const aTime = a.createdAt?.seconds
+          ? a.createdAt.seconds * 1000
+          : new Date(a.createdAt || 0).getTime();
+        const bTime = b.createdAt?.seconds
+          ? b.createdAt.seconds * 1000
+          : new Date(b.createdAt || 0).getTime();
+
+        return bTime - aTime;
+      });
 
 		setPayments(list);
 	});
 
 	return () => unsubscribe();
-}, [teamId]);
+}, [memberId, teamId]);
+
+  const formatDate = (value) => {
+    if (!value) return 'Not configured'
+
+    const date = value?.seconds
+      ? new Date(value.seconds * 1000)
+      : new Date(value)
+
+    if (Number.isNaN(date.getTime())) return 'Not configured'
+
+    return date.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+  }
 
 //  Fetch Custom Forms
 
@@ -272,8 +300,12 @@ const handleDynamicChange = (fieldId, value) => {
       </div>
 
       <Card className='rounded-2xl border shadow-sm'>
-        <CardHeader>
+        <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
           <CardTitle className='text-lg'>Basic Details</CardTitle>
+          <div className='text-left sm:text-right'>
+            <p className='text-xs font-medium uppercase text-muted-foreground'>Joined Date</p>
+            <p className='text-sm font-semibold'>{formatDate(createdAt)}</p>
+          </div>
         </CardHeader>
 
         <CardContent className='p-2'>

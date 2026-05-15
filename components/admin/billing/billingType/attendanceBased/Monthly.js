@@ -48,7 +48,7 @@ import {
   formatCurrency,
   formatDate,
   toDateKey,
-  getBillingStartDate,
+  getMemberBillingStartDate,
   getBaseAmount,
   fetchBillingPeriods,
   ensureBillingPeriods,
@@ -104,7 +104,7 @@ const Monthly = ({ teamId, team, members, initialMemberId }) => {
   const baseAmount = getBaseAmount(team);
 
   const getMonthlyPeriods = async () => {
-    const billStart = getBillingStartDate(team);
+    const billStart = getMemberBillingStartDate(team, selectedMember);
     const today = new Date();
     const baseAmount = getBaseAmount(team);
 
@@ -227,6 +227,7 @@ const Monthly = ({ teamId, team, members, initialMemberId }) => {
       const data = await fetchBillingPeriods({
         teamId,
         memberId: selectedMember.id,
+        fromDate: toDateKey(getMemberBillingStartDate(team, selectedMember)),
       });
 
       const mergedData = data.map((item) => {
@@ -272,6 +273,7 @@ const Monthly = ({ teamId, team, members, initialMemberId }) => {
     scheduleLoaded,
     workingDays,
     team?.billingConfig?.billingStartDate,
+    selectedMember?.createdAt,
   ]);
 
   const filteredPeriods = billingPeriods.filter((period) => {

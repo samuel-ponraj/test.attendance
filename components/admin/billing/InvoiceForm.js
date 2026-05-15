@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { db } from "@/lib/firebase";
 import {
   addDoc,
@@ -23,9 +23,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Copy, Send, Share2 } from "lucide-react";
+import { ArrowLeft, Copy, RefreshCw, Send, Share2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+
+const getAppOrigin = () => {
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+  if (configuredUrl) {
+    try {
+      return new URL(configuredUrl).origin;
+    } catch {
+      return configuredUrl.replace(/\/$/, "");
+    }
+  }
+
+  return typeof window !== "undefined" ? window.location.origin : "";
+};
 
 const InvoiceForm = ({ teamId, memberId, period }) => {
   const router = useRouter();
@@ -42,6 +56,10 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [useOtherNumber, setUseOtherNumber] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [razorpayLink, setRazorpayLink] = useState("");
+  const [paymentLinkLoading, setPaymentLinkLoading] = useState(false);
+  const paymentLinkRequestsRef = useRef(new Map());
+  const paymentLinkCooldownRef = useRef(0);
 
   const discountAmount =
     (Number(amount || 0) * Number(discountPercent || 0)) / 100;
@@ -50,11 +68,27 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
   const memberName =
     `${member?.firstName || ""} ${member?.lastName || ""}`.trim();
   const normalizedContact = (member?.contact || "").replace(/\D/g, "");
-  const razorpayLink = `https://rzp.io/i/kda-${teamId}-${memberId}-${periodId || "invoice"}?amount=${Math.round(totalAmount * 100)}`;
+  const appOrigin = getAppOrigin();
+  const paymentLinkText = razorpayLink || "Generating payment link...";
+  const paymentLinkAmount = Math.round(totalAmount * 100);
+  const paymentLinkReferenceId = (() => {
+    const compact = (value, length) =>
+      String(value || "")
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .slice(0, length);
+
+    return [
+      "kda",
+      compact(teamId, 5),
+      compact(memberId, 5),
+      compact(periodId || "invoice", 13),
+      String(paymentLinkAmount || 0).slice(0, 8),
+    ].join("_");
+  })();
   const whatsappMessage = `Hello ${memberName || "Customer"},
 
 Please pay Rs. ${totalAmount.toFixed(2)} for ${periodLabel || "your invoice"} using this payment link:
-Link: ${razorpayLink}
+Link: ${paymentLinkText}
 
 Thank you,
 Kingz Digital Solutions`;
@@ -119,9 +153,211 @@ Kingz Digital Solutions`;
     fetchData();
   }, [teamId, memberId, periodId]);
 
+  const generatePaymentLink = useCallback(
+    async ({ forceNew = false } = {}) => {
+      if (!member || !teamId || !memberId || totalAmount <= 0) return "";
+
+      setPaymentLinkLoading(true);
+
+      try {
+        if (Date.now() < paymentLinkCooldownRef.current) {
+          toast.error("Please wait before generating another payment link");
+          return "";
+        }
+        const storedPaymentLink = billingPeriod?.razorpayPaymentLink;
+
+        if (
+          !forceNew &&
+          storedPaymentLink?.shortUrl &&
+          storedPaymentLink?.referenceId === paymentLinkReferenceId &&
+          Number(storedPaymentLink?.amount || 0) === paymentLinkAmount &&
+          !["paid", "cancelled", "expired"].includes(storedPaymentLink?.status)
+        ) {
+          setRazorpayLink(storedPaymentLink.shortUrl);
+          return storedPaymentLink.shortUrl;
+        }
+
+        const makeReferenceId = () => {
+          const suffix = Date.now().toString(36).slice(-6);
+          const random = Math.random().toString(36).slice(2, 6);
+
+          if (forceNew) {
+            return `kda_${suffix}_${random}_${String(periodId || memberId)
+              .replace(/[^a-zA-Z0-9]/g, "")
+              .slice(0, 20)}`;
+          }
+
+          return paymentLinkReferenceId.slice(0, 40);
+        };
+
+        const referenceId = makeReferenceId().slice(0, 40);
+
+        const existingRequest = paymentLinkRequestsRef.current.get(referenceId);
+
+        if (existingRequest) {
+          return await existingRequest;
+        }
+
+        const paymentLinkRequest = (async () => {
+          const res = await fetch("/api/razorpay/create-payment-link", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              amount: totalAmount,
+              description: `Payment for ${periodLabel || "invoice"}`,
+              referenceId,
+              callbackUrl:
+                appOrigin
+                  ? `${appOrigin}/api/razorpay/payment-link-callback?teamId=${teamId}&memberId=${memberId}&periodId=${periodId || ""}`
+                  : "",
+              customer: {
+                name: memberName || "Customer",
+                email: member.email || "",
+                contact: normalizedContact,
+              },
+              notes: {
+                teamId,
+                memberId,
+                periodId: periodId || "",
+                periodLabel,
+              },
+            }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok || !data.shortUrl) {
+            throw new Error(
+              data.error ||
+                data.details?.description ||
+                "Failed to create payment link",
+            );
+          }
+
+          if (periodId) {
+            const nextPaymentLink = {
+              id: data.id,
+              shortUrl: data.shortUrl,
+              referenceId,
+              amount: paymentLinkAmount,
+              status: data.status || "created",
+              existing: !!data.existing,
+              updatedAt: Timestamp.now(),
+            };
+
+            await updateDoc(
+              doc(
+                db,
+                "teams",
+                teamId,
+                "members",
+                memberId,
+                "billingPeriods",
+                periodId,
+              ),
+              {
+                razorpayPaymentLink: nextPaymentLink,
+              },
+            );
+
+            setBillingPeriod((current) => ({
+              ...(current || {}),
+              razorpayPaymentLink: nextPaymentLink,
+            }));
+          }
+
+          setRazorpayLink(data.shortUrl);
+          return data.shortUrl;
+        })();
+
+        paymentLinkRequestsRef.current.set(referenceId, paymentLinkRequest);
+
+        try {
+          return await paymentLinkRequest;
+        } finally {
+          paymentLinkRequestsRef.current.delete(referenceId);
+        }
+      } catch (error) {
+        if (
+          error.message?.toLowerCase().includes("too many requests") ||
+          error.message?.includes("429")
+        ) {
+          paymentLinkCooldownRef.current = Date.now() + 60 * 1000;
+          toast.error("Too many requests. Please wait 1 minute and try again.");
+          return "";
+        }
+        console.error("Payment link creation failed:", error);
+        setRazorpayLink("");
+        toast.error(error.message || "Failed to create payment link");
+        return "";
+      } finally {
+        setPaymentLinkLoading(false);
+      }
+    },
+    [
+      member,
+      memberId,
+      memberName,
+      normalizedContact,
+      billingPeriod?.razorpayPaymentLink,
+      paymentLinkAmount,
+      paymentLinkReferenceId,
+      periodId,
+      periodLabel,
+      appOrigin,
+      teamId,
+      totalAmount,
+    ],
+  );
+
+  useEffect(() => {
+    if (paymentMode !== "upi") {
+      setRazorpayLink("");
+      return;
+    }
+
+    const storedPaymentLink = billingPeriod?.razorpayPaymentLink;
+
+    if (
+      storedPaymentLink?.shortUrl &&
+      storedPaymentLink?.referenceId === paymentLinkReferenceId &&
+      Number(storedPaymentLink?.amount || 0) === paymentLinkAmount &&
+      !["paid", "cancelled", "expired"].includes(storedPaymentLink?.status)
+    ) {
+      setRazorpayLink(storedPaymentLink.shortUrl);
+      return;
+    }
+
+    setRazorpayLink("");
+  }, [
+    billingPeriod?.razorpayPaymentLink,
+    paymentLinkAmount,
+    paymentLinkReferenceId,
+    paymentMode,
+  ]);
+
+  const ensurePaymentLink = async () => {
+    if (razorpayLink) return razorpayLink;
+    return generatePaymentLink();
+  };
+
+  const handleRegeneratePaymentLink = async () => {
+    setRazorpayLink("");
+    const link = await generatePaymentLink({ forceNew: true });
+
+    if (link) {
+      toast.success("New payment link generated");
+    }
+  };
+
   const handleCopyPaymentLink = async () => {
     try {
-      await navigator.clipboard.writeText(razorpayLink);
+      const link = await ensurePaymentLink();
+      if (!link) return;
+
+      await navigator.clipboard.writeText(link);
       toast.success("Payment link copied");
     } catch (error) {
       console.error("Copy failed:", error);
@@ -130,18 +366,22 @@ Kingz Digital Solutions`;
   };
 
   const handleSharePaymentLink = async () => {
-    
     try {
+      const link = await ensurePaymentLink();
+      if (!link) return;
+
       if (navigator.share) {
         await navigator.share({
           title: "Payment Link",
-          text: whatsappMessage,
-          url: razorpayLink,
+          text: whatsappMessage.replace(paymentLinkText, link),
+          url: link,
         });
         return;
       }
 
-      await navigator.clipboard.writeText(whatsappMessage);
+      await navigator.clipboard.writeText(
+        whatsappMessage.replace(paymentLinkText, link),
+      );
       toast.success("Share message copied");
     } catch (error) {
       if (error?.name !== "AbortError") {
@@ -156,9 +396,11 @@ Kingz Digital Solutions`;
       toast.error("Enter a WhatsApp number");
       return;
     }
-  
-  
+
     try {
+      const link = await ensurePaymentLink();
+      if (!link) return;
+
       const res = await fetch("/api/whatsapp/send", {
         method: "POST",
         headers: {
@@ -169,14 +411,14 @@ Kingz Digital Solutions`;
           memberName,
           amount: totalAmount.toFixed(2),
           periodLabel,
-          razorpayLink,
+          razorpayLink: link,
         }),
       });
 
       const data = await res.json();
 
       console.log("META STATUS:", res.status);
-console.log("META RESPONSE:", JSON.stringify(data, null, 2));
+      console.log("META RESPONSE:", JSON.stringify(data, null, 2));
 
       if (!res.ok) {
         console.error("WhatsApp API response:", data);
@@ -423,14 +665,37 @@ console.log("META RESPONSE:", JSON.stringify(data, null, 2));
               </label>
               <div className="flex gap-2">
                 <Input
-                  value={razorpayLink}
+                  value={
+                    paymentLinkLoading
+                      ? "Generating Razorpay link..."
+                      : razorpayLink
+                  }
                   readOnly
+                  placeholder="No payment link generated yet"
                   className="font-mono text-xs"
                 />
+                {!razorpayLink && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={paymentLinkLoading || !member || totalAmount <= 0}
+                    onClick={handleRegeneratePaymentLink}
+                    className="shrink-0 gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Generate
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
+                  disabled={
+                    paymentLinkLoading ||
+                    !member ||
+                    totalAmount <= 0 ||
+                    !razorpayLink
+                  }
                   onClick={handleCopyPaymentLink}
                 >
                   <Copy className="h-4 w-4" />
@@ -439,6 +704,26 @@ console.log("META RESPONSE:", JSON.stringify(data, null, 2));
                   type="button"
                   variant="outline"
                   size="icon"
+                  disabled={paymentLinkLoading || !member || totalAmount <= 0}
+                  onClick={handleRegeneratePaymentLink}
+                  title={
+                    razorpayLink
+                      ? "Regenerate payment link"
+                      : "Generate payment link"
+                  }
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  disabled={
+                    paymentLinkLoading ||
+                    !member ||
+                    totalAmount <= 0 ||
+                    !razorpayLink
+                  }
                   onClick={handleSharePaymentLink}
                 >
                   <Share2 className="h-4 w-4" />
@@ -492,6 +777,7 @@ console.log("META RESPONSE:", JSON.stringify(data, null, 2));
                 variant="outline"
                 className="w-full gap-2"
                 onClick={handleSendWhatsapp}
+                disabled={paymentLinkLoading}
               >
                 <Send className="h-4 w-4" />
                 Send to Member

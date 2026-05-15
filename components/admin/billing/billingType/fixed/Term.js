@@ -45,8 +45,7 @@ import {
   formatCurrency,
   formatDate,
   toDateKey,
-  getBillingStartDate,
-  getBaseAmount,
+  getMemberBillingStartDate,
   fetchBillingPeriods,
   ensureBillingPeriods,
   recordFixedPayment,
@@ -81,6 +80,8 @@ const Term = ({ teamId, team, members, initialMemberId }) => {
 
   const getTermPeriods = () => {
     const academicYears = team?.billingConfig?.academicYears || [];
+    const billStart = getMemberBillingStartDate(team, selectedMember);
+    const billStartKey = toDateKey(billStart);
     const rows = [];
 
     academicYears.forEach((yearItem) => {
@@ -90,6 +91,9 @@ const Term = ({ teamId, team, members, initialMemberId }) => {
         const amount = Number(
           term.amount || team?.billingConfig?.baseAmount || 0,
         );
+        const fromDate = term.startDate < billStartKey ? billStartKey : term.startDate;
+
+        if (!term.endDate || term.endDate < billStartKey) return;
 
         rows.push({
           id: `${academicYear}_term_${term.termNo}`,
@@ -101,7 +105,7 @@ const Term = ({ teamId, team, members, initialMemberId }) => {
           termNumber: term.termNo,
           termName: term.name || `Term ${term.termNo}`,
 
-          fromDate: term.startDate,
+          fromDate,
           toDate: term.endDate,
           dueDate: term.dueDate || term.endDate,
 
@@ -134,6 +138,7 @@ const Term = ({ teamId, team, members, initialMemberId }) => {
       const data = await fetchBillingPeriods({
         teamId,
         memberId: selectedMember.id,
+        fromDate: toDateKey(getMemberBillingStartDate(team, selectedMember)),
       });
 
       setBillingPeriods(data);
@@ -150,7 +155,9 @@ const Term = ({ teamId, team, members, initialMemberId }) => {
     selectedMemberId,
     teamId,
     team?.billingConfig?.billingStartDate,
+    selectedMember?.createdAt,
     team?.billingConfig?.termDetails?.divisionsPerYear,
+    team?.billingConfig?.academicYears,
   ]);
 
   const allTermPeriods = billingPeriods.filter(

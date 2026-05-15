@@ -45,7 +45,7 @@ import {
   formatCurrency,
   formatDate,
   toDateKey,
-  getBillingStartDate,
+  getMemberBillingStartDate,
   getBaseAmount,
   fetchBillingPeriods,
   ensureBillingPeriods,
@@ -99,7 +99,7 @@ const Annual = ({ teamId, team, members, initialMemberId }) => {
   }, [team?.id, team?.schedule?.workingDays]);
 
   const getAnnualPeriods = () => {
-	const billStart = getBillingStartDate(team);
+	const billStart = getMemberBillingStartDate(team, selectedMember);
 	const today = new Date();
 	const baseAmount = getBaseAmount(team);
 
@@ -159,6 +159,7 @@ const Annual = ({ teamId, team, members, initialMemberId }) => {
       const data = await fetchBillingPeriods({
         teamId,
         memberId: selectedMember.id,
+        fromDate: toDateKey(getMemberBillingStartDate(team, selectedMember)),
       });
 
       setBillingPeriods(data);
@@ -177,6 +178,7 @@ const Annual = ({ teamId, team, members, initialMemberId }) => {
     scheduleLoaded,
     workingDays,
     team?.billingConfig?.billingStartDate,
+    selectedMember?.createdAt,
   ]);
 
   const filteredPeriods = billingPeriods.filter((period) => {

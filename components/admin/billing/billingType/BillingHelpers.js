@@ -48,6 +48,21 @@ export const getBillingStartDate = (team) => {
 	return new Date(start);
 };
 
+export const getMemberBillingStartDate = (team, member) => {
+	const billingStart = getBillingStartDate(team);
+	const joinedAt = member?.createdAt;
+
+	if (!joinedAt) return billingStart;
+
+	const joinedDate = joinedAt?.seconds
+		? new Date(joinedAt.seconds * 1000)
+		: new Date(joinedAt);
+
+	if (Number.isNaN(joinedDate.getTime())) return billingStart;
+
+	return joinedDate > billingStart ? joinedDate : billingStart;
+};
+
 export const getBaseAmount = (team) => {
 	return Number(
 		team?.billingConfig?.baseAmount ||
@@ -56,7 +71,7 @@ export const getBaseAmount = (team) => {
 	);
 };
 
-export const fetchBillingPeriods = async ({ teamId, memberId }) => {
+export const fetchBillingPeriods = async ({ teamId, memberId, fromDate }) => {
 	const periodsRef = collection(
 		db,
 		"teams",
@@ -69,10 +84,15 @@ export const fetchBillingPeriods = async ({ teamId, memberId }) => {
 	const q = query(periodsRef, orderBy("fromDate", "asc"));
 	const snap = await getDocs(q);
 
-	return snap.docs.map((docSnap) => ({
-		id: docSnap.id,
-		...docSnap.data(),
-	}));
+	return snap.docs
+		.map((docSnap) => ({
+			id: docSnap.id,
+			...docSnap.data(),
+		}))
+		.filter((period) => {
+			if (!fromDate) return true;
+			return period.fromDate >= fromDate;
+		});
 };
 
 export const ensureBillingPeriods = async ({ teamId, member, periods }) => {

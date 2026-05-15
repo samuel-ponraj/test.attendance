@@ -9,6 +9,31 @@ const formatPaymentMode = (value) => {
   return value.replace("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
+const compactValue = (value, maxLength = 34) => {
+  const text = String(value || "");
+
+  if (text.length <= maxLength) return text;
+
+  const sideLength = Math.floor((maxLength - 3) / 2);
+  return `${text.slice(0, sideLength)}...${text.slice(-sideLength)}`;
+};
+
+const getRazorpayRows = (period) => {
+  const paymentLink = period?.razorpayPaymentLink || {};
+  const rows = [
+    ["Gateway", period?.gateway === "razorpay" || period?.paymentMode === "upi" ? "Razorpay" : ""],
+    ["Razorpay Payment ID", period?.razorpayPaymentId || paymentLink.paymentId],
+    ["Razorpay Order ID", period?.razorpayOrderId],
+    ["Payment Link ID", period?.razorpayPaymentLinkId || paymentLink.id],
+    [
+      "Payment Link Ref",
+      period?.razorpayPaymentLinkReferenceId || paymentLink.referenceId,
+    ],
+  ];
+
+  return rows.filter(([, value]) => value);
+};
+
 const loadImageAsDataUrl = async (path) => {
   const response = await fetch(path);
   const blob = await response.blob();
@@ -38,6 +63,7 @@ export const generateReceipt = async ({ team, member, period }) => {
   const discountAmount = Number(period?.discountAmount || 0);
   const baseAmount = Number(period?.lastPaymentBaseAmount || period?.amount || amount || 0);
   const paymentMode = formatPaymentMode(period?.paymentMode);
+  const razorpayRows = getRazorpayRows(period);
 
   doc.setFillColor(248, 250, 252);
   doc.rect(0, 0, 210, 297, "F");
@@ -81,32 +107,46 @@ export const generateReceipt = async ({ team, member, period }) => {
   doc.text(memberName || "-", 24, 84);
   doc.text(team?.name || team?.teamName || "KDA Team", 24, 91);
 
+  const detailBoxHeight = 60 + razorpayRows.length * 9;
   doc.setFillColor(245, 247, 250);
-  doc.roundedRect(22, 104, 166, 70, 2, 2, "F");
+  doc.roundedRect(22, 104, 166, detailBoxHeight, 2, 2, "F");
 
   doc.setFontSize(10);
-  addRow(doc, "Period", period?.periodLabel || period?.period || "-", 118);
-  addRow(doc, "Billing Cycle", formatPaymentMode(period?.billingCycle), 130);
-  addRow(doc, "Payment Mode", paymentMode, 142);
-  addRow(doc, "Status", "Paid", 154);
-  addRow(doc, "Base Amount", formatAmount(baseAmount), 166);
+  let rowY = 118;
+  addRow(doc, "Period", period?.periodLabel || period?.period || "-", rowY);
+  rowY += 9;
+  addRow(doc, "Billing Cycle", formatPaymentMode(period?.billingCycle), rowY);
+  rowY += 9;
+  addRow(doc, "Payment Mode", paymentMode, rowY);
+  rowY += 9;
+  addRow(doc, "Status", "Paid", rowY);
+  rowY += 9;
+  addRow(doc, "Base Amount", formatAmount(baseAmount), rowY);
+
+  razorpayRows.forEach(([label, value]) => {
+    rowY += 9;
+    addRow(doc, label, compactValue(value), rowY);
+  });
 
   doc.setDrawColor(225, 225, 225);
-  doc.line(22, 190, 188, 190);
+  const summaryStartY = 180 + razorpayRows.length * 8;
+  doc.line(22, summaryStartY, 188, summaryStartY);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(90, 90, 90);
-  doc.text("Discount", 24, 204);
-  doc.text(`- ${formatAmount(discountAmount)}`, 190, 204, { align: "right" });
+  doc.text("Discount", 24, summaryStartY + 12);
+  doc.text(`- ${formatAmount(discountAmount)}`, 190, summaryStartY + 12, {
+    align: "right",
+  });
 
   doc.setFillColor(20, 20, 20);
-  doc.roundedRect(22, 220, 166, 28, 2, 2, "F");
+  doc.roundedRect(22, summaryStartY + 24, 166, 26, 2, 2, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
   doc.setTextColor(255, 255, 255);
-  doc.text("Total Paid", 30, 238);
-  doc.text(formatAmount(amount), 180, 238, { align: "right" });
+  doc.text("Total Paid", 30, summaryStartY + 41);
+  doc.text(formatAmount(amount), 180, summaryStartY + 41, { align: "right" });
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
