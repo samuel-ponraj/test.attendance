@@ -228,6 +228,7 @@ const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
             present,
             halfday,
             absent,
+            dateKey,
             updatedAt: now,
           },
         },

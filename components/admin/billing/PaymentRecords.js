@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   collection,
   doc,
@@ -13,7 +14,9 @@ import {
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -29,6 +32,7 @@ import { Label } from "@/components/ui/label";
 import Salary from "./billingType/salary/Salary";
 
 const PaymentRecords = ({ teamId }) => {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialMemberId = searchParams.get("memberId") || "";
 
@@ -136,8 +140,15 @@ const PaymentRecords = ({ teamId }) => {
 
   return (
     <div className="space-y-6 px-4 md:px-6">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        {!teamId && (
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+        {teamId ? (
+          <button
+            onClick={() => router.push(`/admin/teams/${teamId}`)}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
+        ) : (
           <div className="space-y-2 w-full md:w-[300px]">
             <Label>Select Team</Label>
 
@@ -156,6 +167,13 @@ const PaymentRecords = ({ teamId }) => {
             </Select>
           </div>
         )}
+
+        <Button asChild variant="outline" className="gap-2 md:ml-auto">
+          <Link href="/admin/transactions">
+            View Transactions
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Button>
       </div>
 
       {billingType === "attendanceBased" ? (
@@ -164,6 +182,7 @@ const PaymentRecords = ({ teamId }) => {
             team={currentTeam}
             members={filteredMembers}
             initialMemberId={initialMemberId}
+            showBackButton={false}
             onRecordPayment={(member, attendanceSummary, billingPeriods) => {
               setSelectedMember(member);
               setSelectedAttendanceSummary(attendanceSummary);
@@ -184,6 +203,7 @@ const PaymentRecords = ({ teamId }) => {
             team={currentTeam}
             members={filteredMembers}
             initialMemberId={initialMemberId}
+            showBackButton={false}
             onRecordPayment={(member) => {
               setSelectedMember(member);
               setSelectedAttendanceSummary(null);

@@ -66,6 +66,11 @@ const ROUTE_CONFIG: Record<
       description: "Manage fees and member accounts",
     },
     {
+      path: "/admin/transactions",
+      title: "Transactions",
+      description: "Review payments across all teams",
+    },
+    {
       path: "/admin/invite",
       title: "Invite Members",
       description: "Send email invitations to join your teams",

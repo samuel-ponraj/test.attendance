@@ -16,13 +16,14 @@ import { resetAttendanceSummaryIfNeeded } from "@/lib/resetAttendanceSummaryIfNe
 import { Toaster } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import Analytics from "../../components/admin/analytics/Analytics";
+import TransactionsTable from "@/components/admin/dashboard/TransactionsTable";
 
 
 
 export default function DashboardPage() {
 
 
-  const { addTeam, sendDeleteOtp, deleteTeamWithOtp, loading, teams } = useTeams()
+  const { addTeam, loading, teams } = useTeams()
 
   const [modalOpen, setModalOpen] = useState(false);
   const [summaryReady, setSummaryReady] = useState(false);
@@ -98,6 +99,7 @@ export default function DashboardPage() {
         ) : (
           <>
             <Analytics />
+            <TransactionsTable teams={teams} limit={10} showViewAll />
             {/* <TeamCardLayout teams={teams} sendDeleteOtp={sendDeleteOtp} deleteTeamWithOtp={deleteTeamWithOtp}/> */}
           </>
           )}

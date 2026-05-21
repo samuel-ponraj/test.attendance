@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
+import { getWhatsappConfigByTeamId } from "@/lib/server-integrations";
 
 export async function POST(req) {
   try {
-    const { to, memberName, amount, periodLabel, razorpayLink } =
+    const { to, memberName, amount, periodLabel, razorpayLink, teamId } =
       await req.json();
+    const whatsappConfig = await getWhatsappConfigByTeamId(teamId);
 
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-    const token = process.env.WHATSAPP_TOKEN;
-    const templateName = process.env.NEXT_PUBLIC_WHATSAPP_TEMPLATE_NAME;
-    const templateLanguage = process.env.NEXT_PUBLIC_WHATSAPP_TEMPLATE_LANGUAGE;
+    const phoneNumberId = whatsappConfig.phoneNumberId;
+    const token = whatsappConfig.accessToken;
+    const templateName = whatsappConfig.templateName;
+    const templateLanguage = whatsappConfig.templateLanguage || "en_US";
 
     if (!to) {
       return NextResponse.json(
@@ -17,9 +19,9 @@ export async function POST(req) {
       );
     }
 
-    if (!phoneNumberId || !token) {
+    if (!phoneNumberId || !token || !templateName) {
       return NextResponse.json(
-        { error: "WhatsApp API credentials are not configured" },
+        { error: "WhatsApp integration is not configured" },
         { status: 500 },
       );
     }

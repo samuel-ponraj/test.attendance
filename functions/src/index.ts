@@ -389,7 +389,7 @@ export const verifyOtpAndDeleteTeam = onCall(
       await batch.commit();
 
       // 6. Final Recursive Delete & OTP Cleanup
-      await db.recursiveDelete(teamRef);
+      await admin.firestore().recursiveDelete(teamRef);
       await otpRef.delete();
 
       return { success: true };

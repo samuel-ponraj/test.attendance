@@ -6,7 +6,7 @@ import {
   Card, CardContent, CardDescription, CardHeader, CardTitle 
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, Trash2, Eye, EyeOff, Loader2 } from "lucide-react";
+import { CreditCard, MessageCircle, Shield, Trash2, Eye, EyeOff, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +37,29 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { updateProfile } from "firebase/auth";
 import SubscriptionCard from "../subscription/SubscriptionCard";
 import {  ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Switch } from "@/components/ui/switch";
+
+const defaultWhatsappConfig = {
+  enabled: false,
+  businessAccountId: "",
+  phoneNumberId: "",
+  accessToken: "",
+  hasAccessToken: false,
+  templateName: "",
+  templateLanguage: "en_US",
+};
+
+const defaultRazorpayConfig = {
+  enabled: false,
+  accountName: "",
+  keyId: "",
+  keySecret: "",
+  hasKeySecret: false,
+  webhookAppUrl: "",
+  webhookSecret: "",
+  hasWebhookSecret: false,
+  currency: "INR",
+};
 
 
 const AdminAccount = () => {
@@ -63,12 +86,19 @@ const AdminAccount = () => {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showWhatsappToken, setShowWhatsappToken] = useState(false);
+  const [showRazorpaySecret, setShowRazorpaySecret] = useState(false);
+  const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
+  const [savingRazorpay, setSavingRazorpay] = useState(false);
 
   const fileInputRef = useRef(null);
 
 const [firstName, setFirstName] = useState("");
 const [lastName, setLastName] = useState("");
 const [avatar, setAvatar] = useState(null);
+const [whatsappConfig, setWhatsappConfig] = useState(defaultWhatsappConfig);
+const [razorpayConfig, setRazorpayConfig] = useState(defaultRazorpayConfig);
 
 
   // Use useEffect to listen for Auth changes to ensure providerId is caught
@@ -81,6 +111,155 @@ const [avatar, setAvatar] = useState(null);
 
   // Safe check for providerId
   const providerId = user?.providerData[0]?.providerId;
+
+  useEffect(() => {
+    const loadIntegrationConfig = async () => {
+      if (!isAdmin || !user?.uid) return;
+
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/admin/integrations", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to load integration settings");
+        }
+
+        setWhatsappConfig({
+          ...defaultWhatsappConfig,
+          ...(data.whatsappConfig || {}),
+        });
+        setRazorpayConfig({
+          ...defaultRazorpayConfig,
+          ...(data.razorpayConfig || {}),
+        });
+      } catch (err) {
+        console.error("Failed to load integration settings:", err);
+        toast.error("Failed to load integration settings");
+      }
+    };
+
+    loadIntegrationConfig();
+  }, [isAdmin, user]);
+
+  const updateWhatsappConfig = (key, value) => {
+    setWhatsappConfig((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const updateRazorpayConfig = (key, value) => {
+    setRazorpayConfig((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const handleSaveWhatsappIntegration = async () => {
+    if (!user?.uid) {
+      toast.error("Please sign in again to save integration settings");
+      return;
+    }
+
+    setSavingWhatsapp(true);
+
+    try {
+      const token = await user.getIdToken();
+      const cleanWhatsappConfig = {
+        enabled: Boolean(whatsappConfig.enabled),
+        businessAccountId: whatsappConfig.businessAccountId.trim(),
+        phoneNumberId: whatsappConfig.phoneNumberId.trim(),
+        accessToken: whatsappConfig.accessToken.trim(),
+        templateName: whatsappConfig.templateName.trim(),
+        templateLanguage: whatsappConfig.templateLanguage.trim() || "en_US",
+      };
+
+      const res = await fetch("/api/admin/integrations", {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "whatsapp",
+          config: cleanWhatsappConfig,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to save WhatsApp settings");
+      }
+
+      setWhatsappConfig({
+        ...defaultWhatsappConfig,
+        ...(data.whatsappConfig || {}),
+      });
+
+      toast.success("WhatsApp settings saved successfully");
+    } catch (err) {
+      console.error("WhatsApp settings save error:", err);
+      toast.error(err.message || "Failed to save WhatsApp settings");
+    } finally {
+      setSavingWhatsapp(false);
+    }
+  };
+
+  const handleSaveRazorpayIntegration = async () => {
+    if (!user?.uid) {
+      toast.error("Please sign in again to save integration settings");
+      return;
+    }
+
+    setSavingRazorpay(true);
+
+    try {
+      const token = await user.getIdToken();
+      const cleanRazorpayConfig = {
+        enabled: Boolean(razorpayConfig.enabled),
+        accountName: razorpayConfig.accountName.trim(),
+        keyId: razorpayConfig.keyId.trim(),
+        keySecret: razorpayConfig.keySecret.trim(),
+        webhookAppUrl: razorpayConfig.webhookAppUrl.trim(),
+        webhookSecret: razorpayConfig.webhookSecret.trim(),
+        currency: razorpayConfig.currency.trim() || "INR",
+      };
+
+      const res = await fetch("/api/admin/integrations", {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "razorpay",
+          config: cleanRazorpayConfig,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to save Razorpay settings");
+      }
+
+      setRazorpayConfig({
+        ...defaultRazorpayConfig,
+        ...(data.razorpayConfig || {}),
+      });
+
+      toast.success("Razorpay settings saved successfully");
+    } catch (err) {
+      console.error("Razorpay settings save error:", err);
+      toast.error(err.message || "Failed to save Razorpay settings");
+    } finally {
+      setSavingRazorpay(false);
+    }
+  };
 
   
 
@@ -359,6 +538,285 @@ const handleSaveProfile = async () => {
         </Card>
 
         {isAdmin && <SubscriptionCard />}
+
+        {isAdmin && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-5 w-5 text-primary" />
+                <CardTitle>WhatsApp Integration</CardTitle>
+              </div>
+              <CardDescription>
+                Configure WhatsApp Cloud API credentials.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold">WhatsApp Cloud API</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Used for sending payment links and member notifications.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm">Enable</Label>
+                  <Switch
+                    checked={whatsappConfig.enabled}
+                    onCheckedChange={(checked) =>
+                      updateWhatsappConfig("enabled", checked)
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Business Account ID</Label>
+                  <Input
+                    value={whatsappConfig.businessAccountId}
+                    onChange={(e) =>
+                      updateWhatsappConfig("businessAccountId", e.target.value)
+                    }
+                    placeholder="Meta WhatsApp business account ID"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Phone Number ID</Label>
+                  <Input
+                    value={whatsappConfig.phoneNumberId}
+                    onChange={(e) =>
+                      updateWhatsappConfig("phoneNumberId", e.target.value)
+                    }
+                    placeholder="WhatsApp phone number ID"
+                  />
+                </div>
+
+                <div className="space-y-2 lg:col-span-2">
+                  <Label>Access Token</Label>
+                  <div className="relative">
+                    <Input
+                      type={showWhatsappToken ? "text" : "password"}
+                      value={whatsappConfig.accessToken}
+                      onChange={(e) =>
+                        updateWhatsappConfig("accessToken", e.target.value)
+                      }
+                      placeholder={
+                        whatsappConfig.hasAccessToken
+                          ? "Saved token. Enter a new token to replace it."
+                          : "Permanent access token"
+                      }
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowWhatsappToken(!showWhatsappToken)}
+                      className="absolute right-3 top-2.5 text-muted-foreground"
+                    >
+                      {showWhatsappToken ? (
+                        <EyeOff size={16} />
+                      ) : (
+                        <Eye size={16} />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Send Payment Link Template Name</Label>
+                  <Input
+                    value={whatsappConfig.templateName}
+                    onChange={(e) =>
+                      updateWhatsappConfig("templateName", e.target.value)
+                    }
+                    placeholder="send_payment_link"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Template Language</Label>
+                  <Input
+                    value={whatsappConfig.templateLanguage}
+                    onChange={(e) =>
+                      updateWhatsappConfig("templateLanguage", e.target.value)
+                    }
+                    placeholder="en_US"
+                  />
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSaveWhatsappIntegration}
+                disabled={savingWhatsapp || !user?.uid}
+                className="w-full sm:w-[170px]"
+              >
+                {savingWhatsapp ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Save WhatsApp"
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {isAdmin && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-primary" />
+                <CardTitle>Razorpay Integration</CardTitle>
+              </div>
+              <CardDescription>
+                Configure Razorpay checkout, payment link, and webhook settings.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold">Razorpay</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Used for checkout orders, payment links, and webhooks.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm">Enable</Label>
+                  <Switch
+                    checked={razorpayConfig.enabled}
+                    onCheckedChange={(checked) =>
+                      updateRazorpayConfig("enabled", checked)
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Account Name</Label>
+                  <Input
+                    value={razorpayConfig.accountName}
+                    onChange={(e) =>
+                      updateRazorpayConfig("accountName", e.target.value)
+                    }
+                    placeholder="Razorpay account label"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Currency</Label>
+                  <Input
+                    value={razorpayConfig.currency}
+                    onChange={(e) =>
+                      updateRazorpayConfig(
+                        "currency",
+                        e.target.value.toUpperCase(),
+                      )
+                    }
+                    placeholder="INR"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Key ID</Label>
+                  <Input
+                    value={razorpayConfig.keyId}
+                    onChange={(e) =>
+                      updateRazorpayConfig("keyId", e.target.value)
+                    }
+                    placeholder="rzp_live_..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Key Secret</Label>
+                  <div className="relative">
+                    <Input
+                      type={showRazorpaySecret ? "text" : "password"}
+                      value={razorpayConfig.keySecret}
+                      onChange={(e) =>
+                        updateRazorpayConfig("keySecret", e.target.value)
+                      }
+                      placeholder={
+                        razorpayConfig.hasKeySecret
+                          ? "Saved secret. Enter a new secret to replace it."
+                          : "Razorpay key secret"
+                      }
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowRazorpaySecret(!showRazorpaySecret)
+                      }
+                      className="absolute right-3 top-2.5 text-muted-foreground"
+                    >
+                      {showRazorpaySecret ? (
+                        <EyeOff size={16} />
+                      ) : (
+                        <Eye size={16} />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 lg:col-span-2">
+                  <Label>Webhook App URL</Label>
+                  <Input
+                    value={razorpayConfig.webhookAppUrl}
+                    onChange={(e) =>
+                      updateRazorpayConfig("webhookAppUrl", e.target.value)
+                    }
+                    placeholder="https://your-domain.com/api/razorpay/payment-link-webhook"
+                  />
+                </div>
+
+                <div className="space-y-2 lg:col-span-2">
+                  <Label>Webhook Secret</Label>
+                  <div className="relative">
+                    <Input
+                      type={showWebhookSecret ? "text" : "password"}
+                      value={razorpayConfig.webhookSecret}
+                      onChange={(e) =>
+                        updateRazorpayConfig("webhookSecret", e.target.value)
+                      }
+                      placeholder={
+                        razorpayConfig.hasWebhookSecret
+                          ? "Saved secret. Enter a new secret to replace it."
+                          : "Webhook signing secret"
+                      }
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowWebhookSecret(!showWebhookSecret)}
+                      className="absolute right-3 top-2.5 text-muted-foreground"
+                    >
+                      {showWebhookSecret ? (
+                        <EyeOff size={16} />
+                      ) : (
+                        <Eye size={16} />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSaveRazorpayIntegration}
+                disabled={savingRazorpay || !user?.uid}
+                className="w-full sm:w-[170px]"
+              >
+                {savingRazorpay ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Save Razorpay"
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
         
         <Card>
           <CardHeader>

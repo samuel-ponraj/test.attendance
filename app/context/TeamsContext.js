@@ -121,7 +121,7 @@ export function TeamsProvider({ children }) {
           present: 0,
           absent: 0,
           halfday: 0,
-          lastUpdatedDate: todayKey,
+          dateKey: todayKey,
         },
       });
 

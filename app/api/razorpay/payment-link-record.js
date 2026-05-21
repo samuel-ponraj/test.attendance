@@ -1,7 +1,10 @@
 import * as admin from "firebase-admin";
 
 import { adminDb } from "@/lib/firebase-admin";
-import { getRazorpayInstance } from "@/lib/razorpay";
+import {
+  getRazorpayConfigByTeamId,
+  getRazorpayInstanceFromConfig,
+} from "@/lib/server-integrations";
 
 const getPaymentIdFromLink = (paymentLink, fallbackPaymentId) => {
   if (fallbackPaymentId) return fallbackPaymentId;
@@ -28,7 +31,8 @@ export const recordRazorpayPaymentLink = async ({
     throw new Error("Payment link recording fields are required");
   }
 
-  const razorpay = getRazorpayInstance();
+  const razorpayConfig = await getRazorpayConfigByTeamId(teamId);
+  const razorpay = getRazorpayInstanceFromConfig(razorpayConfig);
   const paymentLink = await razorpay.paymentLink.fetch(paymentLinkId);
   const resolvedPaymentId = getPaymentIdFromLink(paymentLink, paymentId);
   const paidAmount =

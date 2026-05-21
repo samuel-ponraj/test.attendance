@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { verifyRazorpayPaymentLinkSignature } from "@/lib/razorpay";
 import { recordRazorpayPaymentLink } from "../payment-link-record";
+import {
+  getRazorpayConfigByTeamId,
+  verifyRazorpayPaymentLinkSignatureWithConfig,
+} from "@/lib/server-integrations";
 
 export const runtime = "nodejs";
 
@@ -57,12 +60,14 @@ export async function GET(req) {
       throw new Error("Missing Razorpay callback fields");
     }
 
-    const verified = verifyRazorpayPaymentLinkSignature({
+    const razorpayConfig = await getRazorpayConfigByTeamId(teamId);
+    const verified = verifyRazorpayPaymentLinkSignatureWithConfig({
       paymentLinkId,
       paymentLinkReferenceId,
       paymentLinkStatus,
       paymentId,
       signature,
+      config: razorpayConfig,
     });
 
     if (!verified) {

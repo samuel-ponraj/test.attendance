@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { collection, query, where, getDocs } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
 import { db, auth } from "@/lib/firebase"
+import { getDateKey } from "@/lib/DateKey"
 
 import {
   Card,
@@ -27,7 +28,19 @@ import {
   Legend,
 } from "recharts"
 
-const COLORS = ["hsl(var(--success))", "#BA2C2C"]
+const COLORS = ["hsl(var(--success))", "#BA2C2C", "#f59e0b"]
+
+const ATTENDANCE_COLORS = {
+  Present: "hsl(var(--success))",
+  Absent: "#BA2C2C",
+  Halfday: "#f59e0b",
+}
+
+const formatTeamLabel = (value = "") => {
+  const label = String(value)
+
+  return label.length > 14 ? `${label.slice(0, 13)}...` : label
+}
 
 const Analytics = () => {
   const [user, setUser] = useState(null)
@@ -49,7 +62,7 @@ useEffect(() => {
 
   const fetchAnalytics = async () => {
     try {
-      const todayKey = getTodayKey(); // Ensure this matches getDateKey format
+      const todayKey = getDateKey(new Date());
       const q = query(
         collection(db, "teams"),
         where("admin.userId", "==", user.uid)
@@ -58,28 +71,29 @@ useEffect(() => {
       const teamsSnap = await getDocs(q);
       let totalPresent = 0;
       let totalAbsent = 0;
+      let totalHalfday = 0;
       const teamData = [];
 
       teamsSnap.forEach((docSnap) => {
         const team = docSnap.data();
         const summary = team.attendanceSummary || {};
+        const isToday = summary.dateKey === todayKey;
 
-        // 1. Check if the date matches today
-        const isToday = summary.lastUpdatedDate === todayKey;
-        
-        // TEMPORARY: Remove 'isToday ?' to see if data appears regardless of date
-        const present = summary.present || 0; 
-        const absent = summary.absent || 0;
+        const present = isToday ? summary.present || 0 : 0; 
+        const absent = isToday ? summary.absent || 0 : 0;
+        const halfday = isToday ? summary.halfday || 0 : 0;
 
         totalPresent += present;
         totalAbsent += absent;
+        totalHalfday += halfday;
 
         teamData.push({
           name: team.name,
           present,
           absent,
-          attendanceRate: (present + absent) > 0 
-            ? Math.round((present / (present + absent)) * 100) 
+          halfday,
+          attendanceRate: (present + absent + halfday) > 0 
+            ? Math.round((present / (present + absent + halfday)) * 100) 
             : 0,
         });
       });
@@ -88,6 +102,7 @@ useEffect(() => {
       setPieData([
         { name: "Present", value: totalPresent },
         { name: "Absent", value: totalAbsent },
+        { name: "Halfday", value: totalHalfday },
       ]);
     } catch (err) {
       console.error("Analytics Fetch Error:", err);
@@ -110,8 +125,9 @@ useEffect(() => {
     const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180))
     const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180))
 
-    const color =
-      name === "Present" ? "hsl(var(--success))" : "#BA2C2C"
+    if (!percent) return null
+
+    const color = ATTENDANCE_COLORS[name] || "hsl(var(--foreground))"
 
     return (
       <text
@@ -140,17 +156,28 @@ useEffect(() => {
         <Card>
           <CardHeader>
             <CardTitle>Team-wise Attendance</CardTitle>
-            <CardDescription>Today's attendance by team</CardDescription>
+            <CardDescription>Today&apos;s attendance by team</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={teamWiseData}>
+              <BarChart
+                data={teamWiseData}
+                margin={{ top: 8, right: 8, left: 0, bottom: 56 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="name" />
+                <XAxis
+                  dataKey="name"
+                  interval={0}
+                  angle={-35}
+                  textAnchor="end"
+                  height={70}
+                  tickFormatter={formatTeamLabel}
+                />
                 <YAxis />
                 <Tooltip />
                 <Bar dataKey="present" fill="hsl(var(--success))" radius={[4,4,0,0]} />
                 <Bar dataKey="absent" fill="#BA2C2C" radius={[4,4,0,0]} />
+                <Bar dataKey="halfday" fill="#f59e0b" radius={[4,4,0,0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -160,7 +187,7 @@ useEffect(() => {
         <Card>
           <CardHeader>
             <CardTitle>Attendance Distribution</CardTitle>
-            <CardDescription>Today's overall attendance</CardDescription>
+            <CardDescription>Today&apos;s overall attendance</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[200px] sm:h-[250px] w-full">
@@ -188,30 +215,6 @@ useEffect(() => {
             </div>
           </CardContent>
         </Card>
-
-        {/* Attendance Rate */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Attendance Rate by Team</CardTitle>
-            <CardDescription>Percentage of members present today</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {teamWiseData.map(team => (
-              <div key={team.name} className="flex items-center gap-4">
-                <div className="w-32 truncate font-medium">{team.name}</div>
-                <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all"
-                    style={{ width: `${team.attendanceRate}%` }}
-                  />
-                </div>
-                <div className="w-16 text-right text-sm font-medium">
-                  {team.attendanceRate}%
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
       </div>
     )}
   </>
@@ -219,12 +222,3 @@ useEffect(() => {
 }
 
 export default Analytics
-
-/* ---------------- Utils ---------------- */
-
-const getTodayKey = () => {
-  const d = new Date()
-  return `${String(d.getDate()).padStart(2, "0")}-${String(
-    d.getMonth() + 1
-  ).padStart(2, "0")}-${d.getFullYear()}`
-}

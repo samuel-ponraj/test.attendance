@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { getRazorpayInstance, getRazorpayKeyId } from "@/lib/razorpay";
+import {
+  getRazorpayConfigByTeamId,
+  getRazorpayInstanceFromConfig,
+  getRazorpayKeyIdFromConfig,
+} from "@/lib/server-integrations";
 
 export const runtime = "nodejs";
 
@@ -7,6 +11,7 @@ export async function POST(req) {
   try {
     const { amount, receipt, notes } = await req.json();
     const numericAmount = Number(amount || 0);
+    const teamId = notes?.teamId || "";
 
     if (!numericAmount || numericAmount <= 0) {
       return NextResponse.json(
@@ -15,17 +20,18 @@ export async function POST(req) {
       );
     }
 
-    const razorpay = getRazorpayInstance();
+    const razorpayConfig = await getRazorpayConfigByTeamId(teamId);
+    const razorpay = getRazorpayInstanceFromConfig(razorpayConfig);
     const order = await razorpay.orders.create({
       amount: Math.round(numericAmount * 100),
-      currency: "INR",
+      currency: razorpayConfig.currency || "INR",
       receipt: String(receipt || `kda_${Date.now()}`).slice(0, 40),
       notes: notes || {},
     });
 
     return NextResponse.json({
       success: true,
-      keyId: getRazorpayKeyId(),
+      keyId: getRazorpayKeyIdFromConfig(razorpayConfig),
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,

@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
-import { verifyRazorpaySignature } from "@/lib/razorpay";
+import {
+  getRazorpayConfigByTeamId,
+  verifyRazorpaySignatureWithConfig,
+} from "@/lib/server-integrations";
 
 export const runtime = "nodejs";
 
 export async function POST(req) {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, teamId } =
       await req.json();
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
@@ -15,10 +18,12 @@ export async function POST(req) {
       );
     }
 
-    const verified = verifyRazorpaySignature({
+    const razorpayConfig = await getRazorpayConfigByTeamId(teamId);
+    const verified = verifyRazorpaySignatureWithConfig({
       orderId: razorpay_order_id,
       paymentId: razorpay_payment_id,
       signature: razorpay_signature,
+      config: razorpayConfig,
     });
 
     if (!verified) {

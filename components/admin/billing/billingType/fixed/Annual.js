@@ -54,7 +54,7 @@ import {
   getEffectiveBalance,
 } from "../BillingHelpers";
 
-const Annual = ({ teamId, team, members, initialMemberId }) => {
+const Annual = ({ teamId, team, members, initialMemberId, showBackButton = true }) => {
   const router = useRouter();
   const backHref = teamId ? `/admin/teams/${teamId}` : "/admin/teams";
 
@@ -276,14 +276,16 @@ const Annual = ({ teamId, team, members, initialMemberId }) => {
 
   return (
     <div className="space-y-5">
-    <div className="w-full max-w-[600px] flex justify-start">
-        <button
-          onClick={() => router.push(backHref)}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back
-        </button>
-      </div>
+      {showBackButton && (
+        <div className="w-full max-w-[600px] flex justify-start">
+          <button
+            onClick={() => router.push(backHref)}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
+        </div>
+      )}
       <Card>
         <CardContent>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">

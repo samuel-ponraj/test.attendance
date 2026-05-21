@@ -27,20 +27,6 @@ import { ArrowLeft, Copy, RefreshCw, Send, Share2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
-const getAppOrigin = () => {
-  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-  if (configuredUrl) {
-    try {
-      return new URL(configuredUrl).origin;
-    } catch {
-      return configuredUrl.replace(/\/$/, "");
-    }
-  }
-
-  return typeof window !== "undefined" ? window.location.origin : "";
-};
-
 const InvoiceForm = ({ teamId, memberId, period }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -68,7 +54,6 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
   const memberName =
     `${member?.firstName || ""} ${member?.lastName || ""}`.trim();
   const normalizedContact = (member?.contact || "").replace(/\D/g, "");
-  const appOrigin = getAppOrigin();
   const paymentLinkText = razorpayLink || "Generating payment link...";
   const paymentLinkAmount = Math.round(totalAmount * 100);
   const paymentLinkReferenceId = (() => {
@@ -208,10 +193,6 @@ Kingz Digital Solutions`;
               amount: totalAmount,
               description: `Payment for ${periodLabel || "invoice"}`,
               referenceId,
-              callbackUrl:
-                appOrigin
-                  ? `${appOrigin}/api/razorpay/payment-link-callback?teamId=${teamId}&memberId=${memberId}&periodId=${periodId || ""}`
-                  : "",
               customer: {
                 name: memberName || "Customer",
                 email: member.email || "",
@@ -306,7 +287,6 @@ Kingz Digital Solutions`;
       paymentLinkReferenceId,
       periodId,
       periodLabel,
-      appOrigin,
       teamId,
       totalAmount,
     ],
@@ -407,6 +387,7 @@ Kingz Digital Solutions`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          teamId,
           to: whatsappNumber,
           memberName,
           amount: totalAmount.toFixed(2),

@@ -34,6 +34,7 @@ async function updateTeamSummary(teamId, dateKey) {
         present,
         halfday,
         absent,
+        dateKey,
         updatedAt: FieldValue.serverTimestamp(),
       },
     },

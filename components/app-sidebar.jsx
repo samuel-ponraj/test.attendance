@@ -43,7 +43,7 @@ const navConfig = {
     main: [
       { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
       { title: "Teams", url: "/admin/teams", icon: Users },
-      { title: "Activity Logs", url: "/admin/history", icon: History },
+      { title: "Attendance Logs", url: "/admin/history", icon: History },
       { title: "Custom Forms", url: "/admin/custom-forms", icon: Form  },
       { title: "Payments", url: "/admin/billing", icon: ReceiptIndianRupee },
     ],

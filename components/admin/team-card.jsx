@@ -200,7 +200,7 @@ const TeamCardLayout = ({ teams }) => {
       }
     } catch (error) {
       console.error("Delete error:", error);
-      toast.error(error?.message || "Delete failed");
+      toast.error(error?.message || error?.details || "Delete failed");
     } finally {
       setLoading(false);
     }
@@ -667,7 +667,6 @@ const TeamCardLayout = ({ teams }) => {
             <Button
               onClick={handleDeleteTeam}
               disabled={loading || otp.length !== 6}
-              variant="destructive"
             >
               {loading ? "Deleting..." : "Confirm Delete"}
             </Button>

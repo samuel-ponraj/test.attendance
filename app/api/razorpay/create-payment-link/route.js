@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getRazorpayInstance } from "@/lib/razorpay";
+import {
+  getRazorpayConfigByTeamId,
+  getRazorpayInstanceFromConfig,
+} from "@/lib/server-integrations";
 
 export const runtime = "nodejs";
 
@@ -14,21 +17,37 @@ const isDuplicateReferenceError = (message) =>
   /reference[_\s-]?id/i.test(message || "") &&
   /(already exists|already attempted|duplicate)/i.test(message || "");
 
+const getAppOriginFromConfig = (config = {}) => {
+  const configuredUrl = String(config.webhookAppUrl || "").trim();
+
+  if (!configuredUrl) return "";
+
+  try {
+    return new URL(configuredUrl).origin;
+  } catch {
+    return configuredUrl
+      .replace(/\/api\/razorpay\/payment-link-webhook\/?$/, "")
+      .replace(/\/$/, "");
+  }
+};
+
+const buildPaymentLinkCallbackUrl = ({ origin, teamId, memberId, periodId }) =>
+  `${origin}/api/razorpay/payment-link-callback?teamId=${encodeURIComponent(
+    teamId,
+  )}&memberId=${encodeURIComponent(memberId)}&periodId=${encodeURIComponent(
+    periodId || "",
+  )}`;
+
 export async function POST(req) {
   let razorpay;
   let requestedReferenceId = "";
 
   try {
-    const {
-      amount,
-      description,
-      customer,
-      notes,
-      referenceId,
-      callbackUrl,
-    } = await req.json();
+    const { amount, description, customer, notes, referenceId } =
+      await req.json();
 
     const numericAmount = Number(amount || 0);
+    const teamId = notes?.teamId || "";
     requestedReferenceId = String(referenceId || `kda_${Date.now()}`).trim();
     const customerName = String(customer?.name || "Customer").trim();
     const customerEmail = String(customer?.email || "").trim();
@@ -61,10 +80,23 @@ export async function POST(req) {
       ...(customerContact ? { contact: customerContact } : {}),
     };
 
-    razorpay = getRazorpayInstance();
+    const razorpayConfig = await getRazorpayConfigByTeamId(teamId);
+    razorpay = getRazorpayInstanceFromConfig(razorpayConfig);
+    const appOrigin =
+      getAppOriginFromConfig(razorpayConfig) || new URL(req.url).origin;
+    const callbackUrl =
+      teamId && notes?.memberId
+        ? buildPaymentLinkCallbackUrl({
+            origin: appOrigin,
+            teamId,
+            memberId: notes.memberId,
+            periodId: notes.periodId,
+          })
+        : "";
+
     const paymentLink = await razorpay.paymentLink.create({
       amount: Math.round(numericAmount * 100),
-      currency: "INR",
+      currency: razorpayConfig.currency || "INR",
       accept_partial: false,
       reference_id: requestedReferenceId,
       description: description || "Kingz Digital Attendance payment",

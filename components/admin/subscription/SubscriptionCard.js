@@ -13,7 +13,7 @@ const plans = [
     period: "forever",
     features: [
       { text: "Up to 2 Teams", included: true },
-      { text: "Up to 50 Members per Team", included: true },
+      { text: "Up to 20 Members per Team", included: true },
       { text: "6-Month Attendance History", included: true },
       { text: "Excel Members Import", included: true },
       { text: "Attendance Report Export (PDF)", included: true },
