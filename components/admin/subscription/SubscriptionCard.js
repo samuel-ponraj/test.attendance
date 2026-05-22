@@ -2,49 +2,10 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-<<<<<<< HEAD
 import { CheckCircle2, X, CreditCard } from "lucide-react";
 import { useTeams } from "../../../app/context/TeamsContext";
 import { SUBSCRIPTION_PLANS } from "@/lib/subscriptionPlans";
 import { useRouter } from "next/navigation";
-=======
-import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, X, CreditCard, Zap } from "lucide-react";
-import { toast } from "sonner";
-import { useTeams } from '../../../app/context/TeamsContext'
-
-const plans = [
-  {
-    id: "basic",
-    name: "Basic",
-    price: "₹0",
-    period: "forever",
-    features: [
-      { text: "Up to 2 Teams", included: true },
-      { text: "Up to 15 Members per Team", included: true },
-      { text: "30 days Attendance History", included: true },
-      { text: "Excel Members Import", included: true },
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: "₹499",
-    period: "/month",
-    popular: true,
-    features: [
-      { text: "Up to 5 Teams", included: true },
-      { text: "Up to 50 Members per Team", included: true },
-      { text: "1-Year Attendance History", included: true }, 
-      { text: "Excel Members Import", included: true }, 
-      { text: "Custom Form Inputs", included: true }, 
-      { text: "Attendance Report Export (PDF)", included: true }, 
-      { text: "Dedicated Member Dashboard", included: true }, 
-    ],
-  },
-];
-
->>>>>>> 66ba2d6408cd66eceb92585b743e5aabd2b3f3c6
 
 const SubscriptionCard = () => {
   const { subscription } = useTeams();
@@ -76,10 +37,6 @@ const SubscriptionCard = () => {
                     : "border-border"
                 }`}
               >
-<<<<<<< HEAD
-=======
-
->>>>>>> 66ba2d6408cd66eceb92585b743e5aabd2b3f3c6
                 <div className="text-center mb-6">
                   <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
                   <div className="mt-2">

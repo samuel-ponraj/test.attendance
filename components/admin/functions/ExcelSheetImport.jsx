@@ -49,9 +49,6 @@ export default function ImportExcelSheet({
 
   if (!team) return null;
 
-<<<<<<< HEAD
-  const BASE_COLUMNS = ["s.no", "firstName", "lastName", "email", "contact", "role"];
-=======
   const BASE_COLUMNS = [
     "s.no",
     "firstName",
@@ -60,7 +57,6 @@ export default function ImportExcelSheet({
     "contact",
     "role",
   ];
->>>>>>> 66ba2d6408cd66eceb92585b743e5aabd2b3f3c6
   const customFieldsMap =
     team.customFields?.map((f) => ({
       id: f.id,
@@ -86,17 +82,6 @@ export default function ImportExcelSheet({
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rawRows = XLSX.utils.sheet_to_json(sheet);
 
-<<<<<<< HEAD
-        const rows = rawRows.map((row) => {
-          const normalizedRow = {};
-
-          Object.entries(row).forEach(([key, value]) => {
-            normalizedRow[key.toLowerCase().trim()] = value;
-          });
-
-          return normalizedRow;
-        });
-=======
         const rows = rawRows.map((row) =>
           Object.fromEntries(
             Object.entries(row).map(([key, value]) => [
@@ -105,7 +90,6 @@ export default function ImportExcelSheet({
             ]),
           ),
         );
->>>>>>> 66ba2d6408cd66eceb92585b743e5aabd2b3f3c6
 
         if (rows.length === 0) {
           toast.error("File is empty");
@@ -127,7 +111,7 @@ export default function ImportExcelSheet({
         setExcelData(rows);
         setValid(true);
         toast.success("Excel format verified");
-      } catch (err) {
+      } catch {
         toast.error("Error reading file");
       }
     };
@@ -156,21 +140,13 @@ export default function ImportExcelSheet({
     try {
       for (const row of excelData) {
         const emailValue = row.email?.toLowerCase().trim();
-<<<<<<< HEAD
+
         if (!emailValue) continue;
 
         const firstName = String(row.firstname || "").trim();
         const lastName = String(row.lastname || "").trim();
-        const role = row.role?.trim() || "member";
-=======
+        const role = String(row.role || "member").trim().toLowerCase();
 
-        if (!emailValue) continue;
-
-        const firstName = row.firstname?.trim() || "";
-        const lastName = row.lastname?.trim() || "";
-        const role = row.role?.trim()?.toLowerCase() || "member";
-
->>>>>>> 66ba2d6408cd66eceb92585b743e5aabd2b3f3c6
         let uid;
         // ---------------------------
         // 1️⃣ Try creating Auth account
@@ -183,9 +159,9 @@ export default function ImportExcelSheet({
           });
           uid = result.data.uid;
         } catch (err) {
-          // If email already exists, just skip Auth creation but continue Firestore writes
           if (err?.code === "already-exists") {
             errors.push(`${emailValue} already has an Auth account.`);
+            continue;
           } else {
             console.error("Error creating Auth account:", err);
             errors.push(`${emailValue} - ${err.message || err}`);
@@ -202,17 +178,6 @@ export default function ImportExcelSheet({
           firstName,
           lastName,
           email: emailValue,
-<<<<<<< HEAD
-          contact: String(row.contact || ""),
-          createdAt: serverTimestamp(),
-          teamId: team.id,
-          customData: {},
-          role
-        };
-
-        customFieldsMap.forEach((field) => {
-          const rowValue = row[field.name];
-=======
           contact: String(row["contact"] || row["Contact"] || ""),
           createdAt: serverTimestamp(),
           teamId: team.id,
@@ -224,7 +189,6 @@ export default function ImportExcelSheet({
           const rowValue = Object.entries(row).find(
             ([key]) => key.toLowerCase().trim() === field.name,
           )?.[1];
->>>>>>> 66ba2d6408cd66eceb92585b743e5aabd2b3f3c6
           if (rowValue !== undefined)
             memberPayload.customData[field.id] = rowValue;
         });
@@ -247,8 +211,8 @@ export default function ImportExcelSheet({
       // ---------------------------
       // 3️⃣ Batch increments
       // ---------------------------
-      batch.update(teamRef, { totalMembers: increment(excelData.length) });
-      batch.update(userRef, { memberCount: increment(excelData.length) });
+      batch.update(teamRef, { totalMembers: increment(membersToUpdateUI.length) });
+      batch.update(userRef, { memberCount: increment(membersToUpdateUI.length) });
 
       // ---------------------------
       // 4️⃣ Commit
