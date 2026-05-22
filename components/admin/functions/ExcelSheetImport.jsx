@@ -49,7 +49,18 @@ export default function ImportExcelSheet({
 
   if (!team) return null;
 
+<<<<<<< HEAD
   const BASE_COLUMNS = ["s.no", "firstName", "lastName", "email", "contact", "role"];
+=======
+  const BASE_COLUMNS = [
+    "s.no",
+    "firstName",
+    "lastName",
+    "email",
+    "contact",
+    "role",
+  ];
+>>>>>>> 66ba2d6408cd66eceb92585b743e5aabd2b3f3c6
   const customFieldsMap =
     team.customFields?.map((f) => ({
       id: f.id,
@@ -75,6 +86,7 @@ export default function ImportExcelSheet({
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rawRows = XLSX.utils.sheet_to_json(sheet);
 
+<<<<<<< HEAD
         const rows = rawRows.map((row) => {
           const normalizedRow = {};
 
@@ -84,6 +96,16 @@ export default function ImportExcelSheet({
 
           return normalizedRow;
         });
+=======
+        const rows = rawRows.map((row) =>
+          Object.fromEntries(
+            Object.entries(row).map(([key, value]) => [
+              key.toLowerCase().trim(),
+              value,
+            ]),
+          ),
+        );
+>>>>>>> 66ba2d6408cd66eceb92585b743e5aabd2b3f3c6
 
         if (rows.length === 0) {
           toast.error("File is empty");
@@ -134,11 +156,21 @@ export default function ImportExcelSheet({
     try {
       for (const row of excelData) {
         const emailValue = row.email?.toLowerCase().trim();
+<<<<<<< HEAD
         if (!emailValue) continue;
 
         const firstName = String(row.firstname || "").trim();
         const lastName = String(row.lastname || "").trim();
         const role = row.role?.trim() || "member";
+=======
+
+        if (!emailValue) continue;
+
+        const firstName = row.firstname?.trim() || "";
+        const lastName = row.lastname?.trim() || "";
+        const role = row.role?.trim()?.toLowerCase() || "member";
+
+>>>>>>> 66ba2d6408cd66eceb92585b743e5aabd2b3f3c6
         let uid;
         // ---------------------------
         // 1️⃣ Try creating Auth account
@@ -170,6 +202,7 @@ export default function ImportExcelSheet({
           firstName,
           lastName,
           email: emailValue,
+<<<<<<< HEAD
           contact: String(row.contact || ""),
           createdAt: serverTimestamp(),
           teamId: team.id,
@@ -179,6 +212,19 @@ export default function ImportExcelSheet({
 
         customFieldsMap.forEach((field) => {
           const rowValue = row[field.name];
+=======
+          contact: String(row["contact"] || row["Contact"] || ""),
+          createdAt: serverTimestamp(),
+          teamId: team.id,
+          customData: {},
+          role,
+        };
+
+        customFieldsMap.forEach((field) => {
+          const rowValue = Object.entries(row).find(
+            ([key]) => key.toLowerCase().trim() === field.name,
+          )?.[1];
+>>>>>>> 66ba2d6408cd66eceb92585b743e5aabd2b3f3c6
           if (rowValue !== undefined)
             memberPayload.customData[field.id] = rowValue;
         });

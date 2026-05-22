@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { adminAuth } from "@/lib/firebase-admin";
@@ -62,3 +63,30 @@ export async function POST(req) {
     );
   }
 }
+=======
+import Razorpay from "razorpay";
+
+const razorpay = new Razorpay({
+	key_id: process.env.RAZORPAY_KEY_ID,
+	key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+export async function POST(req) {
+	try {
+		const body = await req.json();
+
+		const subscription = await razorpay.subscriptions.create({
+			plan_id: body.planId,
+			customer_notify: 1,
+			total_count: 12, 
+		});
+
+		return Response.json(subscription);
+	} catch (err) {
+		return Response.json(
+			{ error: err.message },
+			{ status: 500 }
+		);
+	}
+}
+>>>>>>> 66ba2d6408cd66eceb92585b743e5aabd2b3f3c6
