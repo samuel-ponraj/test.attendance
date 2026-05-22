@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import { useMembers } from "@/app/context/MembersContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import { getPlan, PLAN_IDS } from "@/lib/subscriptionPlans";
 
 export default function MemberDashboardGate({ children }) {
   const { members, loading: membersLoading } = useMembers();
@@ -35,7 +36,8 @@ export default function MemberDashboardGate({ children }) {
         }
 
         const adminSnap = await getDoc(doc(db, "users", adminUserId));
-        setIsEnabled(adminSnap.data()?.subscription === "pro");
+        const plan = getPlan(adminSnap.data()?.subscription || PLAN_IDS.BASIC);
+        setIsEnabled(plan.limits.hasMemberDashboard);
       } catch (error) {
         console.error("Failed to check member dashboard subscription:", error);
         setIsEnabled(false);

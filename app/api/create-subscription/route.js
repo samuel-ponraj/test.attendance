@@ -19,7 +19,15 @@ export async function POST(req) {
     const body = await req.json();
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
-    const planId = process.env.SUBSCRIPTION_PLAN_ID || body.planId || body.plan;
+    const appPlan = body.plan || "pro";
+    const planId = process.env.SUBSCRIPTION_PLAN_ID || body.planId;
+
+    if (appPlan !== "pro") {
+      return NextResponse.json(
+        { error: "Only the Pro subscription plan can be purchased" },
+        { status: 400 }
+      );
+    }
 
     if (!keyId || !keySecret) {
       return NextResponse.json(

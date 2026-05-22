@@ -29,10 +29,12 @@ import {
   collection,
   writeBatch,
   doc,
+  getDoc,
   serverTimestamp,
   increment,
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { getPlan, PLAN_IDS } from "@/lib/subscriptionPlans";
 
 export default function ImportExcelSheet({
   open,
@@ -129,7 +131,7 @@ export default function ImportExcelSheet({
     const batch = writeBatch(db);
     const membersRef = collection(db, "teams", team.id, "members");
     const teamRef = doc(db, "teams", team.id);
-    const userRef = doc(db, "users", user.uid);
+    const userRef = doc(db, "users", team.admin?.userId || user.uid);
 
     const membersToUpdateUI = [];
     const errors = [];
@@ -138,7 +140,31 @@ export default function ImportExcelSheet({
     const createMemberAccount = httpsCallable(functions, "createMemberAccount");
 
     try {
+      const [teamSnap, userSnap] = await Promise.all([
+        getDoc(teamRef),
+        getDoc(userRef),
+      ]);
+      const currentMemberCount = teamSnap.data()?.totalMembers || 0;
+      const currentPlan = getPlan(userSnap.data()?.subscription || PLAN_IDS.BASIC);
+      const availableSlots =
+        currentPlan.limits.membersPerTeam - currentMemberCount;
+
+      if (availableSlots <= 0) {
+        toast.error(
+          `Your ${currentPlan.name} plan allows up to ${currentPlan.limits.membersPerTeam} members per team.`
+        );
+        setLoading(false);
+        return;
+      }
+
       for (const row of excelData) {
+        if (membersToUpdateUI.length >= availableSlots) {
+          errors.push(
+            `Member limit reached. Only ${availableSlots} member(s) can be imported.`
+          );
+          break;
+        }
+
         const emailValue = row.email?.toLowerCase().trim();
 
         if (!emailValue) continue;

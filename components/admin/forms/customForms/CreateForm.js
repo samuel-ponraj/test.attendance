@@ -198,7 +198,7 @@ const CreateForm = () => {
   const formId = searchParams.get("formId");
   const [currentFormTitle, setCurrentFormTitle] = useState(formTitle || "");
   const [teamsUsed, setTeamsUsed] = useState(parsedTeamsUsed || []);
-  const { plan, planLimits } = useTeams();
+  const { teams, plan, planLimits } = useTeams();
 
   useEffect(() => {
   const loadForm = async () => {
@@ -355,8 +355,14 @@ const CreateForm = () => {
       toast.success("Form updated successfully");
     } else {
       const formsSnapshot = await getDocs(collection(db, "customForms"));
+      const teamIds = new Set(teams.map((team) => team.id));
+      const currentAdminForms = formsSnapshot.docs.filter((formDoc) =>
+        (formDoc.data().teamsUsed || []).some((team) =>
+          teamIds.has(team.teamId),
+        ),
+      );
 
-      if (formsSnapshot.size >= planLimits.customForms) {
+      if (currentAdminForms.length >= planLimits.customForms) {
         toast.error(
           `Your ${plan.name} plan allows up to ${planLimits.customForms} custom forms.`
         );
@@ -370,6 +376,7 @@ const CreateForm = () => {
         title: finalFormTitle,
         teamsUsed,
         customFields: fields,
+        adminUserId: teams.find((team) => team.id === teamsUsed[0]?.teamId)?.admin?.userId || "",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };

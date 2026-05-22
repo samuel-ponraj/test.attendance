@@ -9,8 +9,8 @@ const db = admin.firestore();
 
 /**
  * Auto cleanup attendance
- * basic → 6 months
- * pro   → 12 months
+ * basic -> 30 days
+ * pro   -> 365 days
  */
 export const cleanupOldAttendance = onSchedule(
   {
@@ -29,10 +29,10 @@ export const cleanupOldAttendance = onSchedule(
       // 1. Fetch user subscription once
       const userSnap = await db.collection("users").doc(adminUserId).get();
       const subscription = userSnap.data()?.subscription ?? "basic";
-      const monthsAllowed = subscription === "pro" ? 12 : 6;
+      const daysAllowed = subscription === "pro" ? 365 : 30;
 
       const cutoffDate = new Date();
-      cutoffDate.setMonth(now.getMonth() - monthsAllowed);
+      cutoffDate.setDate(now.getDate() - daysAllowed);
 
       // 2. ONLY fetch records that are actually old (Server-side filtering)
       const oldAttendanceSnap = await teamDoc.ref

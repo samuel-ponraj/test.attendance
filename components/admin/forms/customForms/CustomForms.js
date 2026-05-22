@@ -51,11 +51,14 @@ const CustomForms = () => {
       try {
         setLoading(true);
         const formsSnapshot = await getDocs(collection(db, "customForms"));
+        const teamIds = new Set(teams.map((team) => team.id));
 
         const forms = formsSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }));
+        })).filter((form) =>
+          (form.teamsUsed || []).some((team) => teamIds.has(team.teamId)),
+        );
 
         setCustomForms(forms);
       } catch (error) {
@@ -66,7 +69,7 @@ const CustomForms = () => {
     };
 
     fetchForms();
-  }, [teamsLoading]);
+  }, [teams, teamsLoading]);
 
   const handleAssignTeam = async () => {
     try {

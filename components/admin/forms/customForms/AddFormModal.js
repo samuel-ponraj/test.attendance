@@ -31,8 +31,14 @@ export default function AddFormModal({ open, onOpenChange }) {
   const proceedToBuilder = async () => {
     try {
       const formsSnapshot = await getDocs(collection(db, "customForms"));
+      const teamIds = new Set(teams.map((team) => team.id));
+      const currentAdminForms = formsSnapshot.docs.filter((formDoc) =>
+        (formDoc.data().teamsUsed || []).some((team) =>
+          teamIds.has(team.teamId),
+        ),
+      );
 
-      if (formsSnapshot.size >= planLimits.customForms) {
+      if (currentAdminForms.length >= planLimits.customForms) {
         setUpgradeOpen(true);
         return;
       }

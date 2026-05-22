@@ -119,6 +119,9 @@ const DEFAULT_ROUTE = {
 }
 
 type TeamsContextValue = {
+  teams: {
+    id: string
+  }[]
   addTeam: (team: {
     name: string
     description?: string
@@ -183,7 +186,7 @@ export function SiteHeader() {
       : currentRouteBase
 
 
-  const { addTeam, hasReachedTeamLimit, planLimits  } =
+  const { teams, addTeam, hasReachedTeamLimit, planLimits  } =
     useTeams() as TeamsContextValue;
   const [modalOpen, setModalOpen] = useState(false);
   const [showLimitDialog, setShowLimitDialog] = useState(false);
@@ -191,8 +194,14 @@ export function SiteHeader() {
 
   const openCreateForm = async () => {
     const formsSnapshot = await getDocs(collection(db, "customForms"));
+    const teamIds = new Set(teams.map((team) => team.id));
+    const currentAdminForms = formsSnapshot.docs.filter((formDoc) =>
+      (formDoc.data().teamsUsed || []).some((team: { teamId: string }) =>
+        teamIds.has(team.teamId),
+      ),
+    );
 
-    if (formsSnapshot.size >= planLimits.customForms) {
+    if (currentAdminForms.length >= planLimits.customForms) {
       setShowCustomFormsDialog(true);
       return;
     }
