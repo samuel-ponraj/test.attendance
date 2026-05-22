@@ -8,14 +8,15 @@ import { Button } from "@/components/ui/button";
 import { cn } from '@/lib/utils';
 import { CalendarIcon, Clock, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, eachDayOfInterval } from "date-fns";
+import { differenceInCalendarDays, eachDayOfInterval, format, startOfDay, subDays } from "date-fns";
 import HistoryTable from "./HistoryTable";
 import { useTeams } from '@/app/context/TeamsContext';
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import UpgradeDialog from "../subscription/UpgradeDialog";
 
 const HistoryLayout = () => {
-  const { teams } = useTeams();
+  const { teams, planLimits } = useTeams();
   const [members, setMembers] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -24,6 +25,7 @@ const HistoryLayout = () => {
   const [selectedMember, setSelectedMember] = useState("all");
   const [startDate, setStartDate] = useState(); 
   const [endDate, setEndDate] = useState();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   useEffect(() => {
     const fetchTeamData = async () => {
@@ -44,6 +46,19 @@ const HistoryLayout = () => {
         // If no date is selected, we might want to fetch last 7 days or just today
         const start = startDate || new Date();
         const end = endDate || new Date();
+        const rangeDays = differenceInCalendarDays(end, start) + 1;
+        const oldestAllowedDate = startOfDay(
+          subDays(new Date(), planLimits.attendanceHistoryDays - 1)
+        );
+
+        if (
+          startOfDay(start) < oldestAllowedDate ||
+          rangeDays > planLimits.attendanceHistoryDays
+        ) {
+          setAttendanceRecords([]);
+          setUpgradeOpen(true);
+          return;
+        }
         
         const dateRange = eachDayOfInterval({ start, end });
         
@@ -73,7 +88,7 @@ const HistoryLayout = () => {
     };
 
     fetchTeamData();
-  }, [selectedTeam, startDate, endDate]); 
+  }, [selectedTeam, startDate, endDate, planLimits.attendanceHistoryDays]); 
 
   const filteredAttendance = useMemo(() => {
     let result = [];
@@ -82,8 +97,6 @@ const HistoryLayout = () => {
     attendanceRecords.forEach(day => {
       Object.values(day.memberMap).forEach(record => {
         if (selectedMember === "all" || record.id === selectedMember) {
-          const memberMeta = members.find(m => m.id === record.id);
-          
           result.push({
             ...record,
             dateDisplay: day.dateKey,
@@ -177,7 +190,15 @@ const HistoryLayout = () => {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={startDate} onSelect={setStartDate} />
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    disabled={(date) =>
+                      date > new Date() ||
+                      date < subDays(new Date(), planLimits.attendanceHistoryDays - 1)
+                    }
+                  />
                 </PopoverContent>
               </Popover>
             </div>
@@ -192,7 +213,15 @@ const HistoryLayout = () => {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={endDate} onSelect={setEndDate} />
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    disabled={(date) =>
+                      date > new Date() ||
+                      date < subDays(new Date(), planLimits.attendanceHistoryDays - 1)
+                    }
+                  />
                 </PopoverContent>
               </Popover>
             </div>
@@ -212,8 +241,15 @@ const HistoryLayout = () => {
         <HistoryTable
           attendance={filteredAttendance}
           team={teams?.find(t => t.id === selectedTeam) || { name: "All Teams" }}
+          canExportPdf={planLimits.canExportAttendancePdf}
         />
       )}
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        title="Upgrade for longer history"
+        description={`Your current plan includes ${planLimits.attendanceHistoryDays} days of attendance history. Upgrade to Pro for 1-year attendance history and PDF exports.`}
+      />
     </div>
   );
 };

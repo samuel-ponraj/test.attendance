@@ -17,15 +17,17 @@ import { Toaster } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import Analytics from "../../components/admin/analytics/Analytics";
 import TransactionsTable from "@/components/admin/dashboard/TransactionsTable";
+import UpgradeDialog from "@/components/admin/subscription/UpgradeDialog";
 
 
 
 export default function DashboardPage() {
 
 
-  const { addTeam, loading, teams } = useTeams()
+  const { addTeam, loading, teams, hasReachedTeamLimit } = useTeams()
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [summaryReady, setSummaryReady] = useState(false);
 
   useEffect(() => {
@@ -84,7 +86,7 @@ export default function DashboardPage() {
                 Create your first team to start tracking attendance
               </p>
 
-              <Button onClick={() => setModalOpen(true)}>
+              <Button onClick={() => hasReachedTeamLimit ? setUpgradeOpen(true) : setModalOpen(true)}>
                 <Plus  />
                 Add Team
               </Button>
@@ -93,6 +95,13 @@ export default function DashboardPage() {
                 open={modalOpen}
                 onOpenChange={setModalOpen}
                 addTeam={addTeam}
+                onUpgradeRequired={() => setUpgradeOpen(true)}
+              />
+              <UpgradeDialog
+                open={upgradeOpen}
+                onOpenChange={setUpgradeOpen}
+                title="Upgrade to add more teams"
+                description="Your current plan has reached its team limit. Upgrade to Pro to create up to 5 teams."
               />
             </CardContent>
           </Card>

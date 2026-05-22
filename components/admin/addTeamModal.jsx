@@ -11,9 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 
-export default function AddTeamModal({ open, onOpenChange, addTeam }) {
+export default function AddTeamModal({
+  open,
+  onOpenChange,
+  addTeam,
+  onUpgradeRequired,
+}) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [ownerName, setOwnerName] = useState("");
@@ -39,6 +44,11 @@ export default function AddTeamModal({ open, onOpenChange, addTeam }) {
       onOpenChange(false);
     } catch (err) {
       console.error(err);
+      if (err?.code === "plan-limit" || /upgrade|limit/i.test(err?.message || "")) {
+        onUpgradeRequired?.();
+      } else {
+        toast.error(err?.message || "Failed to create team.");
+      }
     } finally {
       setLoading(false);
     }

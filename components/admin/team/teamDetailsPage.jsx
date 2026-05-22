@@ -31,6 +31,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Members from "./Members";
 import MembersList from "../members/MembersList";
 import BillingTab from "./BillingTab";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { useTeams } from "@/app/context/TeamsContext";
+import UpgradeDialog from "../subscription/UpgradeDialog";
 
 
 
@@ -38,6 +41,7 @@ export default function TeamDetailsPage() {
   const router = useRouter();
   const { slug } = useParams();
   const { user } = useAuth()
+  const { planLimits } = useTeams();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [team, setTeam] = useState(null);
@@ -47,6 +51,7 @@ export default function TeamDetailsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
 
   const fetchTeamData = useCallback(async () => {
@@ -150,6 +155,15 @@ members.forEach((m) => {
 
 const totalCount = members.length;
 const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
+const hasReachedMemberLimit = members.length >= planLimits.membersPerTeam;
+const openAddMember = () => {
+  if (hasReachedMemberLimit) {
+    setUpgradeOpen(true);
+    return;
+  }
+
+  setModalOpen(true);
+};
 
   /* ---------------- UPDATE ATTENDANCE ---------------- */
 
@@ -390,12 +404,13 @@ const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
                 team={team}
                 updateAttendance={updateAttendance}
                 handleMemberRemoved={handleMemberRemoved}
+                setModalOpen={openAddMember}
               />
             </TabsContent>
 
             {/* SCHEDULE TAB */}
             <TabsContent value="members">
-              <MembersList setModalOpen={setModalOpen}/>
+              <MembersList setModalOpen={openAddMember}/>
               {/* <Schedule teamId={team.id}/> */}
             </TabsContent>
 
@@ -423,6 +438,12 @@ const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
           const membersList = membersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
           setMembers(membersList);
         }}
+      />
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        title="Upgrade to add more members"
+        description={`Your current plan allows up to ${planLimits.membersPerTeam} members per team. Upgrade to Pro to add up to 50 members per team.`}
       />
       <AlertDialog
           open={!!memberToRemove}

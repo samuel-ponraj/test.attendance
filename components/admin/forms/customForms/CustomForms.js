@@ -8,32 +8,28 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Form, Loader2, Plus, Users } from "lucide-react";
-import Link from "next/link";
 import { useState, useEffect } from "react";
 import AddFormModal from "./AddFormModal";
 import {
   collection,
   getDocs,
-  deleteDoc,
   doc,
   updateDoc,
-  arrayRemove,
   arrayUnion,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Eye, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { useTeams } from "../../../../app/context/TeamsContext";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import UpgradeDialog from "@/components/admin/subscription/UpgradeDialog";
 
 const CustomForms = () => {
   const [loading, setLoading] = useState(true);
@@ -43,10 +39,15 @@ const CustomForms = () => {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedForm, setSelectedForm] = useState(null);
   const [selectedTeam, setSelectedTeam] = useState("");
-  const { teams } = useTeams();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const { teams, planLimits, loading: teamsLoading } = useTeams();
+  const hasReachedCustomFormLimit =
+    customForms.length >= planLimits.customForms;
 
   useEffect(() => {
     const fetchForms = async () => {
+      if (teamsLoading) return;
+
       try {
         setLoading(true);
         const formsSnapshot = await getDocs(collection(db, "customForms"));
@@ -65,7 +66,7 @@ const CustomForms = () => {
     };
 
     fetchForms();
-  }, []);
+  }, [teamsLoading]);
 
   const handleAssignTeam = async () => {
     try {
@@ -139,7 +140,16 @@ const CustomForms = () => {
               Create your first custom form for collecting team member details
             </p>
 
-            <Button onClick={() => setModalOpen(true)}>
+            <Button
+              onClick={() => {
+                if (hasReachedCustomFormLimit) {
+                  setUpgradeOpen(true);
+                  return;
+                }
+
+                setModalOpen(true);
+              }}
+            >
               <Plus />
               Create Form
             </Button>
@@ -149,6 +159,17 @@ const CustomForms = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 px-4 lg:px-6">
+          <div className="col-span-full flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              {customForms.length} of {planLimits.customForms} custom forms used
+            </p>
+            {hasReachedCustomFormLimit && (
+              <Button onClick={() => setUpgradeOpen(true)}>
+                Upgrade for more forms
+              </Button>
+            )}
+          </div>
+
           {customForms.map((form) => (
             <Card
               key={form.id}
@@ -260,6 +281,13 @@ const CustomForms = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        title="Custom form limit reached"
+        description={`Your current plan allows up to ${planLimits.customForms} custom forms. Upgrade to Pro to create up to 10 custom forms.`}
+      />
     </div>
   );
 };

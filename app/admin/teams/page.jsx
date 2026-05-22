@@ -11,11 +11,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Plus } from "lucide-react";
+import UpgradeDialog from "@/components/admin/subscription/UpgradeDialog";
 
 export default function Page() {
 
-  const { teams, addTeam, sendDeleteOtp, deleteTeamWithOtp, loading } = useTeams();
+  const { teams, addTeam, sendDeleteOtp, deleteTeamWithOtp, loading, hasReachedTeamLimit } = useTeams();
   const [modalOpen, setModalOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   return (
     
      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -36,7 +38,7 @@ export default function Page() {
                 Create your first team to start tracking attendance
               </p>
 
-              <Button onClick={() => setModalOpen(true)}>
+              <Button onClick={() => hasReachedTeamLimit ? setUpgradeOpen(true) : setModalOpen(true)}>
                 <Plus  />
                 Add Team
               </Button>
@@ -46,6 +48,13 @@ export default function Page() {
                 open={modalOpen}
                 onOpenChange={setModalOpen}
                 addTeam={addTeam}
+                onUpgradeRequired={() => setUpgradeOpen(true)}
+              />
+              <UpgradeDialog
+                open={upgradeOpen}
+                onOpenChange={setUpgradeOpen}
+                title="Upgrade to add more teams"
+                description="Your current plan has reached its team limit. Upgrade to Pro to create up to 5 teams."
               />
             </CardContent>
           </Card>

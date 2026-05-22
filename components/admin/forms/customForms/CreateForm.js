@@ -47,9 +47,11 @@ import {
   serverTimestamp,
   setDoc,
   getDoc,
+  getDocs,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
+import { useTeams } from "@/app/context/TeamsContext";
 
 const fieldTypeLabels = {
   text: 'Short Text',
@@ -196,6 +198,7 @@ const CreateForm = () => {
   const formId = searchParams.get("formId");
   const [currentFormTitle, setCurrentFormTitle] = useState(formTitle || "");
   const [teamsUsed, setTeamsUsed] = useState(parsedTeamsUsed || []);
+  const { plan, planLimits } = useTeams();
 
   useEffect(() => {
   const loadForm = async () => {
@@ -351,6 +354,15 @@ const CreateForm = () => {
 
       toast.success("Form updated successfully");
     } else {
+      const formsSnapshot = await getDocs(collection(db, "customForms"));
+
+      if (formsSnapshot.size >= planLimits.customForms) {
+        toast.error(
+          `Your ${plan.name} plan allows up to ${planLimits.customForms} custom forms.`
+        );
+        return;
+      }
+
       const formRef = doc(collection(db, "customForms"));
 
       const formData = {

@@ -9,13 +9,15 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import UpgradeDialog from "../subscription/UpgradeDialog";
 
-const HistoryTable = ({ attendance = [], team }) => {
+const HistoryTable = ({ attendance = [], team, canExportPdf = false }) => {
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [attendanceFilter, setAttendanceFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const rows = attendance.filter((row) => {
   const attendanceMatch =
     attendanceFilter === "all" || row.status === attendanceFilter;
@@ -64,6 +66,11 @@ const HistoryTable = ({ attendance = [], team }) => {
 };
 
   const handleExportPDF = () => {
+    if (!canExportPdf) {
+      setUpgradeOpen(true);
+      return;
+    }
+
     const doc = new jsPDF({ orientation: "landscape", unit: "pt" });
     doc.setFontSize(14);
     doc.text("Attendance History", 40, 30);
@@ -271,6 +278,12 @@ const HistoryTable = ({ attendance = [], team }) => {
           </div>
         </div>
       </CardContent>
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        title="Upgrade to export PDF reports"
+        description="Attendance Report Export (PDF) is available on the Pro plan."
+      />
     </Card>
   );
 };

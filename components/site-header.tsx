@@ -10,20 +10,11 @@ import { useTeams } from "@/app/context/TeamsContext"
 import { useEffect, useState } from "react"
 import AddTeamModal from "./admin/addTeamModal"
 import AddFormModal from "./admin/forms/customForms/AddFormModal"
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogAction,
-} from "@/components/ui/alert-dialog"
-import Link from "next/link"
 import Notifications from "@/lib/Notifications"
 import { useMembers } from "@/app/context/MembersContext"
 import { db } from "@/lib/firebase"
-import { doc, onSnapshot } from "firebase/firestore"
+import { collection, doc, getDocs, onSnapshot } from "firebase/firestore"
+import UpgradeDialog from "./admin/subscription/UpgradeDialog"
 
 
 const ROUTE_CONFIG: Record<
@@ -127,6 +118,17 @@ const DEFAULT_ROUTE = {
   description: "Manage teams and track attendance",
 }
 
+type TeamsContextValue = {
+  addTeam: (team: {
+    name: string
+    description?: string
+    ownerName: string
+  }) => Promise<unknown>
+  hasReachedTeamLimit: boolean
+  planLimits: {
+    customForms: number
+  }
+}
 
 
 export function SiteHeader() {
@@ -181,9 +183,22 @@ export function SiteHeader() {
       : currentRouteBase
 
 
-  const { addTeam, hasReachedTeamLimit  } = useTeams();
+  const { addTeam, hasReachedTeamLimit, planLimits  } =
+    useTeams() as TeamsContextValue;
   const [modalOpen, setModalOpen] = useState(false);
   const [showLimitDialog, setShowLimitDialog] = useState(false);
+  const [showCustomFormsDialog, setShowCustomFormsDialog] = useState(false);
+
+  const openCreateForm = async () => {
+    const formsSnapshot = await getDocs(collection(db, "customForms"));
+
+    if (formsSnapshot.size >= planLimits.customForms) {
+      setShowCustomFormsDialog(true);
+      return;
+    }
+
+    setModalOpen(true);
+  };
 
 
   return (
@@ -227,9 +242,10 @@ export function SiteHeader() {
                       }
 
                       if (normalizedPath === "/admin/custom-forms") {
-                        setModalOpen(true);
+                        openCreateForm();
                       }
                     }}
+                  
                   >
                     <Plus />
                     {normalizedPath === "/admin/custom-forms"
@@ -247,6 +263,7 @@ export function SiteHeader() {
                       open={modalOpen}
                       onOpenChange={setModalOpen}
                       addTeam={addTeam}
+                      onUpgradeRequired={() => setShowLimitDialog(true)}
                     />
                   )}
                 </>
@@ -258,23 +275,19 @@ export function SiteHeader() {
           <ModeToggle />
 
 
-          <AlertDialog open={showLimitDialog} onOpenChange={setShowLimitDialog}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Team Limit Reached</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    You have reached the maximum limit of <strong>2 teams</strong> in the free plan.
-                    <br /><br />
-                    Please contact <Link href='https://kingzdigitalsolutions.in' target="_blank" rel="noopener noreferrer"><strong>Kingz Digital Solutions</strong></Link> to upgrade your plan.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogAction onClick={() => setShowLimitDialog(false)}>
-                    OK
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+          <UpgradeDialog
+            open={showLimitDialog}
+            onOpenChange={setShowLimitDialog}
+            title="Upgrade to add more teams"
+            description="Your current plan has reached its team limit. Upgrade to Pro to create up to 5 teams."
+          />
+
+          <UpgradeDialog
+            open={showCustomFormsDialog}
+            onOpenChange={setShowCustomFormsDialog}
+            title="Custom form limit reached"
+            description={`Your current plan allows up to ${planLimits.customForms} custom forms. Upgrade to Pro to create up to 10 custom forms.`}
+          />
         </div>
       </div>
     </header>

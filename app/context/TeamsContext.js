@@ -15,10 +15,9 @@ import {
 import { db } from "@/lib/firebase";
 import { getDateKey } from "@/lib/DateKey";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { createPlanLimitError, getPlan, PLAN_IDS } from "@/lib/subscriptionPlans";
 
 const TeamsContext = createContext(null);
-
-const TEAM_LIMIT = 2;
 
 export function TeamsProvider({ children }) {
 
@@ -31,7 +30,10 @@ export function TeamsProvider({ children }) {
   const verifyOtp = httpsCallable(functions, "verifyOtpAndDeleteTeam");
 
   
-  const hasReachedTeamLimit = subscription !== 'pro' && teams.length >= TEAM_LIMIT;
+  const plan = getPlan(subscription);
+  const planLimits = plan.limits;
+  const TEAM_LIMIT = planLimits.teams;
+  const hasReachedTeamLimit = teams.length >= TEAM_LIMIT;
 
   useEffect(() => {
     if (!user?.uid) {
@@ -47,7 +49,7 @@ export function TeamsProvider({ children }) {
       if (docSnap.exists()) {
         const data = docSnap.data();
         // Fallback to 'basic' if field is missing
-        setSubscription(data.subscription || 'basic');
+      setSubscription(data.subscription || PLAN_IDS.BASIC);
       }
     });
 
@@ -83,7 +85,9 @@ export function TeamsProvider({ children }) {
   if (!user) return;
 
   if (hasReachedTeamLimit) {
-    throw new Error(`Team limit of ${TEAM_LIMIT} reached for basic plan.`);
+    throw createPlanLimitError(
+      `Your ${plan.name} plan allows up to ${TEAM_LIMIT} teams. Upgrade to Pro to add more.`
+    );
   }
 
   try {
@@ -99,10 +103,14 @@ export function TeamsProvider({ children }) {
 
       const userData = userSnap.data();
       const currentCount = userData.teamCount || 0;
-      const currentSub = userData.subscription || "basic";
+      const currentSub = userData.subscription || PLAN_IDS.BASIC;
+      const currentPlan = getPlan(currentSub);
+      const currentTeamLimit = currentPlan.limits.teams;
 
-      if (currentSub !== "pro" && currentCount >= TEAM_LIMIT) {
-        throw new Error("Limit reached. Upgrade to Pro for unlimited teams.");
+      if (currentCount >= currentTeamLimit) {
+        throw createPlanLimitError(
+          `Your ${currentPlan.name} plan allows up to ${currentTeamLimit} teams.`
+        );
       }
 
       const teamDocRef = doc(collection(db, "teams"));
@@ -147,6 +155,8 @@ export function TeamsProvider({ children }) {
         teams,
         loading,
         subscription, 
+        plan,
+        planLimits,
         addTeam,
         TEAM_LIMIT,
         hasReachedTeamLimit,

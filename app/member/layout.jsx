@@ -15,6 +15,7 @@ import { AttendanceProvider } from "../context/attendanceContext";
 import { UserProvider } from "../context/userContext";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import Link from "next/link";
+import MemberDashboardGate from "@/components/member/MemberDashboardGate";
 
 export const metadata = {
   title: "Kingz Digital Attendance",
@@ -108,6 +109,7 @@ export default function MemberLayout({ children }) {
 		>
 			<UIProvider>
 			<MembersProvider>
+			<MemberDashboardGate>
 			<AttendanceProvider>
 				<TeamsProvider>
 				
@@ -118,6 +120,7 @@ export default function MemberLayout({ children }) {
 				</UserProvider>
 				</TeamsProvider>
 				</AttendanceProvider>
+				</MemberDashboardGate>
 				</MembersProvider>
 			</UIProvider>
 		</ThemeProvider>

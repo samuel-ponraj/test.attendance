@@ -1,47 +1,15 @@
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, X, CreditCard, Zap } from "lucide-react";
-import { toast } from "sonner";
-import { useTeams } from '../../../app/context/TeamsContext'
-
-const plans = [
-  {
-    id: "basic",
-    name: "Basic",
-    price: "₹0",
-    period: "forever",
-    features: [
-      { text: "Up to 2 Teams", included: true },
-      { text: "Up to 20 Members per Team", included: true },
-      { text: "6-Month Attendance History", included: true },
-      { text: "Excel Members Import", included: true },
-      { text: "Attendance Report Export (PDF)", included: true },
-      { text: "Basic Attendance Analytics", included: true },
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: "₹499",
-    period: "/month",
-    popular: true,
-    features: [
-      { text: "Unlimited Teams", included: true }, 
-      { text: "Unlimited Members per Team", included: true }, 
-      { text: "1-Year Attendance History", included: true }, 
-      { text: "Excel Members Import", included: true }, 
-      { text: "Attendance Report Export (PDF)", included: true }, 
-      { text: "Advanced Analytics & Detailed Reports", included: true }, 
-      { text: "Dedicated Member Dashboard for Self Attendance", included: true }, 
-    ],
-  },
-];
-
+import { CheckCircle2, X, CreditCard } from "lucide-react";
+import { useTeams } from "../../../app/context/TeamsContext";
+import { SUBSCRIPTION_PLANS } from "@/lib/subscriptionPlans";
+import { useRouter } from "next/navigation";
 
 const SubscriptionCard = () => {
-  // Use the real-time subscription status from your context
   const { subscription } = useTeams();
+  const router = useRouter();
 
   return (
     <Card>
@@ -54,8 +22,7 @@ const SubscriptionCard = () => {
       </CardHeader>
       <CardContent>
         <div className="grid md:grid-cols-2 gap-6">
-          {plans.map((plan) => {
-            // Check if this plan matches the user's current subscription status
+          {SUBSCRIPTION_PLANS.map((plan) => {
             const isCurrentPlan = plan.id === subscription;
             const isPro = plan.id === "pro";
 
@@ -64,19 +31,12 @@ const SubscriptionCard = () => {
                 key={plan.id}
                 className={`relative rounded-xl border-2 p-6 transition-all ${
                   isCurrentPlan
-                    ? "border-primary "
+                    ? "border-primary"
                     : plan.popular
                     ? "border-primary/30"
                     : "border-border"
                 }`}
               >
-                {plan.popular && (
-                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
-                    <Zap className="h-3 w-3 mr-1" />
-                    Coming Soon
-                  </Badge>
-                )}
-
                 <div className="text-center mb-6">
                   <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
                   <div className="mt-2">
@@ -108,10 +68,10 @@ const SubscriptionCard = () => {
                   <Button
                     variant={isPro ? "default" : "outline"}
                     className="w-full"
-                    // DISABLED: Button is disabled for Pro because it is "Coming Soon"
-                    // and disabled for Basic if the user is already Pro
-                    disabled={isPro || subscription === "pro"} 
-                    onClick={() => toast.info("Payment integration coming soon!")}
+                    disabled={!isPro && subscription === "pro"}
+                    onClick={() => {
+                      if (isPro) router.push("/checkout?plan=pro");
+                    }}
                   >
                     {isPro ? "Upgrade to Pro" : "Downgrade to Basic"}
                   </Button>

@@ -54,14 +54,14 @@ const HomePage = () => {
 
         <div className="mt-8 flex w-full flex-col items-center justify-center gap-4 sm:flex-row">
           <button
-            className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#9d1c1b] px-5 py-3 text-base font-medium text-white transition hover:bg-[#8b1918] sm:w-auto"
+            className="inline-flex cursor-pointer w-full items-center justify-center gap-2 rounded-md bg-[#9d1c1b] px-5 py-3 text-base font-medium text-white transition hover:bg-[#8b1918] sm:w-auto"
             onClick={handleRecordAttendance}
           >
             Record Attendance <ArrowRight className="h-5 w-5" />
           </button>
 
           <Link href="#features" className="w-full sm:w-auto">
-            <button className="w-full rounded-md border border-white/80 px-5 py-3 text-base font-medium text-white transition hover:bg-white/10 sm:w-auto">
+            <button className="w-full cursor-pointer rounded-md border border-white/80 px-5 py-3 text-base font-medium text-white transition hover:bg-white/10 sm:w-auto">
               Learn More
             </button>
           </Link>
