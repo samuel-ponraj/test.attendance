@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { adminAuth } from "@/lib/firebase-admin";
@@ -63,7 +63,7 @@ export async function POST(req) {
     );
   }
 }
-=======
+
 import Razorpay from "razorpay";
 
 const razorpay = new Razorpay({
@@ -89,4 +89,4 @@ export async function POST(req) {
 		);
 	}
 }
->>>>>>> 66ba2d6408cd66eceb92585b743e5aabd2b3f3c6
+
