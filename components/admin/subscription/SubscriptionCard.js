@@ -13,11 +13,9 @@ const plans = [
     period: "forever",
     features: [
       { text: "Up to 2 Teams", included: true },
-      { text: "Up to 20 Members per Team", included: true },
-      { text: "6-Month Attendance History", included: true },
+      { text: "Up to 15 Members per Team", included: true },
+      { text: "30 days Attendance History", included: true },
       { text: "Excel Members Import", included: true },
-      { text: "Attendance Report Export (PDF)", included: true },
-      { text: "Basic Attendance Analytics", included: true },
     ],
   },
   {
@@ -27,13 +25,13 @@ const plans = [
     period: "/month",
     popular: true,
     features: [
-      { text: "Unlimited Teams", included: true }, 
-      { text: "Unlimited Members per Team", included: true }, 
+      { text: "Up to 5 Teams", included: true },
+      { text: "Up to 50 Members per Team", included: true },
       { text: "1-Year Attendance History", included: true }, 
       { text: "Excel Members Import", included: true }, 
+      { text: "Custom Form Inputs", included: true }, 
       { text: "Attendance Report Export (PDF)", included: true }, 
-      { text: "Advanced Analytics & Detailed Reports", included: true }, 
-      { text: "Dedicated Member Dashboard for Self Attendance", included: true }, 
+      { text: "Dedicated Member Dashboard", included: true }, 
     ],
   },
 ];
@@ -70,12 +68,6 @@ const SubscriptionCard = () => {
                     : "border-border"
                 }`}
               >
-                {plan.popular && (
-                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
-                    <Zap className="h-3 w-3 mr-1" />
-                    Coming Soon
-                  </Badge>
-                )}
 
                 <div className="text-center mb-6">
                   <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
