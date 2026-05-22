@@ -4,11 +4,6 @@ import { adminAuth } from "@/lib/firebase-admin";
 
 export const runtime = "nodejs";
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
-
 export async function POST(req) {
   try {
     const authHeader = req.headers.get("authorization") || "";
@@ -22,9 +17,11 @@ export async function POST(req) {
 
     const decodedToken = await adminAuth.verifyIdToken(token);
     const body = await req.json();
-    const planId = process.env.SUBSCRIPTION_PLAN_ID || body.planId;
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const planId = process.env.SUBSCRIPTION_PLAN_ID || body.planId || body.plan;
 
-    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    if (!keyId || !keySecret) {
       return NextResponse.json(
         { error: "Razorpay credentials are not configured" },
         { status: 500 }
@@ -37,6 +34,11 @@ export async function POST(req) {
         { status: 500 }
       );
     }
+
+    const razorpay = new Razorpay({
+      key_id: keyId,
+      key_secret: keySecret,
+    });
 
     const subscription = await razorpay.subscriptions.create({
       plan_id: planId,
@@ -51,7 +53,7 @@ export async function POST(req) {
     return NextResponse.json({
       id: subscription.id,
       status: subscription.status,
-      keyId: process.env.RAZORPAY_KEY_ID,
+      keyId,
     });
   } catch (err) {
     console.error("Create subscription error:", err);
