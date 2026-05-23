@@ -22,9 +22,9 @@ export default function UpgradeDialog({
 }) {
   const router = useRouter();
 
-  const goToCheckout = () => {
+  const goToCheckout = (billingCycle = "monthly") => {
     onOpenChange(false);
-    router.push("/checkout?plan=pro");
+    router.push(`/checkout?plan=pro&billing=${billingCycle}`);
   };
 
   return (
@@ -36,21 +36,29 @@ export default function UpgradeDialog({
         </DialogHeader>
 
         <div className="rounded-lg border bg-muted/40 p-4">
-          <div className="flex items-baseline justify-between gap-4">
-            <div>
-              <p className="font-semibold">{proPlan?.name || "Pro"}</p>
-              <p className="text-sm text-muted-foreground">
-                More teams, more members, longer history, and PDF exports.
-              </p>
-            </div>
-            <div className="text-right">
-              <span className="text-2xl font-bold">
-                {proPlan?.price || "₹499"}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                {proPlan?.period || "/month"}
-              </span>
-            </div>
+          <p className="font-semibold">{proPlan?.name || "Pro"}</p>
+          <p className="text-sm text-muted-foreground">
+            More teams, more members, longer history, and PDF exports.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {proPlan?.billingOptions?.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => goToCheckout(option.id)}
+                className="rounded-lg border bg-background p-3 text-left transition-colors hover:border-primary"
+              >
+                <span className="block text-sm font-medium">
+                  {option.label}
+                </span>
+                <span className="mt-1 block text-xl font-bold">
+                  {option.price}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    {option.period}
+                  </span>
+                </span>
+              </button>
+            ))}
           </div>
         </div>
 
@@ -58,7 +66,9 @@ export default function UpgradeDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Not now
           </Button>
-          <Button onClick={goToCheckout}>Upgrade to Pro</Button>
+          <Button onClick={() => goToCheckout("monthly")}>
+            Upgrade Monthly
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

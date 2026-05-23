@@ -15,7 +15,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { SUBSCRIPTION_PLANS } from "@/lib/subscriptionPlans";
+import {
+  BILLING_CYCLES,
+  SUBSCRIPTION_PLANS,
+  getBillingOption,
+} from "@/lib/subscriptionPlans";
 
 function CheckoutContent() {
   const router = useRouter();
@@ -31,13 +35,40 @@ function CheckoutContent() {
       SUBSCRIPTION_PLANS.find((plan) => plan.id === "pro")
     );
   }, [searchParams]);
+  const billingCycle = useMemo(() => {
+    const requestedBilling = searchParams.get("billing");
+    return Object.values(BILLING_CYCLES).includes(requestedBilling)
+      ? requestedBilling
+      : BILLING_CYCLES.MONTHLY;
+  }, [searchParams]);
+  const selectedBilling = useMemo(
+    () => getBillingOption(selectedPlan, billingCycle),
+    [selectedPlan, billingCycle]
+  );
 
   useEffect(() => {
     document.title = "Checkout | Kingz Digital Attendance";
   }, []);
 
+  useEffect(() => {
+    if (window.Razorpay) {
+      setScriptReady(true);
+    }
+  }, []);
+
+  const changeBillingCycle = (nextBillingCycle) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("plan", selectedPlan?.id || "pro");
+    params.set("billing", nextBillingCycle);
+    router.replace(`/checkout?${params.toString()}`);
+  };
+
   const startCheckout = async () => {
     if (!user || !selectedPlan) return;
+    if (!window.Razorpay) {
+      toast.error("Razorpay checkout is still loading. Please try again.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -48,7 +79,10 @@ function CheckoutContent() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ plan: selectedPlan.id }),
+        body: JSON.stringify({
+          plan: selectedPlan.id,
+          billingCycle,
+        }),
       });
       const subscription = await response.json();
 
@@ -76,7 +110,10 @@ function CheckoutContent() {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
               },
-              body: JSON.stringify(paymentResponse),
+              body: JSON.stringify({
+                ...paymentResponse,
+                billingCycle,
+              }),
             });
             const verifyResult = await verifyResponse.json();
 
@@ -99,7 +136,6 @@ function CheckoutContent() {
       });
       razorpay.open();
     } catch (error) {
-      console.error("Checkout error:", error);
       toast.error(error.message || "Unable to start checkout");
     } finally {
       setLoading(false);
@@ -136,22 +172,39 @@ function CheckoutContent() {
                   <div>
                     <h2 className="text-2xl font-bold">{selectedPlan?.name}</h2>
                     <p className="text-sm text-muted-foreground">
-                      Billed monthly through Razorpay
+                      {selectedBilling?.helperText || "Billed through Razorpay"}
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="text-3xl font-bold">{selectedPlan?.price}</span>
+                    <span className="text-3xl font-bold">
+                      {selectedBilling?.price}
+                    </span>
                     <span className="text-sm text-muted-foreground">
-                      {selectedPlan?.period}
+                      {selectedBilling?.period}
                     </span>
                   </div>
                 </div>
               </div>
 
+              {selectedPlan?.billingOptions && (
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedPlan.billingOptions.map((option) => (
+                    <Button
+                      key={option.id}
+                      type="button"
+                      variant={billingCycle === option.id ? "default" : "outline"}
+                      onClick={() => changeBillingCycle(option.id)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+
               <Button
                 className="w-full"
                 size="lg"
-                disabled={!scriptReady || loading}
+                disabled={loading}
                 onClick={startCheckout}
               >
                 {loading ? (
@@ -160,7 +213,7 @@ function CheckoutContent() {
                     Starting checkout...
                   </>
                 ) : (
-                  "Pay with Razorpay"
+                  scriptReady ? "Pay with Razorpay" : "Loading Razorpay..."
                 )}
               </Button>
             </CardContent>
@@ -187,6 +240,7 @@ function CheckoutContent() {
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
         onLoad={() => setScriptReady(true)}
+        onReady={() => setScriptReady(true)}
       />
     </div>
   );

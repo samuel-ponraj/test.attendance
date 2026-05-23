@@ -1,8 +1,21 @@
 import { NextResponse } from "next/server";
-import Razorpay from "razorpay";
 import { adminAuth } from "@/lib/firebase-admin";
+import {
+  getRazorpayConfigByAdminUserId,
+  getRazorpayInstanceFromConfig,
+  getRazorpayKeyIdFromConfig,
+} from "@/lib/server-integrations";
 
 export const runtime = "nodejs";
+
+const getRazorpayErrorMessage = (err) =>
+  err?.error?.description ||
+  err?.error?.reason ||
+  err?.description ||
+  err?.message ||
+  "Failed to create subscription";
+
+const BILLING_CYCLES = new Set(["monthly", "yearly"]);
 
 export async function POST(req) {
   try {
@@ -17,10 +30,14 @@ export async function POST(req) {
 
     const decodedToken = await adminAuth.verifyIdToken(token);
     const body = await req.json();
-    const keyId = process.env.RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const razorpayConfig = await getRazorpayConfigByAdminUserId(decodedToken.uid);
     const appPlan = body.plan || "pro";
-    const planId = process.env.SUBSCRIPTION_PLAN_ID || body.planId;
+    const billingCycle = BILLING_CYCLES.has(body.billingCycle)
+      ? body.billingCycle
+      : "monthly";
+    const planId =
+      razorpayConfig.subscriptionPlanIds?.[billingCycle] ||
+      (billingCycle === "monthly" ? razorpayConfig.subscriptionPlanId : "");
 
     if (appPlan !== "pro") {
       return NextResponse.json(
@@ -29,46 +46,51 @@ export async function POST(req) {
       );
     }
 
-    if (!keyId || !keySecret) {
+    if (!razorpayConfig.enabled) {
       return NextResponse.json(
-        { error: "Razorpay credentials are not configured" },
+        { error: "Razorpay integration is not enabled" },
         { status: 500 }
       );
     }
 
     if (!planId) {
       return NextResponse.json(
-        { error: "Razorpay Pro plan id is not configured" },
+        { error: `Razorpay Pro ${billingCycle} plan id is not configured` },
         { status: 500 }
       );
     }
 
-    const razorpay = new Razorpay({
-      key_id: keyId,
-      key_secret: keySecret,
-    });
+    if (!planId.startsWith("plan_")) {
+      return NextResponse.json(
+        { error: `Razorpay Pro ${billingCycle} plan id must start with plan_` },
+        { status: 500 }
+      );
+    }
+
+    const razorpay = getRazorpayInstanceFromConfig(razorpayConfig);
 
     const subscription = await razorpay.subscriptions.create({
       plan_id: planId,
       customer_notify: 1,
-      total_count: 12,
+      total_count: billingCycle === "yearly" ? 1 : 12,
       notes: {
         userId: decodedToken.uid,
         plan: "pro",
+        billingCycle,
       },
     });
 
     return NextResponse.json({
       id: subscription.id,
       status: subscription.status,
-      keyId,
+      keyId: getRazorpayKeyIdFromConfig(razorpayConfig),
     });
   } catch (err) {
     console.error("Create subscription error:", err);
 
     return NextResponse.json(
-      { error: err.message || "Failed to create subscription" },
-      { status: 500 }
+      { error: getRazorpayErrorMessage(err) },
+      { status: err?.statusCode || 500 }
     );
   }
 }

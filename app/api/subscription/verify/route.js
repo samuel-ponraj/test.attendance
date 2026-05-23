@@ -1,7 +1,10 @@
-import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import {
+  getRazorpayConfigByAdminUserId,
+  verifyRazorpaySubscriptionSignatureWithConfig,
+} from "@/lib/server-integrations";
 
 export const runtime = "nodejs";
 
@@ -21,6 +24,7 @@ export async function POST(req) {
       razorpay_payment_id,
       razorpay_subscription_id,
       razorpay_signature,
+      billingCycle = "monthly",
     } = await req.json();
 
     if (!razorpay_payment_id || !razorpay_subscription_id || !razorpay_signature) {
@@ -30,19 +34,16 @@ export async function POST(req) {
       );
     }
 
-    if (!process.env.RAZORPAY_KEY_SECRET) {
-      return NextResponse.json(
-        { error: "Razorpay secret is not configured" },
-        { status: 500 }
-      );
-    }
+    const razorpayConfig = await getRazorpayConfigByAdminUserId(decodedToken.uid);
 
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
-      .update(`${razorpay_payment_id}|${razorpay_subscription_id}`)
-      .digest("hex");
-
-    if (expectedSignature !== razorpay_signature) {
+    if (
+      !verifyRazorpaySubscriptionSignatureWithConfig({
+        paymentId: razorpay_payment_id,
+        subscriptionId: razorpay_subscription_id,
+        signature: razorpay_signature,
+        config: razorpayConfig,
+      })
+    ) {
       return NextResponse.json(
         { error: "Invalid Razorpay subscription signature" },
         { status: 400 }
@@ -53,6 +54,7 @@ export async function POST(req) {
       {
         subscription: "pro",
         subscriptionStatus: "active",
+        subscriptionBillingCycle: billingCycle,
         razorpaySubscriptionId: razorpay_subscription_id,
         razorpayPaymentId: razorpay_payment_id,
         subscriptionUpdatedAt: FieldValue.serverTimestamp(),
