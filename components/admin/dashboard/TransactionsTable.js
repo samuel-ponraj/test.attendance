@@ -96,7 +96,7 @@ const getStatusClassName = (status = "") => {
 
 export default function TransactionsTable({
   teams = [],
-  limit = 10,
+  limit = 5,
   paginated = false,
   showViewAll = false,
   title = "Recent Transactions",

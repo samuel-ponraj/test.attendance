@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Users, CalendarIcon, CheckCircle, XCircle, UserPlus, Clock, CalendarDays, UserRoundCheck, IndianRupee, ReceiptIndianRupee } from "lucide-react";
+import { ArrowLeft, Users, CalendarIcon, CheckCircle, XCircle, UserPlus, Clock, CalendarDays, UserRoundCheck, IndianRupee, ReceiptIndianRupee, Lock } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, serverTimestamp, onSnapshot  } from "firebase/firestore";
 import AddMemberModal from "../addMemberModal";
@@ -41,7 +41,12 @@ export default function TeamDetailsPage() {
   const router = useRouter();
   const { slug } = useParams();
   const { user } = useAuth()
-  const { planLimits } = useTeams();
+  const {
+    planLimits,
+    lockedTeams,
+    loading: teamsLoading,
+    TEAM_LIMIT,
+  } = useTeams();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [team, setTeam] = useState(null);
@@ -52,10 +57,11 @@ export default function TeamDetailsPage() {
   const [memberToRemove, setMemberToRemove] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const lockedTeam = lockedTeams.find((locked) => locked.id === slug);
 
 
   const fetchTeamData = useCallback(async () => {
-    if (!slug) return;
+    if (!slug || teamsLoading || lockedTeam) return;
 
     setLoading(true);
     let unsubscribePunches = null;
@@ -97,7 +103,7 @@ export default function TeamDetailsPage() {
     }
 
     return unsubscribePunches;
-  }, [slug, selectedDate]);
+  }, [lockedTeam, slug, selectedDate, teamsLoading]);
 
   // -----------------------------
   // 2️⃣ useEffect to call fetchTeamData
@@ -122,10 +128,53 @@ export default function TeamDetailsPage() {
   };
   
 
- if (loading || !team) {
+ if (teamsLoading || loading) {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
       <Spinner className="size-8" />
+    </div>
+  );
+}
+
+if (lockedTeam) {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center px-4">
+      <Card className="max-w-xl">
+        <CardContent className="space-y-5 p-8 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-600">
+            <Lock className="h-6 w-6" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-semibold">Team locked by your plan</h2>
+            <p className="text-sm text-muted-foreground">
+              Your Basic plan unlocks {TEAM_LIMIT} teams. Upgrade to view and
+              manage {lockedTeam.name || "this team"} again. No team data has
+              been deleted.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Button variant="outline" onClick={() => router.push("/admin/teams")}>
+              <ArrowLeft className="h-4 w-4" />
+              Back to teams
+            </Button>
+            <Button onClick={() => setUpgradeOpen(true)}>Upgrade to Pro</Button>
+          </div>
+          <UpgradeDialog
+            open={upgradeOpen}
+            onOpenChange={setUpgradeOpen}
+            title="Upgrade to unlock teams"
+            description="Upgrade to Pro to view and manage your locked teams again."
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+if (!team) {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center text-muted-foreground">
+      Team not found.
     </div>
   );
 }

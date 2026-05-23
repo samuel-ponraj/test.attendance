@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { adminDb } from "@/lib/firebase-admin";
+import { assertTeamUnlockedByPlan } from "@/lib/server-team-access";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -13,6 +14,8 @@ export async function POST(req) {
     if (!teamDoc.exists || teamDoc.data()?.admin?.userId !== userId) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
     }
+
+    await assertTeamUnlockedByPlan(teamId);
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -51,6 +54,9 @@ export async function POST(req) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error.message || "Internal Server Error" },
+      { status: error.statusCode || 500 }
+    );
   }
 }

@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 import { adminDb } from "@/lib/firebase-admin";
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
+import { assertTeamUnlockedByPlan } from "@/lib/server-team-access";
 
 /* ==========================================
    HELPER: RECALCULATE TEAM SUMMARY
@@ -50,6 +51,8 @@ export async function POST(req) {
       return NextResponse.json({ error: "Missing member info" }, { status: 400 });
     }
 
+    await assertTeamUnlockedByPlan(member.teamId);
+
     const punchRef = adminDb
       .collection("teams")
       .doc(member.teamId)
@@ -84,13 +87,18 @@ export async function POST(req) {
     return NextResponse.json({ message: "Punched In", data });
   } catch (error) {
     console.error("Punch In Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Internal Server Error" },
+      { status: error.statusCode || 500 }
+    );
   }
 }
 
 export async function PATCH(req) {
   try {
     const { member, dateKey } = await req.json();
+
+    await assertTeamUnlockedByPlan(member.teamId);
 
     const punchRef = adminDb
       .collection("teams")
@@ -129,6 +137,9 @@ export async function PATCH(req) {
 
     return NextResponse.json({ message: "Punched Out" });
   } catch (error) {
-    return NextResponse.json({ error: "Punch Out Failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Punch Out Failed" },
+      { status: error.statusCode || 500 }
+    );
   }
 }

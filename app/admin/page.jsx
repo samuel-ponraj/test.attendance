@@ -17,6 +17,7 @@ import { Toaster } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import Analytics from "../../components/admin/analytics/Analytics";
 import TransactionsTable from "@/components/admin/dashboard/TransactionsTable";
+import BillingOverviewChart from "@/components/admin/dashboard/BillingOverviewChart";
 import UpgradeDialog from "@/components/admin/subscription/UpgradeDialog";
 
 
@@ -108,7 +109,8 @@ export default function DashboardPage() {
         ) : (
           <>
             <Analytics />
-            <TransactionsTable teams={teams} limit={10} showViewAll />
+            <BillingOverviewChart teams={teams} />
+            <TransactionsTable teams={teams} limit={5} showViewAll />
             {/* <TeamCardLayout teams={teams} sendDeleteOtp={sendDeleteOtp} deleteTeamWithOtp={deleteTeamWithOtp}/> */}
           </>
           )}

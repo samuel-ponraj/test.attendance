@@ -8,6 +8,7 @@ import {
   ChevronsRight,
   LayoutGrid,
   List,
+  Lock,
   MoreVertical,
   Search,
   Trash2,
@@ -75,7 +76,12 @@ const formatDate = (value) => {
   });
 };
 
-const TeamCardLayout = ({ teams }) => {
+const TeamCardLayout = ({
+  teams,
+  unlockedCount = 0,
+  lockedCount = 0,
+  onUpgradeRequired,
+}) => {
   const functions = getFunctions(app);
   const router = useRouter();
 
@@ -206,11 +212,29 @@ const TeamCardLayout = ({ teams }) => {
     }
   };
 
+  const handleOpenTeam = (team) => {
+    if (team.isLockedByPlan) {
+      toast.error("Upgrade to view and manage this team.");
+      onUpgradeRequired?.();
+      return;
+    }
+
+    router.push(`/admin/teams/${team.id}`);
+  };
+
   if (!teams || teams.length === 0) return null;
 
   return (
     <>
       <div className="space-y-4 px-4 lg:px-6">
+        {lockedCount > 0 && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+            Your current plan unlocks {unlockedCount} team
+            {unlockedCount === 1 ? "" : "s"}. {lockedCount} recently created
+            team{lockedCount === 1 ? " is" : "s are"} locked. Upgrade to view
+            and manage locked teams without deleting their data.
+          </div>
+        )}
         <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 md:grid-cols-[minmax(220px,1fr)_240px_auto]">
           <div className="relative col-span-2 md:col-span-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -309,8 +333,10 @@ const TeamCardLayout = ({ teams }) => {
                     return (
                       <TableRow
                         key={team.id}
-                        onClick={() => router.push(`/admin/teams/${team.id}`)}
-                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleOpenTeam(team)}
+                        className={`cursor-pointer hover:bg-muted/50 ${
+                          team.isLockedByPlan ? "opacity-70" : ""
+                        }`}
                       >
                         <TableCell className="px-4 ">
                           <div className="flex items-center gap-3">
@@ -326,6 +352,12 @@ const TeamCardLayout = ({ teams }) => {
                                 {team.description || "Manage team members"}
                               </p>
                             </div>
+                            {team.isLockedByPlan && (
+                              <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                                <Lock className="h-3 w-3" />
+                                Locked
+                              </span>
+                            )}
                           </div>
                         </TableCell>
 
@@ -381,6 +413,7 @@ const TeamCardLayout = ({ teams }) => {
                                 <Button
                                   variant="outline"
                                   size="icon"
+                                  disabled={team.isLockedByPlan}
                                   onClick={(event) => event.stopPropagation()}
                                 >
                                   <MoreVertical className="h-4 w-4" />
@@ -424,8 +457,10 @@ const TeamCardLayout = ({ teams }) => {
               return (
                 <div
                   key={team.id}
-                  onClick={() => router.push(`/admin/teams/${team.id}`)}
-                  className="cursor-pointer rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
+                  onClick={() => handleOpenTeam(team)}
+                  className={`cursor-pointer rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-muted/50 ${
+                    team.isLockedByPlan ? "opacity-70" : ""
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
@@ -440,6 +475,12 @@ const TeamCardLayout = ({ teams }) => {
                         </p>
                       </div>
                     </div>
+                    {team.isLockedByPlan && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                        <Lock className="h-3 w-3" />
+                        Locked
+                      </span>
+                    )}
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -447,6 +488,7 @@ const TeamCardLayout = ({ teams }) => {
                           variant="outline"
                           size="icon"
                           className="h-8 w-8 shrink-0"
+                          disabled={team.isLockedByPlan}
                           onClick={(event) => event.stopPropagation()}
                         >
                           <MoreVertical className="h-4 w-4" />

@@ -3,6 +3,7 @@ import {
   getRazorpayConfigByTeamId,
   getRazorpayInstanceFromConfig,
 } from "@/lib/server-integrations";
+import { assertTeamUnlockedByPlan } from "@/lib/server-team-access";
 
 export const runtime = "nodejs";
 
@@ -73,6 +74,8 @@ export async function POST(req) {
         { status: 400 },
       );
     }
+
+    await assertTeamUnlockedByPlan(teamId);
 
     const customerPayload = {
       name: customerName || "Customer",

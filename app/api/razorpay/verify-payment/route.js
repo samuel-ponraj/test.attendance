@@ -3,6 +3,7 @@ import {
   getRazorpayConfigByTeamId,
   verifyRazorpaySignatureWithConfig,
 } from "@/lib/server-integrations";
+import { assertTeamUnlockedByPlan } from "@/lib/server-team-access";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,8 @@ export async function POST(req) {
         { status: 400 },
       );
     }
+
+    await assertTeamUnlockedByPlan(teamId);
 
     const razorpayConfig = await getRazorpayConfigByTeamId(teamId);
     const verified = verifyRazorpaySignatureWithConfig({
@@ -39,7 +42,7 @@ export async function POST(req) {
 
     return NextResponse.json(
       { error: error.message || "Failed to verify Razorpay payment" },
-      { status: 500 },
+      { status: error.statusCode || 500 },
     );
   }
 }

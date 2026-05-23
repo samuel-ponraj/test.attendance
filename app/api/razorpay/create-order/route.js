@@ -4,6 +4,7 @@ import {
   getRazorpayInstanceFromConfig,
   getRazorpayKeyIdFromConfig,
 } from "@/lib/server-integrations";
+import { assertTeamUnlockedByPlan } from "@/lib/server-team-access";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,8 @@ export async function POST(req) {
         { status: 400 },
       );
     }
+
+    await assertTeamUnlockedByPlan(teamId);
 
     const razorpayConfig = await getRazorpayConfigByTeamId(teamId);
     const razorpay = getRazorpayInstanceFromConfig(razorpayConfig);
@@ -41,7 +44,7 @@ export async function POST(req) {
 
     return NextResponse.json(
       { error: error.message || "Failed to create Razorpay order" },
-      { status: 500 },
+      { status: error.statusCode || 500 },
     );
   }
 }

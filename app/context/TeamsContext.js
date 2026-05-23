@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./AuthContext"; 
 import { 
   collection, 
@@ -14,32 +14,34 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getDateKey } from "@/lib/DateKey";
-import { getFunctions, httpsCallable } from "firebase/functions";
 import { createPlanLimitError, getPlan, PLAN_IDS } from "@/lib/subscriptionPlans";
+import { splitTeamsByPlanLimit } from "@/lib/team-access";
 
 const TeamsContext = createContext(null);
 
 export function TeamsProvider({ children }) {
 
-   const functions = getFunctions();
   const { user } = useAuth();
-  const [teams, setTeams] = useState([]);
+  const [allTeams, setAllTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState('basic'); 
-  const sendOtp = httpsCallable(functions, "sendDeleteTeamOtp");
-  const verifyOtp = httpsCallable(functions, "verifyOtpAndDeleteTeam");
-
   
   const plan = getPlan(subscription);
   const planLimits = plan.limits;
   const TEAM_LIMIT = planLimits.teams;
-  const hasReachedTeamLimit = teams.length >= TEAM_LIMIT;
+  const { unlockedTeams: teams, lockedTeams } = useMemo(
+    () => splitTeamsByPlanLimit(allTeams, TEAM_LIMIT),
+    [allTeams, TEAM_LIMIT]
+  );
+  const hasReachedTeamLimit = allTeams.length >= TEAM_LIMIT;
 
   useEffect(() => {
     if (!user?.uid) {
-      setTeams([]);
-      setSubscription('basic');
-      setLoading(false);
+      queueMicrotask(() => {
+        setAllTeams([]);
+        setSubscription('basic');
+        setLoading(false);
+      });
       return;
     }
 
@@ -64,7 +66,7 @@ export function TeamsProvider({ children }) {
         id: doc.id,
         ...doc.data(),
       }));
-      setTeams(teamsData);
+      setAllTeams(teamsData);
       setLoading(false);
     }, (error) => {
       console.error("Firestore Teams Error:", error);
@@ -153,6 +155,8 @@ export function TeamsProvider({ children }) {
     <TeamsContext.Provider
       value={{
         teams,
+        allTeams,
+        lockedTeams,
         loading,
         subscription, 
         plan,

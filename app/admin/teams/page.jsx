@@ -15,13 +15,22 @@ import UpgradeDialog from "@/components/admin/subscription/UpgradeDialog";
 
 export default function Page() {
 
-  const { teams, addTeam, sendDeleteOtp, deleteTeamWithOtp, loading, hasReachedTeamLimit } = useTeams();
+  const {
+    teams,
+    allTeams,
+    lockedTeams,
+    addTeam,
+    sendDeleteOtp,
+    deleteTeamWithOtp,
+    loading,
+    hasReachedTeamLimit,
+  } = useTeams();
   const [modalOpen, setModalOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   return (
     
      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-        {teams.length === 0 && !loading ? (
+        {allTeams.length === 0 && !loading ? (
           <Card className="mx-6 py-0 lg:py-2">
             <CardContent className="flex flex-col items-center justify-center p-12 text-center">
               <div className="w-16 h-16 gradient-hero rounded-full flex items-center justify-center mb-4">
@@ -59,8 +68,21 @@ export default function Page() {
             </CardContent>
           </Card>
         ) : (
-          <TeamCardLayout teams={teams} sendDeleteOtp={sendDeleteOtp} deleteTeamWithOtp={deleteTeamWithOtp}/>
+          <TeamCardLayout
+            teams={allTeams}
+            unlockedCount={teams.length}
+            lockedCount={lockedTeams.length}
+            onUpgradeRequired={() => setUpgradeOpen(true)}
+            sendDeleteOtp={sendDeleteOtp}
+            deleteTeamWithOtp={deleteTeamWithOtp}
+          />
         )}
+        <UpgradeDialog
+          open={upgradeOpen}
+          onOpenChange={setUpgradeOpen}
+          title="Upgrade to unlock teams"
+          description="Your Basic plan includes 2 active teams. Upgrade to Pro to view and manage your locked teams again."
+        />
       </div>
   )
 }
