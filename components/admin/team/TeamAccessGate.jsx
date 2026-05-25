@@ -12,7 +12,7 @@ import { useState } from "react";
 
 export default function TeamAccessGate({ teamId, children }) {
   const router = useRouter();
-  const { lockedTeams, loading, TEAM_LIMIT } = useTeams();
+  const { lockedTeams, loading } = useTeams();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const lockedTeam = lockedTeams.find((team) => team.id === teamId);
 
@@ -36,9 +36,9 @@ export default function TeamAccessGate({ teamId, children }) {
           <div className="space-y-2">
             <h2 className="text-xl font-semibold">Team locked by your plan</h2>
             <p className="text-sm text-muted-foreground">
-              Your Basic plan unlocks {TEAM_LIMIT} teams. Upgrade to view and
-              manage {lockedTeam.name || "this team"} again. No team data has
-              been deleted.
+              Your current plan unlocks 2 teams. 2 recently created teams are
+              locked. Upgrade to view and manage locked teams without deleting
+              their data.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
@@ -52,7 +52,7 @@ export default function TeamAccessGate({ teamId, children }) {
             open={upgradeOpen}
             onOpenChange={setUpgradeOpen}
             title="Upgrade to unlock teams"
-            description="Upgrade to Pro to view and manage your locked teams again."
+            description="Your current plan unlocks 2 teams. 2 recently created teams are locked. Upgrade to view and manage locked teams without deleting their data."
           />
         </CardContent>
       </Card>

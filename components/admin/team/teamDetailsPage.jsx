@@ -45,7 +45,6 @@ export default function TeamDetailsPage() {
     planLimits,
     lockedTeams,
     loading: teamsLoading,
-    TEAM_LIMIT,
   } = useTeams();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -128,7 +127,7 @@ export default function TeamDetailsPage() {
   };
   
 
- if (teamsLoading || loading) {
+if (teamsLoading) {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
       <Spinner className="size-8" />
@@ -147,9 +146,9 @@ if (lockedTeam) {
           <div className="space-y-2">
             <h2 className="text-xl font-semibold">Team locked by your plan</h2>
             <p className="text-sm text-muted-foreground">
-              Your Basic plan unlocks {TEAM_LIMIT} teams. Upgrade to view and
-              manage {lockedTeam.name || "this team"} again. No team data has
-              been deleted.
+              Your current plan unlocks 2 teams. 2 recently created teams are
+              locked. Upgrade to view and manage locked teams without deleting
+              their data.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
@@ -163,10 +162,18 @@ if (lockedTeam) {
             open={upgradeOpen}
             onOpenChange={setUpgradeOpen}
             title="Upgrade to unlock teams"
-            description="Upgrade to Pro to view and manage your locked teams again."
+            description="Your current plan unlocks 2 teams. 2 recently created teams are locked. Upgrade to view and manage locked teams without deleting their data."
           />
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+if (loading) {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <Spinner className="size-8" />
     </div>
   );
 }

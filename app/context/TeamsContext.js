@@ -29,7 +29,11 @@ export function TeamsProvider({ children }) {
   const plan = getPlan(subscription);
   const planLimits = plan.limits;
   const TEAM_LIMIT = planLimits.teams;
-  const { unlockedTeams: teams, lockedTeams } = useMemo(
+  const {
+    allTeams: planScopedTeams,
+    unlockedTeams: teams,
+    lockedTeams,
+  } = useMemo(
     () => splitTeamsByPlanLimit(allTeams, TEAM_LIMIT),
     [allTeams, TEAM_LIMIT]
   );
@@ -155,7 +159,7 @@ export function TeamsProvider({ children }) {
     <TeamsContext.Provider
       value={{
         teams,
-        allTeams,
+        allTeams: planScopedTeams,
         lockedTeams,
         loading,
         subscription, 

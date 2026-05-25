@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
 import {
   Bar,
   BarChart,
@@ -20,6 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { db } from "@/lib/firebase";
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-IN", {
@@ -38,11 +40,140 @@ const getTeamBillingValue = (team, key) => {
   return Number.isFinite(Number(value)) ? Number(value) : 0;
 };
 
+const getEffectiveBalance = (period) => {
+  const amount = Number(period?.amount || 0);
+  const paid = Number(period?.paid || 0);
+  const discount = Number(period?.discountAmount || 0);
+
+  return Math.max(amount - paid - discount, 0);
+};
+
+const getActivePeriods = (periods, config = {}) => {
+  const cycle = config?.billingCycle;
+
+  if (!cycle) return periods;
+
+  if (cycle === "term") {
+    const validTermKeys = new Set(
+      (config?.academicYears || []).flatMap((yearItem) =>
+        (yearItem.terms || []).map(
+          (term) => `${yearItem.academicYear}_term_${term.termNo}`,
+        ),
+      ),
+    );
+
+    return periods.filter(
+      (period) =>
+        period.billingCycle === "term" && validTermKeys.has(period.periodKey),
+    );
+  }
+
+  return periods.filter((period) => period.billingCycle === cycle);
+};
+
 export default function BillingOverviewChart({ teams = [] }) {
+  const [billingRows, setBillingRows] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadBillingRows = async () => {
+      if (!teams.length) {
+        setBillingRows([]);
+        return;
+      }
+
+      const rows = await Promise.all(
+        teams.map(async (team) => {
+          try {
+            const membersSnap = await getDocs(
+              collection(db, "teams", team.id, "members"),
+            );
+
+            const memberRows = await Promise.all(
+              membersSnap.docs.map(async (memberSnap) => {
+                const member = memberSnap.data();
+                const periodsSnap = await getDocs(
+                  collection(
+                    db,
+                    "teams",
+                    team.id,
+                    "members",
+                    memberSnap.id,
+                    "billingPeriods",
+                  ),
+                );
+                const periods = periodsSnap.docs.map((periodSnap) =>
+                  periodSnap.data(),
+                );
+                const activePeriods = getActivePeriods(
+                  periods,
+                  team.billingConfig,
+                );
+
+                if (activePeriods.length > 0) {
+                  return {
+                    paid: activePeriods.reduce(
+                      (sum, period) => sum + Number(period.paid || 0),
+                      0,
+                    ),
+                    balance: activePeriods.reduce(
+                      (sum, period) => sum + getEffectiveBalance(period),
+                      0,
+                    ),
+                  };
+                }
+
+                return {
+                  paid: Number(member?.billing?.totalPaid || 0),
+                  balance: Number(member?.billing?.totalBalance || 0),
+                };
+              }),
+            );
+
+            const paid = memberRows.reduce((sum, row) => sum + row.paid, 0);
+            const balance = memberRows.reduce(
+              (sum, row) => sum + row.balance,
+              0,
+            );
+
+            return {
+              id: team.id,
+              name: team.name || "Untitled team",
+              paid: paid || getTeamBillingValue(team, "totalPaid"),
+              balance: balance || getTeamBillingValue(team, "totalBalance"),
+            };
+          } catch (error) {
+            console.error("Failed to load team billing overview:", error);
+
+            return {
+              id: team.id,
+              name: team.name || "Untitled team",
+              paid: getTeamBillingValue(team, "totalPaid"),
+              balance: getTeamBillingValue(team, "totalBalance"),
+            };
+          }
+        }),
+      );
+
+      if (active) {
+        setBillingRows(rows);
+      }
+    };
+
+    loadBillingRows();
+
+    return () => {
+      active = false;
+    };
+  }, [teams]);
+
   const { chartData, totalPaid, totalBalance } = useMemo(() => {
     const rows = teams.map((team) => {
-      const paid = getTeamBillingValue(team, "totalPaid");
-      const balance = getTeamBillingValue(team, "totalBalance");
+      const billingRow = billingRows.find((row) => row.id === team.id);
+      const paid = billingRow?.paid ?? getTeamBillingValue(team, "totalPaid");
+      const balance =
+        billingRow?.balance ?? getTeamBillingValue(team, "totalBalance");
 
       return {
         name: team.name || "Untitled team",
@@ -56,7 +187,7 @@ export default function BillingOverviewChart({ teams = [] }) {
       totalPaid: rows.reduce((sum, row) => sum + row.paid, 0),
       totalBalance: rows.reduce((sum, row) => sum + row.balance, 0),
     };
-  }, [teams]);
+  }, [billingRows, teams]);
 
   return (
     <Card className="mx-4 lg:mx-6">
@@ -93,7 +224,7 @@ export default function BillingOverviewChart({ teams = [] }) {
             No teams available.
           </div>
         ) : (
-          <div className="h-[340px] w-full">
+          <div className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={chartData}
@@ -111,19 +242,20 @@ export default function BillingOverviewChart({ teams = [] }) {
                 />
                 <YAxis tickFormatter={formatCurrency} width={86} />
                 <Tooltip
-                  formatter={(value, name) => [
+                  formatter={(value, name, item) => [
                     formatCurrency(value),
-                    name === "paid" ? "Total Paid" : "Total Balance",
+                    item?.dataKey === "paid" || name === "Total Paid"
+                      ? "Total Paid"
+                      : "Total Balance",
                   ]}
                   labelFormatter={(label) => label}
                 />
-                <Legend />
+                <Legend wrapperStyle={{ paddingTop: 50 }} />
                 <Bar
                   dataKey="paid"
                   name="Total Paid"
                   fill="#059669"
                   radius={[4, 4, 0, 0]}
-                  
                 />
                 <Bar
                   dataKey="balance"
@@ -139,3 +271,5 @@ export default function BillingOverviewChart({ teams = [] }) {
     </Card>
   );
 }
+
+

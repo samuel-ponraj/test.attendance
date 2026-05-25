@@ -81,7 +81,7 @@ export default function Page() {
           open={upgradeOpen}
           onOpenChange={setUpgradeOpen}
           title="Upgrade to unlock teams"
-          description="Your Basic plan includes 2 active teams. Upgrade to Pro to view and manage your locked teams again."
+          description="Your current plan unlocks 2 teams. 2 recently created teams are locked. Upgrade to view and manage locked teams without deleting their data."
         />
       </div>
   )
