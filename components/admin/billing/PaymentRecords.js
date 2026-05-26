@@ -169,7 +169,13 @@ const PaymentRecords = ({ teamId }) => {
         )}
 
         <Button asChild variant="outline" className="gap-2 md:ml-auto">
-          <Link href="/admin/transactions">
+          <Link
+            href={
+              selectedTeamId
+                ? `/admin/transactions?teamId=${encodeURIComponent(selectedTeamId)}`
+                : "/admin/transactions"
+            }
+          >
             View Transactions
             <ArrowRight className="h-4 w-4" />
           </Link>

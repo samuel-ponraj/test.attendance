@@ -38,81 +38,139 @@ const loadImageAsDataUrl = async (path) => {
   const response = await fetch(path);
   const blob = await response.blob();
 
-  return new Promise((resolve, reject) => {
+  const dataUrl = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+
+  const dimensions = await new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () =>
+      resolve({
+        width: image.naturalWidth || 1,
+        height: image.naturalHeight || 1,
+      });
+    image.onerror = () => resolve({ width: 44, height: 24 });
+    image.src = dataUrl;
+  });
+
+  return {
+    dataUrl,
+    ...dimensions,
+  };
 };
 
-const addRow = (doc, label, value, y) => {
+const addRow = (doc, label, value, y, options = {}) => {
+  const { x = 12, valueX = 198 } = options;
+
   doc.setFont("helvetica", "normal");
   doc.setTextColor(90, 90, 90);
-  doc.text(label, 24, y);
+  doc.text(label, x, y);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(25, 25, 25);
-  doc.text(String(value || "-"), 190, y, { align: "right" });
+  doc.text(String(value || "-"), valueX, y, { align: "right" });
 };
 
 export const generateReceipt = async ({ team, member, period }) => {
   const doc = new jsPDF();
   const memberName = `${member?.firstName || ""} ${member?.lastName || ""}`.trim();
   const receiptNo = period?.receiptNo || period?.id || "receipt";
-  const amount = Number(period?.lastPaymentAmount || period?.totalAmount || period?.paid || 0);
-  const discountAmount = Number(period?.discountAmount || 0);
-  const baseAmount = Number(period?.lastPaymentBaseAmount || period?.amount || amount || 0);
+  const paidAmount = Number(
+    period?.paidAmount ||
+      period?.lastPaymentAmount ||
+      period?.totalAmount ||
+      period?.amount ||
+      0,
+  );
+  const periodAmount = Number(
+    period?.periodAmount ||
+      period?.lastPaymentBaseAmount ||
+      period?.amount ||
+      paidAmount ||
+      0,
+  );
+  const previousPaid = Number(
+    period?.previousPaid ??
+      Math.max(Number(period?.paid || 0) - paidAmount, 0),
+  );
+  const currentDiscount = Number(
+    period?.paymentDiscountAmount ?? period?.currentDiscountAmount ?? period?.discountAmount ?? 0,
+  );
+  const previousDiscount = Number(period?.previousDiscount || 0);
+  const totalDiscount = Number(
+    period?.totalDiscountAmount ??
+      Math.max(previousDiscount + currentDiscount, currentDiscount),
+  );
+  const balanceAfterPayment = Number(
+    period?.balanceAfterPayment ??
+      period?.balance ??
+      Math.max(periodAmount - previousPaid - paidAmount - totalDiscount, 0),
+  );
   const paymentMode = formatPaymentMode(period?.paymentMode);
   const razorpayRows = getRazorpayRows(period);
 
-  doc.setFillColor(248, 250, 252);
+  doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, 210, 297, "F");
 
-  doc.setFillColor(255, 255, 255);
-  doc.roundedRect(14, 14, 182, 269, 3, 3, "F");
+  doc.setDrawColor(230, 230, 230);
+  doc.rect(7, 7, 196, 283);
 
   try {
     const logo = await loadImageAsDataUrl(logoPath);
-    doc.addImage(logo, "PNG", 22, 22, 28, 18);
+    const maxLogoWidth = 54;
+    const maxLogoHeight = 28;
+    const logoRatio = Math.min(
+      maxLogoWidth / logo.width,
+      maxLogoHeight / logo.height,
+    );
+    doc.addImage(
+      logo.dataUrl,
+      "PNG",
+      12,
+      12,
+      logo.width * logoRatio,
+      logo.height * logoRatio,
+    );
   } catch {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text("KDA", 24, 32);
+    doc.setFontSize(18);
+    doc.text("KDA", 12, 27);
   }
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
+  doc.setFontSize(24);
   doc.setTextColor(20, 20, 20);
-  doc.text("Receipt", 190, 31, { align: "right" });
+  doc.text("Payment Receipt", 198, 21, { align: "right" });
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Receipt No: ${receiptNo}`, 190, 45, { align: "right" });
-  doc.text(`Date: ${new Date().toLocaleDateString("en-IN")}`, 190, 52, {
+  doc.text(`Receipt No: ${receiptNo}`, 198, 32, { align: "right" });
+  doc.text(`Date: ${new Date().toLocaleDateString("en-IN")}`, 198, 39, {
     align: "right",
   });
 
-  doc.setDrawColor(230, 230, 230);
-  doc.line(22, 62, 188, 62);
+  doc.setDrawColor(220, 220, 220);
+  doc.line(12, 48, 198, 48);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.setTextColor(25, 25, 25);
-  doc.text("Bill To", 24, 76);
+  doc.text("Bill To", 12, 62);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(90, 90, 90);
-  doc.text(memberName || "-", 24, 84);
-  doc.text(team?.name || team?.teamName || "KDA Team", 24, 91);
+  doc.text(memberName || "-", 12, 70);
+  doc.text(team?.name || team?.teamName || "KDA Team", 12, 77);
 
-  const detailBoxHeight = 60 + razorpayRows.length * 9;
   doc.setFillColor(245, 247, 250);
-  doc.roundedRect(22, 104, 166, detailBoxHeight, 2, 2, "F");
+  doc.roundedRect(12, 90, 186, 49, 2, 2, "F");
 
   doc.setFontSize(10);
-  let rowY = 118;
+  let rowY = 103;
   addRow(doc, "Period", period?.periodLabel || period?.period || "-", rowY);
   rowY += 9;
   addRow(doc, "Billing Cycle", formatPaymentMode(period?.billingCycle), rowY);
@@ -121,38 +179,58 @@ export const generateReceipt = async ({ team, member, period }) => {
   rowY += 9;
   addRow(doc, "Status", "Paid", rowY);
   rowY += 9;
-  addRow(doc, "Base Amount", formatAmount(baseAmount), rowY);
+  addRow(doc, "Billing Amount", formatAmount(periodAmount), rowY);
 
-  razorpayRows.forEach(([label, value]) => {
-    rowY += 9;
-    addRow(doc, label, compactValue(value), rowY);
-  });
+  const summaryStartY = 162;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(25, 25, 25);
+  doc.text("Payment Summary", 12, summaryStartY);
 
-  doc.setDrawColor(225, 225, 225);
-  const summaryStartY = 180 + razorpayRows.length * 8;
-  doc.line(22, summaryStartY, 188, summaryStartY);
+  const summaryRows = [
+    ["Billing Amount", formatAmount(periodAmount)],
+    ["Previous Paid", formatAmount(previousPaid)],
+    ["Previous Discount", formatAmount(previousDiscount)],
+    ["Paid Amount", formatAmount(paidAmount)],
+    ["Current Discount", formatAmount(currentDiscount)],
+    ["Total Discount", formatAmount(totalDiscount)],
+    ["Balance Amount To Pay", formatAmount(balanceAfterPayment)],
+  ];
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.setTextColor(90, 90, 90);
-  doc.text("Discount", 24, summaryStartY + 12);
-  doc.text(`- ${formatAmount(discountAmount)}`, 190, summaryStartY + 12, {
-    align: "right",
+  let summaryY = summaryStartY + 11;
+  summaryRows.forEach(([label, value]) => {
+    addRow(doc, label, value, summaryY);
+    summaryY += 9;
   });
 
   doc.setFillColor(20, 20, 20);
-  doc.roundedRect(22, summaryStartY + 24, 166, 26, 2, 2, "F");
+  doc.roundedRect(12, summaryY + 4, 186, 22, 2, 2, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
   doc.setTextColor(255, 255, 255);
-  doc.text("Total Paid", 30, summaryStartY + 41);
-  doc.text(formatAmount(amount), 180, summaryStartY + 41, { align: "right" });
+  doc.text("Paid Amount", 20, summaryY + 18);
+  doc.text(formatAmount(paidAmount), 190, summaryY + 18, { align: "right" });
+
+  if (razorpayRows.length > 0) {
+    const gatewayStartY = summaryY + 42;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(25, 25, 25);
+    doc.text("Gateway Details", 12, gatewayStartY);
+
+    rowY = gatewayStartY + 11;
+    razorpayRows.forEach(([label, value]) => {
+      addRow(doc, label, compactValue(value), rowY);
+      rowY += 8;
+    });
+  }
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(120, 120, 120);
-  doc.text("Thank you for your payment.", 24, 264);
-  doc.text("This is a system generated receipt.", 24, 271);
+  doc.text("Thank you for your payment.", 12, 276);
+  doc.text("This is a system generated receipt.", 12, 283);
 
   doc.save(`receipt-${memberName || receiptNo}.pdf`);
 };

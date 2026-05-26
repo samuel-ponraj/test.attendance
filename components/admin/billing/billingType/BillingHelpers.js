@@ -36,16 +36,22 @@ export const toDateKey = (date) => {
 	return `${year}-${month}-${day}`;
 };
 
+export const startOfLocalDay = (date) => {
+	const d = new Date(date);
+	d.setHours(0, 0, 0, 0);
+	return d;
+};
+
 export const getBillingStartDate = (team) => {
 	const start = team?.billingConfig?.billingStartDate;
 
-	if (!start) return new Date();
+	if (!start) return startOfLocalDay(new Date());
 
 	if (start?.seconds) {
-		return new Date(start.seconds * 1000);
+		return startOfLocalDay(start.seconds * 1000);
 	}
 
-	return new Date(start);
+	return startOfLocalDay(start);
 };
 
 export const getMemberBillingStartDate = (team, member) => {
@@ -60,7 +66,9 @@ export const getMemberBillingStartDate = (team, member) => {
 
 	if (Number.isNaN(joinedDate.getTime())) return billingStart;
 
-	return joinedDate > billingStart ? joinedDate : billingStart;
+	const joinedDay = startOfLocalDay(joinedDate);
+
+	return joinedDay > billingStart ? joinedDay : billingStart;
 };
 
 export const getBaseAmount = (team) => {
@@ -116,8 +124,13 @@ export const ensureBillingPeriods = async ({ teamId, member, periods }) => {
 	const newAmount = Number(period.amount || 0);
 	const oldPaid = Number(old.paid || 0);
 	const oldDiscount = Number(old.discountAmount || 0);
-	const isHoliday = period.status === "holiday";
-	const newBalance = isHoliday
+	const nonPayableStatus =
+		period.status === "holiday" || period.isHoliday
+			? "holiday"
+			: period.status === "leave"
+				? "leave"
+				: "";
+	const newBalance = nonPayableStatus
 		? 0
 		: Math.max(newAmount - oldPaid - oldDiscount, 0);
 
@@ -129,10 +142,11 @@ export const ensureBillingPeriods = async ({ teamId, member, periods }) => {
 		dayNumber: period.dayNumber ?? null,
 		dayName: period.dayName || "",
 		isHoliday: !!period.isHoliday,
+		attendance: period.attendance || old.attendance || null,
 		amount: newAmount,
 		balance: newBalance,
-		status: isHoliday
-			? "holiday"
+		status: nonPayableStatus
+			? nonPayableStatus
 			: newBalance <= 0
 				? "settled"
 				: oldPaid > 0 || oldDiscount > 0
@@ -150,8 +164,18 @@ export const ensureBillingPeriods = async ({ teamId, member, periods }) => {
 				memberName: `${member.firstName || ""} ${member.lastName || ""}`.trim(),
 				billingType: "fixed",
 				paid: 0,
-				balance: period.isHoliday ? 0 : Number(period.amount || 0),
-				status: period.isHoliday ? "holiday" : "pending",
+				balance:
+					period.status === "holiday" ||
+					period.isHoliday ||
+					period.status === "leave"
+						? 0
+						: Number(period.amount || 0),
+				status:
+					period.status === "holiday" || period.isHoliday
+						? "holiday"
+						: period.status === "leave"
+							? "leave"
+							: "pending",
 				createdAt: Timestamp.now(),
 				updatedAt: Timestamp.now(),
 			});
@@ -176,6 +200,8 @@ export const recordFixedPayment = async ({
 		0
 	);
 	const payableAmount = Math.min(amount, currentBalance);
+	const previousPaid = Number(period.paid || 0);
+	const previousDiscount = discount;
 	const newPaid = Number(period.paid || 0) + payableAmount;
 	const newBalance = Math.max(Number(period.amount || 0) - newPaid - discount, 0);
 	const newStatus = newBalance <= 0 ? "settled" : "partial";
@@ -209,7 +235,14 @@ export const recordFixedPayment = async ({
 		billingCycle: period.billingCycle,
 
 		paymentMode: paymentMode || "cash",
+		periodAmount: Number(period.amount || 0),
+		previousPaid,
+		previousDiscount,
+		paidAmount: payableAmount,
 		amount: payableAmount,
+		discountAmount: 0,
+		totalDiscountAmount: discount,
+		balanceAfterPayment: newBalance,
 
 		status: "success",
 		createdAt: Timestamp.now(),

@@ -106,6 +106,7 @@ const Monthly = ({ teamId, team, members, initialMemberId, showBackButton = true
   const getMonthlyPeriods = async () => {
     const billStart = getMemberBillingStartDate(team, selectedMember);
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const baseAmount = getBaseAmount(team);
 
     const rows = [];
@@ -123,7 +124,7 @@ const Monthly = ({ teamId, team, members, initialMemberId, showBackButton = true
           ? new Date(billStart)
           : monthStart;
 
-      const effectiveEnd = monthEnd;
+      const effectiveEnd = monthEnd > today ? today : monthEnd;
 
       let presentDays = 0;
       let halfDays = 0;

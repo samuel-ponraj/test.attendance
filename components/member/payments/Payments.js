@@ -456,6 +456,17 @@ const Payments = () => {
   const downloadPaymentReceipt = async (payment) => {
     try {
       const period = getPaymentPeriod(payment);
+      const paidAmount = Number(payment.paidAmount || payment.amount || 0);
+      const totalDiscount = Number(
+        payment.totalDiscountAmount ?? getPaymentDiscount(payment),
+      );
+      const previousPaid = Number(
+        payment.previousPaid ??
+          Math.max(Number(period?.paid || 0) - paidAmount, 0),
+      );
+      const periodAmount = Number(
+        payment.periodAmount || period?.amount || payment.amount || 0,
+      );
       const receiptPeriod = {
         ...(period || {}),
         ...payment,
@@ -466,10 +477,18 @@ const Payments = () => {
         billingCycle:
           payment.billingCycle || period?.billingCycle || billingCycle,
         paymentMode: payment.paymentMode,
-        lastPaymentAmount: Number(payment.amount || 0),
-        totalAmount: Number(payment.amount || 0),
-        discountAmount: getPaymentDiscount(payment),
-        lastPaymentBaseAmount: Number(period?.amount || payment.amount || 0),
+        periodAmount,
+        previousPaid,
+        previousDiscount: Number(payment.previousDiscount || 0),
+        paidAmount,
+        lastPaymentAmount: paidAmount,
+        totalAmount: paidAmount,
+        paymentDiscountAmount: Number(payment.discountAmount || 0),
+        totalDiscountAmount: totalDiscount,
+        balanceAfterPayment: Number(
+          payment.balanceAfterPayment ??
+            Math.max(periodAmount - previousPaid - paidAmount - totalDiscount, 0),
+        ),
       };
 
       await generateReceipt({
@@ -581,6 +600,7 @@ const Payments = () => {
           }
 
           const paidNow = Math.min(balance, amount);
+          const previousPaid = Number(period.paid || 0);
           const newPaid = Number(period.paid || 0) + paidNow;
           const discount = Number(period.discountAmount || 0);
           const newBalance = Math.max(
@@ -601,6 +621,8 @@ const Payments = () => {
 
           updatedPeriods.set(periodItem.id, {
             ...period,
+            previousPaid,
+            paidNow,
             paid: newPaid,
             balance: newBalance,
             status: newStatus,
@@ -658,8 +680,18 @@ const Payments = () => {
           periodLabel: paidLabels.join(", "),
           billingCycle,
           paymentMode,
+          periodAmount: Number(selectedPaymentPeriod?.amount || 0),
+          previousPaid: Number(
+            updatedPeriods.get(selectedPeriodId)?.previousPaid || 0,
+          ),
+          previousDiscount: Number(selectedPaymentPeriod?.discountAmount || 0),
+          paidAmount: paidTotal,
           amount: paidTotal,
           discountAmount: 0,
+          totalDiscountAmount: Number(selectedPaymentPeriod?.discountAmount || 0),
+          balanceAfterPayment: Number(
+            updatedPeriods.get(selectedPeriodId)?.balance || 0,
+          ),
           status: "success",
           source: "member_portal",
           gateway: razorpayDetails.gateway || null,

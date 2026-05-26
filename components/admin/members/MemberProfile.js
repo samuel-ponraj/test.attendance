@@ -67,6 +67,8 @@ const MemberProfile = ({ teamId, memberId }) => {
 
   const [memberBilling, setMemberBilling] = useState({})
   const [teamBillingConfig, setTeamBillingConfig] = useState({})
+  const [teamDetails, setTeamDetails] = useState(null)
+  const [billingPeriods, setBillingPeriods] = useState([])
   const [payments, setPayments] = useState([])
 
   useEffect(() => {
@@ -138,6 +140,30 @@ const MemberProfile = ({ teamId, memberId }) => {
 	return () => unsubscribe();
 }, [memberId, teamId]);
 
+  useEffect(() => {
+    if (!teamId || !memberId) return;
+
+    const periodsRef = collection(
+      db,
+      "teams",
+      teamId,
+      "members",
+      memberId,
+      "billingPeriods",
+    );
+
+    const unsubscribe = onSnapshot(periodsRef, (snap) => {
+      setBillingPeriods(
+        snap.docs.map((periodDoc) => ({
+          id: periodDoc.id,
+          ...periodDoc.data(),
+        })),
+      );
+    });
+
+    return () => unsubscribe();
+  }, [memberId, teamId]);
+
   const formatDate = (value) => {
     if (!value) return 'Not configured'
 
@@ -161,10 +187,17 @@ const MemberProfile = ({ teamId, memberId }) => {
     if (!teamId) return
 
     const teamSnap = await getDoc(doc(db, 'teams', teamId))
-    setTeamBillingConfig(teamSnap.data()?.billingConfig || {});
     if (!teamSnap.exists()) return
 
-    const formIds = teamSnap.data().customForms || []
+    const teamData = {
+      id: teamSnap.id,
+      ...teamSnap.data(),
+    };
+
+    setTeamDetails(teamData);
+    setTeamBillingConfig(teamData.billingConfig || {});
+
+    const formIds = teamData.customForms || []
     if (!formIds.length) return
 
     const formPromises = formIds.map((id) =>
@@ -478,7 +511,18 @@ const handleDynamicChange = (fieldId, value) => {
           </Card>
           ))} 
           {teamBillingConfig?.billingType !== "salary" ? (
-          <PaymentHistoryCard payments={payments}/>) : null}
+          <PaymentHistoryCard
+            payments={payments}
+            billingPeriods={billingPeriods}
+            team={teamDetails}
+            member={{
+              id: memberId,
+              firstName,
+              lastName,
+              email,
+              contact,
+            }}
+          />) : null}
     </div>
   )
 }
