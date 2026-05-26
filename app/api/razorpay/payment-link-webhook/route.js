@@ -49,21 +49,27 @@ const getEffectiveBalance = (period) => {
 const findOrderTransaction = async (orderId) => {
   if (!orderId) return null;
 
-  const snap = await adminDb
-    .collectionGroup("payments")
-    .where("razorpayOrderId", "==", orderId)
-    .limit(1)
-    .get();
+  const orderSnap = await adminDb.collection("razorpayOrders").doc(orderId).get();
 
-  if (snap.empty) return null;
+  if (!orderSnap.exists) return null;
 
-  const docSnap = snap.docs[0];
-  const teamRef = docSnap.ref.parent.parent;
+  const orderData = orderSnap.data() || {};
+  const paymentRef = orderData.paymentDocPath
+    ? adminDb.doc(orderData.paymentDocPath)
+    : adminDb
+        .collection("teams")
+        .doc(orderData.teamId)
+        .collection("payments")
+        .doc(`razorpay_order_${orderId}`);
+  const paymentSnap = await paymentRef.get();
 
   return {
-    ref: docSnap.ref,
-    teamId: teamRef?.id || "",
-    data: docSnap.data() || {},
+    ref: paymentRef,
+    teamId: orderData.teamId || "",
+    data: {
+      ...orderData,
+      ...(paymentSnap.exists ? paymentSnap.data() || {} : {}),
+    },
   };
 };
 
@@ -195,6 +201,23 @@ const recordRazorpayOrderPayment = async ({ event, payment, context = {} }) => {
       createdAt: now,
       updatedAt: now,
     }, { merge: true });
+
+    if (orderId) {
+      transaction.set(
+        adminDb.collection("razorpayOrders").doc(orderId),
+        {
+          teamId,
+          memberId,
+          periodId,
+          periodLabel: period.periodLabel || notes.periodLabel || "",
+          paymentDocPath: paymentRef.path,
+          status,
+          razorpayPaymentId: paymentId || null,
+          updatedAt: now,
+        },
+        { merge: true },
+      );
+    }
   });
 
   if (status === "success") {

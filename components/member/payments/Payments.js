@@ -126,11 +126,17 @@ const getEffectiveBalance = (period) => {
 };
 
 const getPaymentStatusBadge = (status) => {
-  if (status === "success") {
+  const normalized = String(status || "recorded").toLowerCase();
+
+  if (normalized === "success") {
     return <Badge className="bg-emerald-600">Success</Badge>;
   }
 
-  if (status === "failed") {
+  if (
+    ["failed", "cancelled", "verification_failed", "expired"].includes(
+      normalized,
+    )
+  ) {
     return <Badge variant="destructive">Failed</Badge>;
   }
 

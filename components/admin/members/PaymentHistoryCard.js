@@ -20,6 +20,37 @@ import { generateReceipt } from "@/components/admin/billing/GenerateReceipt";
 const formatCurrency = (value) =>
   `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
 
+const formatStatus = (status = "") =>
+  String(status || "success")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const getStatusClassName = (status = "") => {
+  const normalized = String(status || "success").toLowerCase();
+
+  if (["success", "captured", "paid"].includes(normalized)) {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300";
+  }
+
+  if (
+    ["failed", "cancelled", "verification_failed", "expired"].includes(
+      normalized,
+    )
+  ) {
+    return "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300";
+  }
+
+  if (["created", "pending", "authorized"].includes(normalized)) {
+    return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300";
+  }
+
+  if (["partial", "partially_paid"].includes(normalized)) {
+    return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/40 dark:text-sky-300";
+  }
+
+  return "border-muted bg-muted text-muted-foreground";
+};
+
 const PaymentHistoryTable = ({
   payments = [],
   billingPeriods = [],
@@ -166,8 +197,11 @@ const PaymentHistoryTable = ({
                     </TableCell>
                     <TableCell>{formatCurrency(getPaymentDiscount(payment))}</TableCell>
                     <TableCell>
-                      <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">
-                        {payment.status || "success"}
+                      <Badge
+                        variant="outline"
+                        className={getStatusClassName(payment.status)}
+                      >
+                        {formatStatus(payment.status)}
                       </Badge>
                     </TableCell>
                     <TableCell>

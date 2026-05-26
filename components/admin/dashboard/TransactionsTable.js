@@ -80,6 +80,11 @@ const formatAmount = (amount) =>
 const normalizePaymentMode = (mode = "") =>
   String(mode || "unknown").replace(/_/g, " ");
 
+const formatStatusLabel = (status = "") =>
+  String(status || "success")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
 const getStatusClassName = (status = "") => {
   const normalized = String(status || "success").toLowerCase();
 
@@ -391,7 +396,7 @@ export default function TransactionsTable({
                     <SelectItem value="all">All Status</SelectItem>
                     {statusOptions.map((status) => (
                       <SelectItem key={status} value={status}>
-                        {status}
+                        {formatStatusLabel(status)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -515,7 +520,7 @@ export default function TransactionsTable({
                           variant="outline"
                           className={getStatusClassName(transaction.status)}
                         >
-                          {transaction.status || "success"}
+                          {formatStatusLabel(transaction.status)}
                         </Badge>
                       </TableCell>
 

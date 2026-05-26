@@ -90,6 +90,21 @@ export async function POST(req) {
           },
           { merge: true },
         );
+
+      await adminDb.collection("razorpayOrders").doc(order.id).set(
+        {
+          teamId,
+          memberId: notes.memberId,
+          periodId: notes.periodId,
+          periodLabel: period.periodLabel || notes.periodLabel || "",
+          paymentDocPath: `teams/${teamId}/payments/razorpay_order_${order.id}`,
+          amount: numericAmount,
+          status: "created",
+          createdAt: now,
+          updatedAt: now,
+        },
+        { merge: true },
+      );
     }
 
     return NextResponse.json({
