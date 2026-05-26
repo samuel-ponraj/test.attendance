@@ -83,7 +83,7 @@ const normalizePaymentMode = (mode = "") =>
 const getStatusClassName = (status = "") => {
   const normalized = String(status || "success").toLowerCase();
 
-  if (["failed", "cancelled"].includes(normalized)) {
+  if (["failed", "cancelled", "verification_failed"].includes(normalized)) {
     return "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300";
   }
 

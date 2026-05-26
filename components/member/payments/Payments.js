@@ -3,12 +3,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  addDoc,
   collection,
   doc,
+  getDocs,
   onSnapshot,
   query,
   runTransaction,
   Timestamp,
+  updateDoc,
   where,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
@@ -519,6 +522,65 @@ const Payments = () => {
     }
   };
 
+  const recordRazorpayTransactionAttempt = async ({
+    amount,
+    status,
+    orderId,
+    paymentId,
+    error,
+  }) => {
+    if (!teamId || !memberId || !selectedPaymentPeriod) return;
+
+    try {
+      const paymentsRef = collection(db, "teams", teamId, "payments");
+      const existingOrderSnap = orderId
+        ? await getDocs(
+            query(paymentsRef, where("razorpayOrderId", "==", orderId)),
+          )
+        : null;
+      const transactionData = {
+        memberId,
+        memberName,
+        periodId: selectedPaymentPeriod.id,
+        period: getPeriodLabel(selectedPaymentPeriod),
+        periodLabel: getPeriodLabel(selectedPaymentPeriod),
+        billingCycle,
+        paymentMode: "upi",
+        periodAmount: Number(selectedPaymentPeriod.amount || 0),
+        previousPaid: Number(selectedPaymentPeriod.paid || 0),
+        previousDiscount: Number(selectedPaymentPeriod.discountAmount || 0),
+        paidAmount: 0,
+        amount: Number(amount || 0),
+        discountAmount: 0,
+        totalDiscountAmount: Number(selectedPaymentPeriod.discountAmount || 0),
+        balanceAfterPayment: getEffectiveBalance(selectedPaymentPeriod),
+        status,
+        source: "member_portal",
+        gateway: "razorpay",
+        razorpayOrderId: orderId || null,
+        razorpayPaymentId: paymentId || null,
+        failureCode: error?.code || null,
+        failureReason: error?.reason || error?.description || null,
+        failureDescription: error?.description || null,
+        capturedBy: authUser?.displayName || authUser?.email || memberName,
+        capturedById: authUser?.uid || null,
+        updatedAt: Timestamp.now(),
+      };
+
+      if (existingOrderSnap && !existingOrderSnap.empty) {
+        await updateDoc(existingOrderSnap.docs[0].ref, transactionData);
+        return;
+      }
+
+      await addDoc(paymentsRef, {
+        ...transactionData,
+        createdAt: Timestamp.now(),
+      });
+    } catch (recordError) {
+      console.error("Failed to record Razorpay transaction attempt:", recordError);
+    }
+  };
+
   const salarySummary = useMemo(
     () =>
       salarySlips.reduce(
@@ -671,7 +733,15 @@ const Payments = () => {
           { merge: true },
         );
 
-        const paymentRef = doc(collection(db, "teams", teamId, "payments"));
+        const paymentRef = razorpayDetails.orderId
+          ? doc(
+              db,
+              "teams",
+              teamId,
+              "payments",
+              `razorpay_order_${razorpayDetails.orderId}`,
+            )
+          : doc(collection(db, "teams", teamId, "payments"));
         transaction.set(paymentRef, {
           memberId,
           memberName,
@@ -701,7 +771,8 @@ const Payments = () => {
           capturedBy: authUser?.displayName || authUser?.email || memberName,
           capturedById: authUser?.uid || null,
           createdAt: Timestamp.now(),
-        });
+          updatedAt: Timestamp.now(),
+        }, { merge: true });
       });
 
       toast.success(`Payment success - ${formatLabel(paymentMode)}`);
@@ -797,6 +868,13 @@ const Payments = () => {
             });
           } catch (error) {
             console.error("Razorpay payment verification failed:", error);
+            await recordRazorpayTransactionAttempt({
+              amount,
+              status: "verification_failed",
+              orderId: response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              error,
+            });
             toast.error(error.message || "Payment verification failed");
             setSaving(false);
           }
@@ -806,9 +884,37 @@ const Payments = () => {
             if (!completed) {
               setSaving(false);
               toast.error("Payment cancelled");
+              recordRazorpayTransactionAttempt({
+                amount,
+                status: "cancelled",
+                orderId: orderData.orderId,
+                error: {
+                  description: "Checkout closed before payment completion",
+                },
+              });
             }
           },
         },
+      });
+
+      checkout.on("payment.failed", async (response) => {
+        completed = true;
+
+        await recordRazorpayTransactionAttempt({
+          amount,
+          status: "failed",
+          orderId:
+            response?.error?.metadata?.order_id ||
+            response?.razorpay_order_id ||
+            orderData.orderId,
+          paymentId:
+            response?.error?.metadata?.payment_id ||
+            response?.razorpay_payment_id,
+          error: response?.error,
+        });
+
+        setSaving(false);
+        toast.error(response?.error?.description || "Payment failed");
       });
 
       checkout.open();

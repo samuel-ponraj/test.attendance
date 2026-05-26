@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import * as admin from "firebase-admin";
+
+import { adminDb } from "@/lib/firebase-admin";
 import {
   getRazorpayConfigByTeamId,
   getRazorpayInstanceFromConfig,
@@ -31,6 +34,63 @@ export async function POST(req) {
       receipt: String(receipt || `kda_${Date.now()}`).slice(0, 40),
       notes: notes || {},
     });
+
+    if (teamId && notes?.memberId && notes?.periodId) {
+      const now = admin.firestore.FieldValue.serverTimestamp();
+      const memberRef = adminDb
+        .collection("teams")
+        .doc(teamId)
+        .collection("members")
+        .doc(notes.memberId);
+      const periodRef = memberRef
+        .collection("billingPeriods")
+        .doc(notes.periodId);
+      const [memberSnap, periodSnap] = await Promise.all([
+        memberRef.get(),
+        periodRef.get(),
+      ]);
+      const member = memberSnap.exists ? memberSnap.data() || {} : {};
+      const period = periodSnap.exists ? periodSnap.data() || {} : {};
+      const discount = Number(period.discountAmount || 0);
+      const paid = Number(period.paid || 0);
+      const periodAmount = Number(period.amount || numericAmount || 0);
+
+      await adminDb
+        .collection("teams")
+        .doc(teamId)
+        .collection("payments")
+        .doc(`razorpay_order_${order.id}`)
+        .set(
+          {
+            memberId: notes.memberId,
+            memberName:
+              `${member.firstName || ""} ${member.lastName || ""}`.trim() ||
+              period.memberName ||
+              "",
+            periodId: notes.periodId,
+            period: period.periodLabel || notes.periodLabel || "",
+            periodLabel: period.periodLabel || notes.periodLabel || "",
+            billingCycle: period.billingCycle || "",
+            paymentMode: "upi",
+            periodAmount,
+            previousPaid: paid,
+            previousDiscount: discount,
+            paidAmount: 0,
+            amount: numericAmount,
+            discountAmount: 0,
+            totalDiscountAmount: discount,
+            balanceAfterPayment: Math.max(periodAmount - paid - discount, 0),
+            status: "created",
+            source: "razorpay_order",
+            gateway: "razorpay",
+            razorpayOrderId: order.id,
+            capturedBy: "Razorpay Checkout",
+            createdAt: now,
+            updatedAt: now,
+          },
+          { merge: true },
+        );
+    }
 
     return NextResponse.json({
       success: true,
