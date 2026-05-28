@@ -99,7 +99,7 @@ const HomePage = () => {
 
             <Link href="#features" className="w-full sm:w-auto">
               <button className="w-full cursor-pointer rounded-md border border-white/70 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 sm:w-auto">
-                See Dashboard
+                Learn More 
               </button>
             </Link>
           </div>
