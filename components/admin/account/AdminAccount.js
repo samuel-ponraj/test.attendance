@@ -35,7 +35,6 @@ import { Label } from "@/components/ui/label";
 import { User, Camera } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { updateProfile } from "firebase/auth";
-import SubscriptionCard from "../subscription/SubscriptionCard";
 import {  ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Switch } from "@/components/ui/switch";
 
@@ -55,11 +54,6 @@ const defaultRazorpayConfig = {
   keyId: "",
   keySecret: "",
   hasKeySecret: false,
-  subscriptionPlanId: "",
-  subscriptionPlanIds: {
-    monthly: "",
-    yearly: "",
-  },
   webhookAppUrl: "",
   webhookSecret: "",
   hasWebhookSecret: false,
@@ -69,14 +63,6 @@ const defaultRazorpayConfig = {
 const normalizeRazorpayConfig = (config = {}) => ({
   ...defaultRazorpayConfig,
   ...config,
-  subscriptionPlanIds: {
-    ...defaultRazorpayConfig.subscriptionPlanIds,
-    ...(config.subscriptionPlanIds || {}),
-    monthly:
-      config.subscriptionPlanIds?.monthly ||
-      config.subscriptionPlanId ||
-      "",
-  },
 });
 
 
@@ -225,16 +211,6 @@ const [razorpayConfig, setRazorpayConfig] = useState(defaultRazorpayConfig);
     }
   };
 
-  const updateRazorpayPlanId = (billingCycle, value) => {
-    setRazorpayConfig((prev) => ({
-      ...prev,
-      subscriptionPlanIds: {
-        ...(prev.subscriptionPlanIds || {}),
-        [billingCycle]: value,
-      },
-    }));
-  };
-
   const handleSaveRazorpayIntegration = async () => {
     if (!user?.uid) {
       toast.error("Please sign in again to save integration settings");
@@ -250,10 +226,6 @@ const [razorpayConfig, setRazorpayConfig] = useState(defaultRazorpayConfig);
         accountName: razorpayConfig.accountName.trim(),
         keyId: razorpayConfig.keyId.trim(),
         keySecret: razorpayConfig.keySecret.trim(),
-        subscriptionPlanIds: {
-          monthly: razorpayConfig.subscriptionPlanIds.monthly.trim(),
-          yearly: razorpayConfig.subscriptionPlanIds.yearly.trim(),
-        },
         webhookAppUrl: razorpayConfig.webhookAppUrl.trim(),
         webhookSecret: razorpayConfig.webhookSecret.trim(),
         currency: razorpayConfig.currency.trim() || "INR",
@@ -494,7 +466,7 @@ const handleSaveProfile = async () => {
 
 
   return (
-    <div className="p-4 flex flex-col w-full md:w-3/4 gap-4 md:px-6 py-2 ">
+    <div className="flex w-full flex-col gap-4 p-4 py-2 md:px-6">
       <Toaster richColors position="top-center" />
 
       <Card>
@@ -562,8 +534,6 @@ const handleSaveProfile = async () => {
             <Button onClick={handleSaveProfile}>Save Changes</Button>
           </CardContent>
         </Card>
-
-        {isAdmin && <SubscriptionCard />}
 
         {isAdmin && (
           <Card>
@@ -784,37 +754,6 @@ const handleSaveProfile = async () => {
                         <Eye size={16} />
                       )}
                     </button>
-                  </div>
-                </div>
-
-                <div className="space-y-3 lg:col-span-2">
-                  <div>
-                    <Label>Subscription Plan IDs</Label>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Razorpay uses one plan id for each billing interval.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Monthly Plan ID</Label>
-                      <Input
-                        value={razorpayConfig.subscriptionPlanIds.monthly}
-                        onChange={(e) =>
-                          updateRazorpayPlanId("monthly", e.target.value)
-                        }
-                        placeholder="plan_..."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Yearly Plan ID</Label>
-                      <Input
-                        value={razorpayConfig.subscriptionPlanIds.yearly}
-                        onChange={(e) =>
-                          updateRazorpayPlanId("yearly", e.target.value)
-                        }
-                        placeholder="plan_..."
-                      />
-                    </div>
                   </div>
                 </div>
 

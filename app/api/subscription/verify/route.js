@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { verifyRazorpaySubscriptionSignatureWithConfig } from "@/lib/server-integrations";
+import { getPlatformRazorpayConfig } from "@/lib/server-platform";
 import {
-  getRazorpayConfigByAdminUserId,
-  verifyRazorpaySubscriptionSignatureWithConfig,
-} from "@/lib/server-integrations";
+  BILLING_CYCLES,
+  SUBSCRIPTION_PLANS,
+  getBillingOption,
+} from "@/lib/subscriptionPlans";
 
 export const runtime = "nodejs";
+
+const parsePlanAmount = (price = "") =>
+  Number(String(price).replace(/[^\d.]/g, "")) || 0;
 
 export async function POST(req) {
   try {
@@ -34,7 +40,7 @@ export async function POST(req) {
       );
     }
 
-    const razorpayConfig = await getRazorpayConfigByAdminUserId(decodedToken.uid);
+    const razorpayConfig = await getPlatformRazorpayConfig();
 
     if (
       !verifyRazorpaySubscriptionSignatureWithConfig({
@@ -50,14 +56,42 @@ export async function POST(req) {
       );
     }
 
-    await adminDb.collection("users").doc(decodedToken.uid).set(
+    const proPlan = SUBSCRIPTION_PLANS.find((plan) => plan.id === "pro");
+    const safeBillingCycle = Object.values(BILLING_CYCLES).includes(billingCycle)
+      ? billingCycle
+      : BILLING_CYCLES.MONTHLY;
+    const selectedBilling = getBillingOption(proPlan, safeBillingCycle);
+    const subscriptionAmount = parsePlanAmount(selectedBilling?.price);
+    const userRef = adminDb.collection("users").doc(decodedToken.uid);
+    const transactionRef = userRef
+      .collection("subscriptionTransactions")
+      .doc(razorpay_payment_id);
+
+    await userRef.set(
       {
         subscription: "pro",
         subscriptionStatus: "active",
-        subscriptionBillingCycle: billingCycle,
+        subscriptionBillingCycle: safeBillingCycle,
         razorpaySubscriptionId: razorpay_subscription_id,
         razorpayPaymentId: razorpay_payment_id,
+        subscriptionStartedAt: FieldValue.serverTimestamp(),
         subscriptionUpdatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    await transactionRef.set(
+      {
+        plan: "pro",
+        planName: proPlan?.name || "Pro",
+        billingCycle: safeBillingCycle,
+        amount: subscriptionAmount,
+        currency: "INR",
+        status: "success",
+        paymentMode: "razorpay",
+        razorpayPaymentId: razorpay_payment_id,
+        razorpaySubscriptionId: razorpay_subscription_id,
+        createdAt: FieldValue.serverTimestamp(),
       },
       { merge: true }
     );

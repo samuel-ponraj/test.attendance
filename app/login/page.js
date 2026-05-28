@@ -9,9 +9,8 @@ import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { sendPasswordResetEmail } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const Login = () => {
 
@@ -23,37 +22,8 @@ const Login = () => {
   const { login, signInWithGoogle } = useAuth();
   const router = useRouter();
 
-  // Determine dashboard route
-  const determineRoute = async (userEmail, uid) => {
-
-    const adminDoc = await getDoc(doc(db,"users",uid));
-    if(adminDoc.exists()){
-      return "admin";
-    }
-
-    const memberDoc = await getDoc(doc(db,"allMembers",userEmail?.toLowerCase()));
-    if(memberDoc.exists()){
-      return "member";
-    }
-
-    const pendingDoc = await getDoc(doc(db, "pendingMembers", uid));
-      if (pendingDoc.exists()) {
-        return "pending";
-      }
-
-    return null;
-  };
-
-
   const handleLoginSuccess = async (user) => {
   try {
-    const role = await determineRoute(user.email, user.uid);
-
-    if (!role) {
-      toast.error("Account not found. Please contact an admin.");
-      return;
-    }
-
     const token = await user.getIdToken();
 
     const response = await fetch("/api/auth/session", {
@@ -65,17 +35,26 @@ const Login = () => {
       credentials: "include",
     });
 
+    const session = await response.json();
+
     if (!response.ok) {
-      throw new Error("Failed to establish session");
+      throw new Error(session.error || "Failed to establish session");
+    }
+
+    const role = session.role;
+
+    if (!role) {
+      toast.error("Account not found. Please contact an admin.");
+      return;
     }
 
     toast.success("Welcome!");
-    router.replace(`/${role}`);
+    router.replace(role === "platform" ? "/platform" : `/${role}`);
     router.refresh();
 
   } catch (error) {
     console.error("Login Success Error:", error);
-    toast.error("Session sync failed. Try again.");
+    toast.error(error.message || "Session sync failed. Try again.");
   }
 };
 

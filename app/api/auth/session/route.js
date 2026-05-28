@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { isPlatformAdminEmail } from "@/lib/platform-admin";
 
 export async function POST(req) {
   const { token } = await req.json();
@@ -9,12 +10,18 @@ export async function POST(req) {
     const decoded = await adminAuth.verifyIdToken(token);
 
     const uid = decoded.uid;
-    const email = decoded.email.toLowerCase();
+    const email = String(decoded.email || "").trim().toLowerCase();
 
-    let role = null;
+    if (!email) {
+      return NextResponse.json({ error: "No email found in auth token" }, { status: 403 });
+    }
 
-    const adminDoc = await adminDb.collection("users").doc(uid).get();
-    if (adminDoc.exists) role = "admin";
+    let role = isPlatformAdminEmail(email) ? "platform" : null;
+
+    if (!role) {
+      const adminDoc = await adminDb.collection("users").doc(uid).get();
+      if (adminDoc.exists) role = "admin";
+    }
 
     if (!role) {
       const memberDoc = await adminDb.collection("allMembers").doc(email).get();
@@ -30,7 +37,6 @@ export async function POST(req) {
       return NextResponse.json({ error: "No role found" }, { status: 403 });
     }
 
-    // ✅ FIX HERE
     const cookieStore = await cookies();
 
     cookieStore.set("session", token, {
@@ -53,4 +59,13 @@ export async function POST(req) {
     console.error("FIREBASE ADMIN ERROR:", err);
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
+}
+
+export async function DELETE() {
+  const cookieStore = await cookies();
+
+  cookieStore.delete("session");
+  cookieStore.delete("role");
+
+  return NextResponse.json({ success: true });
 }

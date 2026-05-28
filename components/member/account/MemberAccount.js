@@ -97,7 +97,7 @@ const MemberAccount = () => {
     };
    
   return (
-    <div className="p-4 flex flex-col w-full md:w-3/4 gap-4 md:px-6 py-2 ">
+    <div className="flex w-full flex-col gap-4 p-4 py-2 md:px-6">
       <Toaster richColors position="top-center" />
 
       <Card>

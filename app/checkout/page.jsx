@@ -122,7 +122,7 @@ function CheckoutContent() {
             }
 
             toast.success("Pro plan activated successfully");
-            router.push("/admin/account");
+            router.push("/admin/subscriptions");
           } catch (error) {
             console.error("Payment verification error:", error);
             toast.error(error.message || "Payment verification failed");
@@ -148,10 +148,10 @@ function CheckoutContent() {
         <Button
           variant="ghost"
           className="mb-6"
-          onClick={() => router.push("/admin/account")}
+          onClick={() => router.push("/admin/subscriptions")}
         >
           <ArrowLeft />
-          Back to account
+          Back to subscriptions
         </Button>
 
         <div className="grid gap-6 md:grid-cols-[1.15fr_0.85fr]">

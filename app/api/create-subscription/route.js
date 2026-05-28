@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebase-admin";
 import {
-  getRazorpayConfigByAdminUserId,
-  getRazorpayInstanceFromConfig,
-  getRazorpayKeyIdFromConfig,
-} from "@/lib/server-integrations";
+  getPlatformRazorpayConfig,
+  getPlatformRazorpayInstance,
+} from "@/lib/server-platform";
 
 export const runtime = "nodejs";
 
@@ -30,14 +29,12 @@ export async function POST(req) {
 
     const decodedToken = await adminAuth.verifyIdToken(token);
     const body = await req.json();
-    const razorpayConfig = await getRazorpayConfigByAdminUserId(decodedToken.uid);
+    const razorpayConfig = await getPlatformRazorpayConfig();
     const appPlan = body.plan || "pro";
     const billingCycle = BILLING_CYCLES.has(body.billingCycle)
       ? body.billingCycle
       : "monthly";
-    const planId =
-      razorpayConfig.subscriptionPlanIds?.[billingCycle] ||
-      (billingCycle === "monthly" ? razorpayConfig.subscriptionPlanId : "");
+    const planId = razorpayConfig.subscriptionPlanIds?.[billingCycle] || "";
 
     if (appPlan !== "pro") {
       return NextResponse.json(
@@ -48,7 +45,7 @@ export async function POST(req) {
 
     if (!razorpayConfig.enabled) {
       return NextResponse.json(
-        { error: "Razorpay integration is not enabled" },
+        { error: "Platform Razorpay subscription billing is not enabled" },
         { status: 500 }
       );
     }
@@ -67,7 +64,7 @@ export async function POST(req) {
       );
     }
 
-    const razorpay = getRazorpayInstanceFromConfig(razorpayConfig);
+    const razorpay = getPlatformRazorpayInstance(razorpayConfig);
 
     const subscription = await razorpay.subscriptions.create({
       plan_id: planId,
@@ -83,7 +80,7 @@ export async function POST(req) {
     return NextResponse.json({
       id: subscription.id,
       status: subscription.status,
-      keyId: getRazorpayKeyIdFromConfig(razorpayConfig),
+      keyId: razorpayConfig.keyId || "",
     });
   } catch (err) {
     console.error("Create subscription error:", err);

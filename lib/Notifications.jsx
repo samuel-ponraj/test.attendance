@@ -18,15 +18,57 @@ import {
   updateDoc,
   doc,
   limit,
-  getDoc
+  getDoc,
+  where
 } from "firebase/firestore"
 
 import { useRouter, usePathname } from "next/navigation"
+import { useAuth } from "@/app/context/AuthContext"
+
+const getCreatedAtMillis = (notification) => {
+  const createdAt = notification?.createdAt
+
+  if (!createdAt) return 0
+  if (typeof createdAt.toMillis === "function") return createdAt.toMillis()
+  if (createdAt.seconds) return createdAt.seconds * 1000
+  if (createdAt instanceof Date) return createdAt.getTime()
+
+  return 0
+}
+
+const mergeNotificationLists = (...lists) => {
+  const byId = new Map()
+
+  lists.flat().forEach((notification) => {
+    if (notification?.id) byId.set(notification.id, notification)
+  })
+
+  return Array.from(byId.values())
+    .sort((a, b) => getCreatedAtMillis(b) - getCreatedAtMillis(a))
+    .slice(0, 10)
+}
+
+const toNotificationList = (snapshot) =>
+  snapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data()
+  }))
+
+const chunkArray = (items, size) => {
+  const chunks = []
+
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size))
+  }
+
+  return chunks
+}
 
 export default function Notifications() {
 
   const [notifications, setNotifications] = useState([])
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const { user } = useAuth()
 
   const router = useRouter()
   const pathname = usePathname()
@@ -34,64 +76,111 @@ export default function Notifications() {
   const role = pathname?.startsWith("/admin") ? "admin" : "member"
 
   useEffect(() => {
-
-  const initNotifications = async () => {
-
-    const user = auth.currentUser
-    if (!user) return
-
-    let q
-
-    if (role === "admin") {
-
-      q = query(
-        collection(db, "notifications"),
-        orderBy("createdAt", "desc"),
-        limit(10)
-      )
-
-    } else {
-
-    const memberRef = doc(db, "allMembers", user.email?.toLowerCase())
-    const memberSnap = await getDoc(memberRef)
-
-    if (!memberSnap.exists()) return
-
-    const teamId = memberSnap.data().teamId
-
-      q = query(
-        collection(
-          db,
-          "teams",
-          teamId,
-          "members",
-          user.uid,
-          "notifications"
-        ),
-        orderBy("createdAt", "desc"),
-        limit(10)
-      )
-
+    if (!user) {
+      queueMicrotask(() => setNotifications([]))
+      return
     }
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    if (role === "admin") {
+      let ownNotifications = []
+      let teamNotifications = []
+      let teamNotificationUnsubscribers = []
 
-      const list = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data()
-      }))
+      const applyNotifications = () => {
+        setNotifications(mergeNotificationLists(ownNotifications, teamNotifications))
+      }
 
-      setNotifications(list)
+      const unsubscribeOwnNotifications = onSnapshot(
+        query(
+          collection(db, "notifications"),
+          where("userId", "==", user.uid)
+        ),
+        (snapshot) => {
+          ownNotifications = toNotificationList(snapshot)
+          applyNotifications()
+        }
+      )
 
-    })
+      const unsubscribeTeams = onSnapshot(
+        query(collection(db, "teams"), where("admin.userId", "==", user.uid)),
+        (snapshot) => {
+          teamNotificationUnsubscribers.forEach((unsubscribe) => unsubscribe())
+          teamNotificationUnsubscribers = []
+          teamNotifications = []
 
-    return () => unsubscribe()
+          const teamIds = snapshot.docs.map((teamDoc) => teamDoc.id)
 
-  }
+          if (teamIds.length === 0) {
+            applyNotifications()
+            return
+          }
 
-  initNotifications()
+          const teamChunks = chunkArray(teamIds, 30)
+          const teamChunkLists = Array.from({ length: teamChunks.length }, () => [])
 
-}, [role])
+          teamNotificationUnsubscribers = teamChunks.map((teamChunk, index) =>
+            onSnapshot(
+              query(
+                collection(db, "notifications"),
+                where("teamId", "in", teamChunk)
+              ),
+              (notificationsSnapshot) => {
+                teamChunkLists[index] = toNotificationList(notificationsSnapshot)
+                teamNotifications = teamChunkLists.flat()
+                applyNotifications()
+              }
+            )
+          )
+        }
+      )
+
+      return () => {
+        unsubscribeOwnNotifications()
+        unsubscribeTeams()
+        teamNotificationUnsubscribers.forEach((unsubscribe) => unsubscribe())
+      }
+    }
+
+    let unsubscribe = () => {}
+    let cancelled = false
+
+    const initMemberNotifications = async () => {
+      const memberRef = doc(db, "allMembers", user.email?.toLowerCase())
+      const memberSnap = await getDoc(memberRef)
+
+      if (cancelled || !memberSnap.exists()) {
+        setNotifications([])
+        return
+      }
+
+      const teamId = memberSnap.data().teamId
+
+      unsubscribe = onSnapshot(
+        query(
+          collection(
+            db,
+            "teams",
+            teamId,
+            "members",
+            user.uid,
+            "notifications"
+          ),
+          orderBy("createdAt", "desc"),
+          limit(10)
+        ),
+        (snapshot) => {
+          setNotifications(toNotificationList(snapshot))
+        }
+      )
+    }
+
+    initMemberNotifications()
+
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
+  }, [role, user])
 
 
   const getNotificationIcon = (type) => {

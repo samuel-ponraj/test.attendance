@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export default function middleware(request:any) {
+export default function middleware(request: NextRequest) {
   const role = request.cookies.get("role")?.value;
   const session = request.cookies.get("session")?.value;
   const { pathname } = request.nextUrl;
@@ -13,6 +14,14 @@ export default function middleware(request:any) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  if (role === "pending") {
+    return NextResponse.redirect(new URL("/pending", request.url));
+  }
+
+  if (pathname.startsWith("/platform") && role !== "platform") {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
   if (pathname.startsWith("/admin") && role !== "admin") {
     return NextResponse.redirect(new URL("/member", request.url));
   }
@@ -21,16 +30,13 @@ export default function middleware(request:any) {
     return NextResponse.redirect(new URL("/admin", request.url));
   }
 
-  if (role === "pending") {
-    return NextResponse.redirect(new URL("/pending-approval", request.url));
-  }
-
   return NextResponse.next();
 }
 
 export const config = {
   matcher: [
     '/admin/:path*',
-    '/member/:path*'
+    '/member/:path*',
+    '/platform/:path*'
   ]
 }

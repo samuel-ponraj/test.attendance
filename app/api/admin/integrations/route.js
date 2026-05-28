@@ -18,11 +18,6 @@ const defaultRazorpayConfig = {
   accountName: "",
   keyId: "",
   keySecret: "",
-  subscriptionPlanId: "",
-  subscriptionPlanIds: {
-    monthly: "",
-    yearly: "",
-  },
   webhookAppUrl: "",
   webhookSecret: "",
   currency: "INR",
@@ -160,11 +155,6 @@ export async function PATCH(req) {
       const existingRazorpay = existing.razorpayConfig || {};
       const keySecret = String(config.keySecret || "").trim();
       const webhookSecret = String(config.webhookSecret || "").trim();
-      const subscriptionPlanIds = {
-        monthly: String(config.subscriptionPlanIds?.monthly || "").trim(),
-        yearly: String(config.subscriptionPlanIds?.yearly || "").trim(),
-      };
-
       await adminUser.integrationsRef.set(
         {
           razorpayConfig: {
@@ -172,8 +162,6 @@ export async function PATCH(req) {
             accountName: String(config.accountName || "").trim(),
             keyId: String(config.keyId || "").trim(),
             keySecret: keySecret || existingRazorpay.keySecret || "",
-            subscriptionPlanId: subscriptionPlanIds.monthly,
-            subscriptionPlanIds,
             webhookAppUrl: String(config.webhookAppUrl || "").trim(),
             webhookSecret:
               webhookSecret || existingRazorpay.webhookSecret || "",

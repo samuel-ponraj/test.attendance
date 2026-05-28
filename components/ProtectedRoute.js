@@ -12,8 +12,17 @@ export default function ProtectedRoute({ children, allowedRole }) {
     if (!loading) {
       if (!user) {
         router.replace("/login");
-      } else if (userData?.role !== allowedRole) {
-        const target = userData?.role === 'admin' ? '/admin' : '/member';
+      } else if (!userData?.role) {
+        router.replace("/pending");
+      } else if (userData.role !== allowedRole) {
+        const target =
+          userData.role === "platform"
+            ? "/platform"
+            : userData.role === "admin"
+            ? "/admin"
+            : userData.role === "pending"
+            ? "/pending"
+            : "/member";
         router.replace(target);
       }
     }

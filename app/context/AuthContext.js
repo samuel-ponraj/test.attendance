@@ -28,7 +28,25 @@ export const AuthProvider = ({ children }) => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  
+  const syncSessionCookies = async (firebaseUser) => {
+    const token = await firebaseUser.getIdToken();
+    const response = await fetch("/api/auth/session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token }),
+      credentials: "include",
+    });
+
+    const session = await response.json();
+
+    if (!response.ok) {
+      throw new Error(session.error || "Failed to sync session cookies");
+    }
+
+    return session;
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -36,10 +54,22 @@ export const AuthProvider = ({ children }) => {
       if (firebaseUser) {
         setUser(firebaseUser);
 
-        const fullName = firebaseUser.displayName || "";
-        const [authFirstName = "", authLastName = ""] = fullName.split(" ");
-        
         try {
+          const session = await syncSessionCookies(firebaseUser);
+          const fullName = firebaseUser.displayName || "";
+          const [authFirstName = "", authLastName = ""] = fullName.split(" ");
+
+          if (session.role === "platform") {
+            setUserData({
+              role: "platform",
+              firstName: authFirstName,
+              lastName: authLastName,
+              email: firebaseUser.email,
+            });
+            setLoading(false);
+            return;
+          }
+
           const adminRef = doc(db, "users", firebaseUser.uid);
           const adminSnap = await getDoc(adminRef);
 
@@ -66,12 +96,12 @@ export const AuthProvider = ({ children }) => {
                 firstName: data.firstName || authFirstName,
                 lastName: data.lastName || authLastName  });
             } else {
-              setUserData(null); 
+              setUserData({ role: 'pending' }); 
             }
           }
         } catch (error) {
           console.error("Error fetching user role:", error);
-          setUserData(null);
+          setUserData({ role: "pending", error: error.message });
         }
       } else {
         setUser(null);
@@ -97,7 +127,13 @@ export const AuthProvider = ({ children }) => {
     return res;
   };
 
-  const logout = () => firebaseSignOut(auth);
+  const logout = async () => {
+    await fetch("/api/auth/session", {
+      method: "DELETE",
+      credentials: "include",
+    });
+    await firebaseSignOut(auth);
+  };
 
 
   const signInWithGoogle = async () => {

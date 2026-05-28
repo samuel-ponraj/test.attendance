@@ -62,6 +62,11 @@ const ROUTE_CONFIG: Record<
       description: "Review payments across all teams",
     },
     {
+      path: "/admin/subscriptions",
+      title: "Subscriptions",
+      description: "Manage plans, invoices, and recurring billing",
+    },
+    {
       path: "/admin/invite",
       title: "Invite Members",
       description: "Send email invitations to join your teams",

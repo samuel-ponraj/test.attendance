@@ -12,7 +12,8 @@ import {
   Settings,
   Calendar,
   Form, 
-  ReceiptIndianRupee
+  ReceiptIndianRupee,
+  CreditCard,
 } from "lucide-react";
 
 import {
@@ -47,7 +48,10 @@ const navConfig = {
       { title: "Custom Forms", url: "/admin/custom-forms", icon: Form  },
       { title: "Payments", url: "/admin/billing", icon: ReceiptIndianRupee },
     ],
-    settings: [{ title: "Account", url: "/admin/account", icon: Settings }],
+    settings: [
+      { title: "Account", url: "/admin/account", icon: Settings },
+      { title: "Subscriptions", url: "/admin/subscriptions", icon: CreditCard },
+    ],
   },
 
   member: {

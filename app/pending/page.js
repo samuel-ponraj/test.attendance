@@ -11,9 +11,15 @@ import { toast } from "sonner";
 
 const PendingPage = () => {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, userData, logout } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [checkingInitial, setCheckingInitial] = useState(true);
+
+  const redirectForRole = useCallback((role) => {
+    if (role === "platform") router.replace("/platform");
+    if (role === "admin") router.replace("/admin");
+    if (role === "member") router.replace("/member");
+  }, [router]);
 
   // Wrapped in useCallback to prevent unnecessary re-renders
   const checkStatus = useCallback(async (isManual = false) => {
@@ -22,12 +28,31 @@ const PendingPage = () => {
     if (isManual) setIsRefreshing(true);
 
     try {
-      const allMemberRef = doc(db, "allMembers", user.email);
+      const token = await user.getIdToken(true);
+      const response = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token }),
+        credentials: "include",
+      });
+      const session = await response.json();
+
+      if (response.ok && session.role && session.role !== "pending") {
+        toast.success("Access approved! Redirecting...");
+        redirectForRole(session.role);
+        router.refresh();
+        return;
+      }
+
+      const allMemberRef = doc(db, "allMembers", user.email.toLowerCase());
       const allMemberSnap = await getDoc(allMemberRef);
 
       if (allMemberSnap.exists()) {
         toast.success("Access approved! Redirecting...");
-        router.push("/member");
+        router.replace("/member");
+        router.refresh();
       } else if (isManual) {
         toast.info("Still pending approval.");
       }
@@ -38,7 +63,13 @@ const PendingPage = () => {
       setIsRefreshing(false);
       setCheckingInitial(false);
     }
-  }, [user?.email, router]);
+  }, [user, redirectForRole, router]);
+
+  useEffect(() => {
+    if (userData?.role && userData.role !== "pending") {
+      redirectForRole(userData.role);
+    }
+  }, [userData?.role, redirectForRole]);
 
   // Initial check on mount
   useEffect(() => {
@@ -49,8 +80,16 @@ const PendingPage = () => {
 
   const handleLogout = async () => {
     await logout();
-    router.push("/login");
+    router.replace("/login");
   };
+
+  if (checkingInitial) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-4 text-white">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4 relative text-white overflow-hidden">
