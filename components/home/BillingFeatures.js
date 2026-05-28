@@ -6,6 +6,7 @@ import {
   ReceiptText,
   WalletCards,
 } from "lucide-react";
+import Image from "next/image";
 
 const billingFeatures = [
   {
@@ -83,21 +84,33 @@ const BillingFeatures = () => {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          {billingFeatures.map((feature) => (
-            <div
-              key={feature.title}
-              className="rounded-lg border border-white/10 bg-white/[0.03] p-5 transition-all duration-300 hover:border-[#9d1c1b]/50 hover:bg-white/[0.06]"
-            >
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-[#9d1c1b]/10 text-[#9d1c1b]">
-                <feature.icon className="h-5 w-5" />
+        <div className="space-y-4">
+          <div className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] shadow-2xl shadow-black/30">
+            <Image
+              src="/mockups/payments-desktop.png"
+              alt="Payments and billing management screen"
+              width={1920}
+              height={1080}
+              className="h-auto w-full"
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {billingFeatures.map((feature) => (
+              <div
+                key={feature.title}
+                className="rounded-lg border border-white/10 bg-white/[0.03] p-5 transition-all duration-300 hover:border-[#9d1c1b]/50 hover:bg-white/[0.06]"
+              >
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-[#9d1c1b]/10 text-[#9d1c1b]">
+                  <feature.icon className="h-5 w-5" />
+                </div>
+                <h3 className="text-lg font-semibold">{feature.title}</h3>
+                <p className="mt-2 leading-7 text-neutral-400">
+                  {feature.description}
+                </p>
               </div>
-              <h3 className="text-lg font-semibold">{feature.title}</h3>
-              <p className="mt-2 leading-7 text-neutral-400">
-                {feature.description}
-              </p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>
