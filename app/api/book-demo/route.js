@@ -13,8 +13,6 @@ const getCaptchaSiteKey = () =>
   process.env.CAPTCHA_SITE_KEY ||
   "";
 
-  console.log("Captcha Site Key:", getCaptchaSiteKey());
-
 const getCaptchaSecretKey = () =>
   process.env.RECAPTCHA_SECRET_KEY || process.env.CAPTCHA_SECRET_KEY || "";
 
