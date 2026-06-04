@@ -1,4 +1,6 @@
 import jsPDF from "jspdf";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const logoPath = "/logo/KDA-logo-black.png";
 
@@ -62,6 +64,67 @@ const loadImageAsDataUrl = async (path) => {
   };
 };
 
+const getImageFormat = (dataUrl = "") => {
+  if (dataUrl.includes("image/jpeg") || dataUrl.includes("image/jpg")) {
+    return "JPEG";
+  }
+
+  if (dataUrl.includes("image/webp")) {
+    return "WEBP";
+  }
+
+  return "PNG";
+};
+
+const getCompanyDetails = async (team) => {
+  if (team?.invoiceCompanyDetails) {
+    return team.invoiceCompanyDetails;
+  }
+
+  const adminUserId = team?.admin?.userId || team?.adminUserId;
+
+  if (!adminUserId) return {};
+
+  try {
+    const adminSnapshot = await getDoc(doc(db, "users", adminUserId));
+    return adminSnapshot.data()?.companyDetails || {};
+  } catch {
+    console.error("Failed to load invoice company details:", err);
+    return {};
+  }
+};
+
+const addReceiptLogo = async (doc, companyDetails) => {
+  const logoSource = companyDetails?.logoURL || logoPath;
+
+  try {
+    const logo = await loadImageAsDataUrl(logoSource);
+    const maxLogoWidth = 54;
+    const maxLogoHeight = 28;
+    const logoRatio = Math.min(
+      maxLogoWidth / logo.width,
+      maxLogoHeight / logo.height,
+    );
+    doc.addImage(
+      logo.dataUrl,
+      getImageFormat(logo.dataUrl),
+      12,
+      12,
+      logo.width * logoRatio,
+      logo.height * logoRatio,
+    );
+  } catch {
+    if (logoSource !== logoPath) {
+      await addReceiptLogo(doc, {});
+      return;
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("KDA", 12, 27);
+  }
+};
+
 const addRow = (doc, label, value, y, options = {}) => {
   const { x = 12, valueX = 198 } = options;
 
@@ -75,6 +138,7 @@ const addRow = (doc, label, value, y, options = {}) => {
 
 export const generateReceipt = async ({ team, member, period }) => {
   const doc = new jsPDF();
+  const companyDetails = await getCompanyDetails(team);
   const memberName = `${member?.firstName || ""} ${member?.lastName || ""}`.trim();
   const receiptNo = period?.receiptNo || period?.id || "receipt";
   const paidAmount = Number(
@@ -117,27 +181,7 @@ export const generateReceipt = async ({ team, member, period }) => {
   doc.setDrawColor(230, 230, 230);
   doc.rect(7, 7, 196, 283);
 
-  try {
-    const logo = await loadImageAsDataUrl(logoPath);
-    const maxLogoWidth = 54;
-    const maxLogoHeight = 28;
-    const logoRatio = Math.min(
-      maxLogoWidth / logo.width,
-      maxLogoHeight / logo.height,
-    );
-    doc.addImage(
-      logo.dataUrl,
-      "PNG",
-      12,
-      12,
-      logo.width * logoRatio,
-      logo.height * logoRatio,
-    );
-  } catch {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text("KDA", 12, 27);
-  }
+  await addReceiptLogo(doc, companyDetails);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(24);

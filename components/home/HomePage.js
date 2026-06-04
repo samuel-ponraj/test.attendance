@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   ArrowRight,
   CalendarCheck,
@@ -9,10 +10,10 @@ import {
   WalletCards,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/app/context/AuthContext";
 import styles from "./HomePage.module.css";
+import BookDemoForm from "./BookDemoForm";
 
 const highlights = [
   "Live attendance",
@@ -50,6 +51,7 @@ const floatingStats = [
 const HomePage = () => {
   const router = useRouter();
   const { user, userData, loading } = useAuth();
+  const [demoOpen, setDemoOpen] = useState(false);
 
   const handleRecordAttendance = () => {
     if (loading) return;
@@ -97,11 +99,12 @@ const HomePage = () => {
               Start Tracking <ArrowRight className="h-5 w-5" />
             </button>
 
-            <Link href="#features" className="w-full sm:w-auto">
-              <button className="w-full cursor-pointer rounded-md border border-white/70 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 sm:w-auto">
-                Learn More 
-              </button>
-            </Link>
+            <button
+              className="w-full cursor-pointer rounded-md border border-white/70 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 sm:w-auto"
+              onClick={() => setDemoOpen(true)}
+            >
+              Book a Demo
+            </button>
           </div>
 
           <div className="mt-7 hidden flex-wrap items-center justify-center gap-x-5 gap-y-3 sm:flex lg:justify-start">
@@ -151,6 +154,8 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+
+      <BookDemoForm open={demoOpen} onOpenChange={setDemoOpen} />
     </div>
   );
 };

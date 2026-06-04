@@ -2,11 +2,23 @@
 
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import { 
   Card, CardContent, CardDescription, CardHeader, CardTitle 
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CreditCard, MessageCircle, Shield, Trash2, Eye, EyeOff, Loader2 } from "lucide-react";
+import {
+  Building2,
+  CreditCard,
+  MessageCircle,
+  Shield,
+  Trash2,
+  Eye,
+  EyeOff,
+  Loader2,
+  ImageIcon,
+  X,
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +42,7 @@ import {
   updatePassword,
   onAuthStateChanged, sendPasswordResetEmail
 } from "firebase/auth";
-import { doc, updateDoc, serverTimestamp, writeBatch, collection , where, getDocs, query } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, writeBatch, collection , where, getDocs, getDoc, query } from "firebase/firestore";
 import { Label } from "@/components/ui/label";
 import { User, Camera } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -58,6 +70,15 @@ const defaultRazorpayConfig = {
   webhookSecret: "",
   hasWebhookSecret: false,
   currency: "INR",
+};
+
+const defaultCompanyDetails = {
+  name: "",
+  address: "",
+  phone: "",
+  email: "",
+  taxId: "",
+  logoURL: "",
 };
 
 const normalizeRazorpayConfig = (config = {}) => ({
@@ -97,12 +118,15 @@ const AdminAccount = () => {
   const [savingRazorpay, setSavingRazorpay] = useState(false);
 
   const fileInputRef = useRef(null);
+  const companyLogoInputRef = useRef(null);
 
 const [firstName, setFirstName] = useState("");
 const [lastName, setLastName] = useState("");
 const [avatar, setAvatar] = useState(null);
+const [companyDetails, setCompanyDetails] = useState(defaultCompanyDetails);
 const [whatsappConfig, setWhatsappConfig] = useState(defaultWhatsappConfig);
 const [razorpayConfig, setRazorpayConfig] = useState(defaultRazorpayConfig);
+const [savingCompanyDetails, setSavingCompanyDetails] = useState(false);
 
 
   // Use useEffect to listen for Auth changes to ensure providerId is caught
@@ -154,11 +178,40 @@ const [razorpayConfig, setRazorpayConfig] = useState(defaultRazorpayConfig);
     }));
   };
 
-  const updateRazorpayConfig = (key, value) => {
+      const updateRazorpayConfig = (key, value) => {
     setRazorpayConfig((prev) => ({
       ...prev,
       [key]: value,
     }));
+  };
+
+  const updateCompanyDetails = (key, value) => {
+    setCompanyDetails((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const syncCompanyDetailsToTeams = async (details) => {
+    if (!user?.uid) return;
+
+    const teamsQuery = query(
+      collection(db, "teams"),
+      where("admin.userId", "==", user.uid),
+    );
+    const teamsSnapshot = await getDocs(teamsQuery);
+
+    if (teamsSnapshot.empty) return;
+
+    const batch = writeBatch(db);
+    teamsSnapshot.forEach((teamDoc) => {
+      batch.update(teamDoc.ref, {
+        invoiceCompanyDetails: details,
+        updatedAt: serverTimestamp(),
+      });
+    });
+
+    await batch.commit();
   };
 
   const handleSaveWhatsappIntegration = async () => {
@@ -367,10 +420,28 @@ const [razorpayConfig, setRazorpayConfig] = useState(defaultRazorpayConfig);
       useEffect(() => {
         if (!user) return;
 
-        const names = user.displayName?.split(" ") || [];
-        setFirstName(names[0] || "");
-        setLastName(names.slice(1).join(" ") || "");
-        setAvatar(user.photoURL || null);
+        const loadUserData = async () => {
+          const names = user.displayName?.split(" ") || [];
+          setFirstName(names[0] || "");
+          setLastName(names.slice(1).join(" ") || "");
+          setAvatar(user.photoURL || null);
+
+          try {
+            const userSnapshot = await getDoc(doc(db, "users", user.uid));
+            const data = userSnapshot.data() || {};
+            const savedCompanyDetails = data.companyDetails || {};
+
+            setCompanyDetails({
+              ...defaultCompanyDetails,
+              ...savedCompanyDetails,
+            });
+          } catch (err) {
+            console.error("Failed to load company details:", err);
+            toast.error("Failed to load company details");
+          }
+        };
+
+        loadUserData();
       }, [user]);
 
       const getInitials = () =>
@@ -461,6 +532,109 @@ const handleSaveProfile = async () => {
   }
 };
 
+const handleCompanyLogoChange = async (e) => {
+  if (!e.target.files?.[0] || !user) return;
+
+  const file = e.target.files[0];
+
+  if (!file.type.startsWith("image/")) {
+    toast.error("Please upload an image file");
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error("Logo must be under 5MB");
+    return;
+  }
+
+  try {
+    const previewURL = URL.createObjectURL(file);
+    updateCompanyDetails("logoURL", previewURL);
+
+    toast.loading("Uploading company logo...");
+
+    const storageRef = ref(storage, `company-logos/${user.uid}`);
+    await uploadBytes(storageRef, file);
+
+    const downloadURL = await getDownloadURL(storageRef);
+    updateCompanyDetails("logoURL", downloadURL);
+
+    await updateDoc(doc(db, "users", user.uid), {
+      "companyDetails.logoURL": downloadURL,
+      updatedAt: serverTimestamp(),
+    });
+
+    await syncCompanyDetailsToTeams({
+      ...companyDetails,
+      logoURL: downloadURL,
+    });
+
+    toast.dismiss();
+    toast.success("Company logo uploaded");
+  } catch (err) {
+    toast.dismiss();
+    console.error(err);
+    toast.error("Failed to upload company logo");
+  } finally {
+    e.target.value = "";
+  }
+};
+
+const handleRemoveCompanyLogo = async () => {
+  if (!user) return;
+
+  try {
+    updateCompanyDetails("logoURL", "");
+
+    await updateDoc(doc(db, "users", user.uid), {
+      "companyDetails.logoURL": "",
+      updatedAt: serverTimestamp(),
+    });
+
+    await syncCompanyDetailsToTeams({
+      ...companyDetails,
+      logoURL: "",
+    });
+
+    toast.success("Company logo removed");
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to remove company logo");
+  }
+};
+
+const handleSaveCompanyDetails = async () => {
+  if (!user) return;
+
+  setSavingCompanyDetails(true);
+
+  try {
+    const cleanCompanyDetails = {
+      name: companyDetails.name.trim(),
+      address: companyDetails.address.trim(),
+      phone: companyDetails.phone.trim(),
+      email: companyDetails.email.trim(),
+      taxId: companyDetails.taxId.trim(),
+      logoURL: companyDetails.logoURL || "",
+    };
+
+    await updateDoc(doc(db, "users", user.uid), {
+      companyDetails: cleanCompanyDetails,
+      updatedAt: serverTimestamp(),
+    });
+
+    await syncCompanyDetailsToTeams(cleanCompanyDetails);
+
+    setCompanyDetails(cleanCompanyDetails);
+    toast.success("Company details saved");
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to save company details");
+  } finally {
+    setSavingCompanyDetails(false);
+  }
+};
+
 
 
 
@@ -534,6 +708,153 @@ const handleSaveProfile = async () => {
             <Button onClick={handleSaveProfile}>Save Changes</Button>
           </CardContent>
         </Card>
+
+        {isAdmin && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-primary" />
+                <CardTitle>Company Details</CardTitle>
+              </div>
+              <CardDescription>
+                Add invoice branding and company information.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => companyLogoInputRef.current?.click()}
+                    className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border bg-muted"
+                  >
+                    {companyDetails.logoURL ? (
+                      <Image
+                        src={companyDetails.logoURL}
+                        alt="Company logo"
+                        width={96}
+                        height={96}
+                        unoptimized
+                        className="h-full w-full object-contain p-2"
+                      />
+                    ) : (
+                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => companyLogoInputRef.current?.click()}
+                    className="absolute bottom-0 right-0 rounded-full bg-primary p-1.5 text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Camera className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium">Company Logo</p>
+                    <p className="text-xs text-muted-foreground">
+                      Used on invoices and receipts. Max size 5MB.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {companyDetails.logoURL && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={handleRemoveCompanyLogo}
+                        className="gap-2 text-destructive hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+
+                  <input
+                    ref={companyLogoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCompanyLogoChange}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Company Name</Label>
+                  <Input
+                    value={companyDetails.name}
+                    onChange={(e) =>
+                      updateCompanyDetails("name", e.target.value)
+                    }
+                    placeholder="Your company name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Phone</Label>
+                  <Input
+                    value={companyDetails.phone}
+                    onChange={(e) =>
+                      updateCompanyDetails("phone", e.target.value)
+                    }
+                    placeholder="Company phone number"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    value={companyDetails.email}
+                    onChange={(e) =>
+                      updateCompanyDetails("email", e.target.value)
+                    }
+                    placeholder="billing@example.com"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>GST / Tax ID</Label>
+                  <Input
+                    value={companyDetails.taxId}
+                    onChange={(e) =>
+                      updateCompanyDetails("taxId", e.target.value)
+                    }
+                    placeholder="Optional tax ID"
+                  />
+                </div>
+
+                <div className="space-y-2 lg:col-span-2">
+                  <Label>Address</Label>
+                  <Input
+                    value={companyDetails.address}
+                    onChange={(e) =>
+                      updateCompanyDetails("address", e.target.value)
+                    }
+                    placeholder="Company address for invoices"
+                  />
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSaveCompanyDetails}
+                disabled={savingCompanyDetails || !user?.uid}
+              >
+                {savingCompanyDetails ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Save Company Details"
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {isAdmin && (
           <Card>
