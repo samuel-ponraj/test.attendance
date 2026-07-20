@@ -11,13 +11,13 @@ export default function ProtectedRoute({ children, allowedRole }) {
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        router.replace("/login");
+        router.replace("/");
       } else if (!userData?.role) {
         router.replace("/pending");
       } else if (userData.role !== allowedRole) {
         const target =
-          userData.role === "platform"
-            ? "/platform"
+          userData.role === "bos"
+            ? "/bos"
             : userData.role === "admin"
             ? "/admin"
             : userData.role === "pending"

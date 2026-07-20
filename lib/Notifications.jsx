@@ -260,10 +260,6 @@ const handleNotificationClick = async (notification) => {
 
     /* Navigation logic */
 
-    if (notification.type === "member_join") {
-      router.push(`/admin/teams/${notification.teamId}/invite`)
-    }
-
     if (notification.type === "profile_update_required") {
       router.push(`/member/profile`)
     }

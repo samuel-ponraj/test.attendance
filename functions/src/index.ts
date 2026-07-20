@@ -1,10 +1,34 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 
 
 admin.initializeApp();
 const db = admin.firestore();
+
+// Keeps team summaries correct for web API, mobile self-punch, admin manual,
+// and manager-marked attendance without trusting clients to edit aggregates.
+export const syncAttendanceSummary = onDocumentWritten(
+  "teams/{teamId}/attendance/{dateKey}/punches/{memberId}",
+  async (event) => {
+    const { teamId, dateKey } = event.params;
+    const punches = await db.collection("teams").doc(teamId)
+      .collection("attendance").doc(dateKey).collection("punches").get();
+    const summary = { present: 0, halfday: 0, absent: 0 };
+    punches.forEach((punch) => {
+      const status = punch.data().status as keyof typeof summary;
+      if (status in summary) summary[status] += 1;
+    });
+    await db.collection("teams").doc(teamId).set({
+      attendanceSummary: {
+        ...summary,
+        dateKey,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+    }, { merge: true });
+  },
+);
 
 
 /**
@@ -26,10 +50,8 @@ export const cleanupOldAttendance = onSchedule(
       const adminUserId = teamData?.admin?.userId;
       if (!adminUserId) continue;
 
-      // 1. Fetch user subscription once
-      const userSnap = await db.collection("users").doc(adminUserId).get();
-      const subscription = userSnap.data()?.subscription ?? "basic";
-      const daysAllowed = subscription === "pro" ? 365 : 30;
+      // One-time licence: retain attendance history without a plan cutoff.
+      const daysAllowed = Number.MAX_SAFE_INTEGER;
 
       const cutoffDate = new Date();
       cutoffDate.setDate(now.getDate() - daysAllowed);
@@ -63,87 +85,6 @@ export const cleanupOldAttendance = onSchedule(
 );
 
 
-
-export const acceptInvite = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "User must be logged in");
-  }
-
-  const { inviteId, phone, firstName, lastName } = request.data as {
-    inviteId?: string;
-    phone?: string;
-    firstName?: string;
-    lastName?: string;
-  };
-
-  const uid = request.auth.uid;
-  const email = request.auth.token.email?.toLowerCase();
-
-  if (!inviteId) {
-    throw new HttpsError("invalid-argument", "inviteId missing");
-  }
-
-  if (!email) {
-    throw new HttpsError("failed-precondition", "User email not available");
-  }
-
-  const inviteRef = db.doc(`invites/${inviteId}`);
-  const inviteSnap = await inviteRef.get();
-
-  if (!inviteSnap.exists) {
-    throw new HttpsError("not-found", "Invite not found");
-  }
-
-  const invite = inviteSnap.data()!;
-
-  if (invite.active !== true) {
-    throw new HttpsError("failed-precondition", "Invite is not active");
-  }
-
-  if (invite.expiresAt.toDate() < new Date()) {
-    throw new HttpsError("failed-precondition", "Invite expired");
-  }
-
-  // ✅ Check if already pending
-  const pendingRef = db.doc(`pendingMembers/${uid}`);
-  const pendingSnap = await pendingRef.get();
-
-  if (pendingSnap.exists) {
-    throw new HttpsError(
-      "already-exists",
-      "Application already submitted"
-    );
-  }
-
-  try {
-    await db.runTransaction(async (tx) => {
-      tx.set(pendingRef, {
-        id: uid,
-        email,
-        teamId: invite.teamId,
-        teamName: invite.teamName,
-        role: invite.role,
-        firstName,
-        lastName,
-        contact: phone || null,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      // 2️⃣ Increment invite usage (optional but recommended)
-      tx.update(inviteRef, {
-        usedCount: admin.firestore.FieldValue.increment(1),
-      });
-    });
-
-    return { success: true };
-  } catch (err) {
-    console.error("Transaction failed:", err);
-    throw new HttpsError(
-      "internal",
-      "Failed to submit application. Please try again."
-    );
-  }
-});
 
 
 export const createMemberAccount = onCall(async (request) => {

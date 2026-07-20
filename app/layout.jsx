@@ -14,21 +14,19 @@ export default function RootLayout({ children }) {
     const pathname = usePathname();
     const isAdmin = pathname.startsWith("/admin");
     const isMember = pathname.startsWith("/member");
-    const isPlatform = pathname.startsWith("/platform");
+    const isBos = pathname.startsWith("/bos");
     const isPending = pathname.startsWith("/pending");
-    const isCheckout = pathname.startsWith("/checkout");
-    const isAuthPage = pathname === "/login" || pathname === "/signup";
-    const isApplicationSubmittedPage = pathname === "/application-submitted"
+    const isAuthPage = pathname === "/";
 
 
     return (
         <html lang="en">
             <body className="layout">
                 <AuthProvider>
-                    {!isAdmin && !isPlatform && !isPending && !isCheckout && !isApplicationSubmittedPage && !isMember && !isAuthPage && <Header />}
-                    <main className="content">{children}</main>
+                    {!isAdmin && !isBos && !isPending && !isMember && !isAuthPage && <Header />}
+                    {isAuthPage ? children : <main className="content">{children}</main>}
                     <Toaster richColors position="top-center" />
-                    {!isAdmin && !isPlatform && !isPending && !isCheckout && !isApplicationSubmittedPage && !isMember && !isAuthPage && <Footer />}
+                    {!isAdmin && !isBos && !isPending && !isMember && !isAuthPage && <Footer />}
                 </AuthProvider>
                 <Analytics />
             </body>

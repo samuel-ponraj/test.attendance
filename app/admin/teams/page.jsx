@@ -11,22 +11,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Plus } from "lucide-react";
-import UpgradeDialog from "@/components/admin/subscription/UpgradeDialog";
 
 export default function Page() {
 
   const {
     teams,
     allTeams,
-    lockedTeams,
     addTeam,
     sendDeleteOtp,
     deleteTeamWithOtp,
     loading,
-    hasReachedTeamLimit,
   } = useTeams();
   const [modalOpen, setModalOpen] = useState(false);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
   return (
     
      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -47,7 +43,7 @@ export default function Page() {
                 Create your first team to start tracking attendance
               </p>
 
-              <Button onClick={() => hasReachedTeamLimit ? setUpgradeOpen(true) : setModalOpen(true)}>
+              <Button onClick={() => setModalOpen(true)}>
                 <Plus  />
                 Add Team
               </Button>
@@ -57,13 +53,6 @@ export default function Page() {
                 open={modalOpen}
                 onOpenChange={setModalOpen}
                 addTeam={addTeam}
-                onUpgradeRequired={() => setUpgradeOpen(true)}
-              />
-              <UpgradeDialog
-                open={upgradeOpen}
-                onOpenChange={setUpgradeOpen}
-                title="Upgrade to add more teams"
-                description="Your current plan has reached its team limit. Upgrade to Pro to create up to 5 teams."
               />
             </CardContent>
           </Card>
@@ -71,18 +60,11 @@ export default function Page() {
           <TeamCardLayout
             teams={allTeams}
             unlockedCount={teams.length}
-            lockedCount={lockedTeams.length}
-            onUpgradeRequired={() => setUpgradeOpen(true)}
+            lockedCount={0}
             sendDeleteOtp={sendDeleteOtp}
             deleteTeamWithOtp={deleteTeamWithOtp}
           />
         )}
-        <UpgradeDialog
-          open={upgradeOpen}
-          onOpenChange={setUpgradeOpen}
-          title="Upgrade to unlock teams"
-          description="Your current plan unlocks 2 teams. 2 recently created teams are locked. Upgrade to view and manage locked teams without deleting their data."
-        />
       </div>
   )
 }

@@ -1,8 +1,78 @@
 export const runtime = "nodejs";
-import { adminDb } from "@/lib/firebase-admin";
+import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { assertTeamUnlockedByPlan } from "@/lib/server-team-access";
+import { getTokenFromRequest } from "@/lib/bos-admin";
+
+async function getAuthenticatedMember(req) {
+  const token = getTokenFromRequest(req);
+  if (!token) {
+    const error = new Error("Authentication required");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  let decoded;
+  try {
+    decoded = await adminAuth.verifyIdToken(token);
+  } catch {
+    const error = new Error("Invalid authentication token");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const email = String(decoded.email || "").trim().toLowerCase();
+  const mappingSnap = await adminDb.collection("allMembers").doc(email).get();
+  if (!mappingSnap.exists || mappingSnap.data().memberId !== decoded.uid) {
+    const error = new Error("Member access denied");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const mapping = mappingSnap.data();
+  const memberSnap = await adminDb
+    .collection("teams").doc(mapping.teamId)
+    .collection("members").doc(decoded.uid).get();
+  if (!memberSnap.exists) {
+    const error = new Error("Member record not found");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const teamSnap = await adminDb.collection("teams").doc(mapping.teamId).get();
+  const memberData = memberSnap.data();
+  const teamMode = teamSnap.data()?.defaultAttendanceMode === "managed" ? "managed" : "self";
+  const memberMode = memberData.attendanceMode;
+  const effectiveMode = memberMode === "self" || memberMode === "managed" ? memberMode : teamMode;
+  if (effectiveMode !== "self") {
+    const error = new Error("Your attendance is managed by an administrator or manager");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return { ...memberData, id: decoded.uid, teamId: mapping.teamId };
+}
+
+function assertValidDateKey(dateKey) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || ""))) {
+    const error = new Error("Invalid attendance date");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  if (dateKey !== today) {
+    const error = new Error("Members can mark attendance only for today");
+    error.statusCode = 403;
+    throw error;
+  }
+}
 
 /* ==========================================
    HELPER: RECALCULATE TEAM SUMMARY
@@ -45,11 +115,9 @@ async function updateTeamSummary(teamId, dateKey) {
 
 export async function POST(req) {
   try {
-    const { member, dateKey } = await req.json();
-
-    if (!member?.teamId || !member?.id) {
-      return NextResponse.json({ error: "Missing member info" }, { status: 400 });
-    }
+    const { dateKey } = await req.json();
+    assertValidDateKey(dateKey);
+    const member = await getAuthenticatedMember(req);
 
     await assertTeamUnlockedByPlan(member.teamId);
 
@@ -78,7 +146,7 @@ export async function POST(req) {
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       entryType: "manual",
-      deviceInfo: { platform: "web", version: null },
+      deviceInfo: { source: "web", version: null },
       location: { lat: null, lng: null },
     };
 
@@ -96,7 +164,9 @@ export async function POST(req) {
 
 export async function PATCH(req) {
   try {
-    const { member, dateKey } = await req.json();
+    const { dateKey } = await req.json();
+    assertValidDateKey(dateKey);
+    const member = await getAuthenticatedMember(req);
 
     await assertTeamUnlockedByPlan(member.teamId);
 

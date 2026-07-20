@@ -12,14 +12,11 @@ import FooterNav from "../../components/footer/FooterNav";
 import { MembersProvider } from "../context/MembersContext";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import Link from "next/link";
-import { useState } from "react";
 import { useTeams } from "../context/TeamsContext";
-import UpgradeDialog from "@/components/admin/subscription/UpgradeDialog";
 
 function DashboardContent({ children }) {
   const { isAddTeamOpen, setAddTeamOpen } = useUI();
   const { addTeam } = useTeams();
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   return (
     <>
@@ -27,13 +24,6 @@ function DashboardContent({ children }) {
         open={isAddTeamOpen}
         onOpenChange={setAddTeamOpen}
         addTeam={addTeam}
-        onUpgradeRequired={() => setUpgradeOpen(true)}
-      />
-      <UpgradeDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        title="Upgrade to add more teams"
-        description="Your current plan has reached its team limit. Upgrade to Pro to create up to 5 teams."
       />
 
       <SidebarProvider

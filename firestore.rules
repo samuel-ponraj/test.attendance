@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isBos() {
+      return signedIn() && exists(/databases/$(database)/documents/bosAdmins/$(request.auth.uid));
+    }
+    function isAdmin() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+    }
+    function isTeamAdmin(teamId) {
+      return signedIn() && get(/databases/$(database)/documents/teams/$(teamId)).data.admin.userId == request.auth.uid;
+    }
+    function isTeamMember(teamId) {
+      return signedIn() && exists(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid));
+    }
+    function isTeamManager(teamId) {
+      return isTeamMember(teamId) &&
+        get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.role == "manager";
+    }
+    function canSelfPunch(teamId) {
+      return isTeamMember(teamId) && (
+        get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.attendanceMode == "self" ||
+        (!get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.keys().hasAny(["attendanceMode"]) &&
+          get(/databases/$(database)/documents/teams/$(teamId)).data.defaultAttendanceMode != "managed")
+      );
+    }
+
+    match /bosAdmins/{uid} {
+      allow read: if isBos();
+      allow write: if false;
+    }
+    match /users/{userId} {
+      allow get: if isBos() || (signedIn() && request.auth.uid == userId);
+      allow list: if isBos();
+      allow update: if signedIn() && request.auth.uid == userId &&
+        resource.data.role == "admin" && request.resource.data.role == resource.data.role;
+      allow create, delete: if false;
+    }
+    match /teams/{teamId} {
+      allow get: if isBos() || isTeamAdmin(teamId) || isTeamMember(teamId);
+      // Firestore will require admin queries to include admin.userId == uid.
+      allow list: if isBos() || (isAdmin() && resource.data.admin.userId == request.auth.uid);
+      allow create: if isBos() || (isAdmin() && request.resource.data.admin.userId == request.auth.uid);
+      allow update, delete: if isBos() || isTeamAdmin(teamId);
+
+      match /members/{memberId} {
+        allow read: if isBos() || isTeamAdmin(teamId) || isTeamManager(teamId) || (isTeamMember(teamId) && request.auth.uid == memberId);
+        allow write: if isBos() || isTeamAdmin(teamId);
+        match /{memberSubpath=**} {
+          allow read: if isBos() || isTeamAdmin(teamId) || (isTeamMember(teamId) && request.auth.uid == memberId);
+          allow write: if isBos() || isTeamAdmin(teamId);
+        }
+      }
+      match /attendance/{dateId}/punches/{memberId} {
+        allow read: if isBos() || isTeamAdmin(teamId) || isTeamManager(teamId) ||
+          (isTeamMember(teamId) && (request.auth.uid == memberId || resource.data.id == request.auth.uid));
+        allow create, update: if isBos() || isTeamAdmin(teamId) || isTeamManager(teamId) ||
+          (request.auth.uid == memberId && canSelfPunch(teamId) && request.resource.data.id == request.auth.uid);
+        allow delete: if isBos() || isTeamAdmin(teamId);
+      }
+      match /payments/{paymentId} {
+        allow read: if isBos() || isTeamAdmin(teamId) ||
+          (isTeamMember(teamId) && resource.data.memberId == request.auth.uid);
+        allow write: if isBos() || isTeamAdmin(teamId);
+      }
+      match /salarySlips/{slipId} {
+        allow read: if isBos() || isTeamAdmin(teamId) ||
+          (isTeamMember(teamId) && resource.data.memberId == request.auth.uid);
+        allow write: if isBos() || isTeamAdmin(teamId);
+      }
+      match /{teamSubpath=**} {
+        allow read, write: if isBos() || isTeamAdmin(teamId);
+      }
+    }
+    match /allMembers/{email} {
+      allow get: if isBos() || (signedIn() && resource.data.memberId == request.auth.uid);
+      // Admin collection queries must be restricted to mappings for their team.
+      allow list: if isBos() || (isAdmin() && isTeamAdmin(resource.data.teamId));
+      allow create: if isBos() || isTeamAdmin(request.resource.data.teamId);
+      allow update, delete: if isBos() || isTeamAdmin(resource.data.teamId);
+    }
+    match /pendingMembers/{userId} {
+      allow create, get, update, delete: if isBos() || (signedIn() && request.auth.uid == userId) || isAdmin();
+      allow list: if isBos() || isAdmin();
+    }
+    match /invites/{inviteId} {
+      allow read: if isBos() || signedIn();
+      allow create: if isBos() || isTeamAdmin(request.resource.data.teamId);
+      allow update, delete: if isBos() || isTeamAdmin(resource.data.teamId);
+    }
+    match /{document=**} {
+      allow read, write: if isBos();
+    }
+  }
+}

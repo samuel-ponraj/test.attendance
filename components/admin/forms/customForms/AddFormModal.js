@@ -13,9 +13,6 @@ import { Label } from "@/components/ui/label";
 import { ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTeams } from "../../../../app/context/TeamsContext";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import UpgradeDialog from "@/components/admin/subscription/UpgradeDialog";
 import { toast } from "sonner";
 import FormBuilder from "../../FormBuilder";
 
@@ -24,25 +21,11 @@ export default function AddFormModal({ open, onOpenChange }) {
   const [formTitle, setFormTitle] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
   const [customFields, setCustomFields] = useState([]);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const router = useRouter();
-  const { teams, planLimits } = useTeams();
+  const { teams } = useTeams();
 
   const proceedToBuilder = async () => {
     try {
-      const formsSnapshot = await getDocs(collection(db, "customForms"));
-      const teamIds = new Set(teams.map((team) => team.id));
-      const currentAdminForms = formsSnapshot.docs.filter((formDoc) =>
-        (formDoc.data().teamsUsed || []).some((team) =>
-          teamIds.has(team.teamId),
-        ),
-      );
-
-      if (currentAdminForms.length >= planLimits.customForms) {
-        setUpgradeOpen(true);
-        return;
-      }
-
       const selectedTeamData = teams.find(
         (team) => team.id === selectedTeam,
       );
@@ -145,12 +128,6 @@ export default function AddFormModal({ open, onOpenChange }) {
         </DialogContent>
       </Dialog>
 
-      <UpgradeDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        title="Custom form limit reached"
-        description={`Your current plan allows up to ${planLimits.customForms} custom forms. Upgrade to Pro to create up to 10 custom forms.`}
-      />
     </>
   );
 }

@@ -2,7 +2,7 @@
 
 import  { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { doc, onSnapshot, collection } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 
 const UserContext = createContext(null);
 
@@ -23,7 +23,7 @@ export const UserProvider = ({ children }) => {
       }
 
       if (user.email) {
-        const memberMapRef = doc(db, "allMembers", user.email);
+        const memberMapRef = doc(db, "allMembers", user.email.trim().toLowerCase());
 
         const unsubMap = onSnapshot(memberMapRef, (mapSnap) => {
           if (mapSnap.exists()) {
@@ -59,24 +59,13 @@ export const UserProvider = ({ children }) => {
             );
 
             // 🔹 All Team Members (NEW)
-            const unsubMembers = onSnapshot(
-              collection(db, "teams", teamId, "members"),
-              (snapshot) => {
-                const membersList = snapshot.docs.map((doc) => ({
-                  id: doc.id,
-                  ...doc.data(),
-                }));
-
-                setMembersData(membersList);
-              }
-            );
+            setMembersData([]);
 
             setLoading(false);
 
             return () => {
               unsubMember();
               unsubTeam();
-              unsubMembers();
             };
           } else {
             setLoading(false);

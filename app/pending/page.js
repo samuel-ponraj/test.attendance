@@ -16,7 +16,7 @@ const PendingPage = () => {
   const [checkingInitial, setCheckingInitial] = useState(true);
 
   const redirectForRole = useCallback((role) => {
-    if (role === "platform") router.replace("/platform");
+    if (role === "bos") router.replace("/bos");
     if (role === "admin") router.replace("/admin");
     if (role === "member") router.replace("/member");
   }, [router]);
@@ -80,7 +80,7 @@ const PendingPage = () => {
 
   const handleLogout = async () => {
     await logout();
-    router.replace("/login");
+    router.replace("/");
   };
 
   if (checkingInitial) {

@@ -12,9 +12,7 @@ import { toast, Toaster } from "sonner";
 import { auth } from "@/lib/firebase";
 import {
   EmailAuthProvider,
-  GoogleAuthProvider,
   reauthenticateWithCredential,
-  reauthenticateWithPopup,
   deleteUser,
   updatePassword,
   onAuthStateChanged, sendPasswordResetEmail

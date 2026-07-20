@@ -14,7 +14,7 @@ export default function DashboardClient({ children }) {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
-      if (!user) router.replace("/login");
+      if (!user) router.replace("/");
     });
     return () => unsub();
   }, [router]);

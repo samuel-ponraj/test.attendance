@@ -23,7 +23,7 @@ const Header = () => {
       await logout()
       router.push('/')
     } else {
-      router.push('/login') 
+      router.push('/') 
     }
   }
 

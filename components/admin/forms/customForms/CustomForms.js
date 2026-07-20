@@ -29,7 +29,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import UpgradeDialog from "@/components/admin/subscription/UpgradeDialog";
 
 const CustomForms = () => {
   const [loading, setLoading] = useState(true);
@@ -39,10 +38,7 @@ const CustomForms = () => {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedForm, setSelectedForm] = useState(null);
   const [selectedTeam, setSelectedTeam] = useState("");
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const { teams, planLimits, loading: teamsLoading } = useTeams();
-  const hasReachedCustomFormLimit =
-    customForms.length >= planLimits.customForms;
+  const { teams, loading: teamsLoading } = useTeams();
 
   useEffect(() => {
     const fetchForms = async () => {
@@ -144,14 +140,7 @@ const CustomForms = () => {
             </p>
 
             <Button
-              onClick={() => {
-                if (hasReachedCustomFormLimit) {
-                  setUpgradeOpen(true);
-                  return;
-                }
-
-                setModalOpen(true);
-              }}
+              onClick={() => setModalOpen(true)}
             >
               <Plus />
               Create Form
@@ -162,17 +151,6 @@ const CustomForms = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 px-4 lg:px-6">
-          <div className="col-span-full flex items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">
-              {customForms.length} of {planLimits.customForms} custom forms used
-            </p>
-            {hasReachedCustomFormLimit && (
-              <Button onClick={() => setUpgradeOpen(true)}>
-                Upgrade for more forms
-              </Button>
-            )}
-          </div>
-
           {customForms.map((form) => (
             <Card
               key={form.id}
@@ -285,12 +263,6 @@ const CustomForms = () => {
         </DialogContent>
       </Dialog>
 
-      <UpgradeDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        title="Custom form limit reached"
-        description={`Your current plan allows up to ${planLimits.customForms} custom forms. Upgrade to Pro to create up to 10 custom forms.`}
-      />
     </div>
   );
 };

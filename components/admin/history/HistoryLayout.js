@@ -8,15 +8,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from '@/lib/utils';
 import { CalendarIcon, Clock, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { differenceInCalendarDays, eachDayOfInterval, format, startOfDay, subDays } from "date-fns";
+import { eachDayOfInterval, format } from "date-fns";
 import HistoryTable from "./HistoryTable";
 import { useTeams } from '@/app/context/TeamsContext';
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import UpgradeDialog from "../subscription/UpgradeDialog";
 
 const HistoryLayout = () => {
-  const { teams, planLimits } = useTeams();
+  const { teams } = useTeams();
   const [members, setMembers] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -25,7 +24,6 @@ const HistoryLayout = () => {
   const [selectedMember, setSelectedMember] = useState("all");
   const [startDate, setStartDate] = useState(); 
   const [endDate, setEndDate] = useState();
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   useEffect(() => {
     const fetchTeamData = async () => {
@@ -46,20 +44,6 @@ const HistoryLayout = () => {
         // If no date is selected, we might want to fetch last 7 days or just today
         const start = startDate || new Date();
         const end = endDate || new Date();
-        const rangeDays = differenceInCalendarDays(end, start) + 1;
-        const oldestAllowedDate = startOfDay(
-          subDays(new Date(), planLimits.attendanceHistoryDays - 1)
-        );
-
-        if (
-          startOfDay(start) < oldestAllowedDate ||
-          rangeDays > planLimits.attendanceHistoryDays
-        ) {
-          setAttendanceRecords([]);
-          setUpgradeOpen(true);
-          return;
-        }
-        
         const dateRange = eachDayOfInterval({ start, end });
         
         // 3. Fetch punches for each date in the range (Direct Path)
@@ -71,7 +55,11 @@ const HistoryLayout = () => {
 
           const memberMap = {};
           punchesSnap.forEach(doc => {
-            memberMap[doc.id] = { id: doc.id, ...doc.data() };
+            const punch = doc.data();
+            memberMap[doc.id] = {
+              ...punch,
+              id: punch.memberId || punch.id || doc.id,
+            };
           });
 
           return { dateKey, memberMap };
@@ -88,29 +76,43 @@ const HistoryLayout = () => {
     };
 
     fetchTeamData();
-  }, [selectedTeam, startDate, endDate, planLimits.attendanceHistoryDays]); 
+  }, [selectedTeam, startDate, endDate]); 
 
   const filteredAttendance = useMemo(() => {
     let result = [];
-    const currentMemberIds = new Set(members.map(m => m.id));
+    const membersById = new Map(members.map((member) => [member.id, member]));
 
     attendanceRecords.forEach(day => {
       Object.values(day.memberMap).forEach(record => {
-        if (selectedMember === "all" || record.id === selectedMember) {
+        const memberId = record.memberId || record.id;
+        const member = membersById.get(memberId);
+
+        if (selectedMember === "all" || memberId === selectedMember) {
           result.push({
             ...record,
+            id: memberId,
             dateDisplay: day.dateKey,
 
             // ✅ Use snapshot name stored in punches
-            firstName: record.firstName || "-",
-            lastName: record.lastName || "-",
+            firstName: record.firstName || member?.firstName || "",
+            lastName: record.lastName || member?.lastName || "",
+            memberName:
+              record.memberName ||
+              member?.memberName ||
+              member?.displayName ||
+              [record.firstName || member?.firstName, record.lastName || member?.lastName]
+                .filter(Boolean)
+                .join(" ") ||
+              record.email ||
+              member?.email ||
+              "-",
 
             markedAtDate: record.markedAt?.toDate
               ? record.markedAt.toDate()
               : new Date(),
 
             // Membership status can still depend on members collection
-            membershipStatus: currentMemberIds.has(record.id)
+            membershipStatus: member
               ? "Active"
               : "Removed"
           });
@@ -194,10 +196,7 @@ const HistoryLayout = () => {
                     mode="single"
                     selected={startDate}
                     onSelect={setStartDate}
-                    disabled={(date) =>
-                      date > new Date() ||
-                      date < subDays(new Date(), planLimits.attendanceHistoryDays - 1)
-                    }
+                    disabled={(date) => date > new Date()}
                   />
                 </PopoverContent>
               </Popover>
@@ -217,10 +216,7 @@ const HistoryLayout = () => {
                     mode="single"
                     selected={endDate}
                     onSelect={setEndDate}
-                    disabled={(date) =>
-                      date > new Date() ||
-                      date < subDays(new Date(), planLimits.attendanceHistoryDays - 1)
-                    }
+                    disabled={(date) => date > new Date()}
                   />
                 </PopoverContent>
               </Popover>
@@ -241,15 +237,8 @@ const HistoryLayout = () => {
         <HistoryTable
           attendance={filteredAttendance}
           team={teams?.find(t => t.id === selectedTeam) || { name: "All Teams" }}
-          canExportPdf={planLimits.canExportAttendancePdf}
         />
       )}
-      <UpgradeDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        title="Upgrade for longer history"
-        description={`Your current plan includes ${planLimits.attendanceHistoryDays} days of attendance history. Upgrade to Pro for 1-year attendance history and PDF exports.`}
-      />
     </div>
   );
 };

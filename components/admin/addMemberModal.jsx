@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { doc, collection, Timestamp, increment, runTransaction, getDoc } from "firebase/firestore";
+import { doc, collection, Timestamp, increment, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { nanoid } from "nanoid";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -15,9 +15,6 @@ import { toast } from "sonner";
 import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { useRouter } from "next/navigation";
-import { useTeams } from "@/app/context/TeamsContext";
-import { getPlan, PLAN_IDS } from "@/lib/subscriptionPlans";
-import UpgradeDialog from "./subscription/UpgradeDialog";
 
 // Generate country code options
 const countryCodeOptions = getCountries().map((iso) => ({
@@ -30,13 +27,12 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
+  const [attendanceMode, setAttendanceMode] = useState("inherit");
   const [selectedIso, setSelectedIso] = useState("IN"); 
   const [phoneNumber, setPhoneNumber] = useState("");
   const [dynamicValues, setDynamicValues] = useState({});
   const [loading, setLoading] = useState(false);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const router = useRouter()
-  const { subscription, planLimits } = useTeams();
   const fields = team?.customFields || [];
 
   const countryCode = useMemo(() => {
@@ -50,6 +46,7 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
       setLastName("");
       setEmail("");
       setRole("member")
+      setAttendanceMode("inherit");
       setSelectedIso("IN"); 
       setPhoneNumber("");
       setDynamicValues({});
@@ -82,28 +79,8 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
   setLoading(true);
 
   try {
-    const currentPlan = getPlan(subscription || PLAN_IDS.BASIC);
-    const memberLimit = currentPlan.limits.membersPerTeam;
-    const currentMembers = team?.totalMembers || 0;
-
-    if (currentMembers >= memberLimit) {
-      setUpgradeOpen(true);
-      return;
-    }
-
     const teamRef = doc(db, "teams", team.id);
     const userRef = doc(db, "users", team.admin.userId);
-    const [teamSnap, userSnap] = await Promise.all([
-      getDoc(teamRef),
-      getDoc(userRef),
-    ]);
-    const latestTotalMembers = teamSnap.data()?.totalMembers || 0;
-    const latestPlan = getPlan(userSnap.data()?.subscription || PLAN_IDS.BASIC);
-
-    if (latestTotalMembers >= latestPlan.limits.membersPerTeam) {
-      setUpgradeOpen(true);
-      return;
-    }
 
     const functions = getFunctions();
     const createAccount = httpsCallable(functions, 'createMemberAccount');
@@ -126,6 +103,7 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
       lastName: lastName.trim(),
       email: emailLower,
       role,
+      ...(attendanceMode === "inherit" ? {} : { attendanceMode }),
       contact: combinedContact,
       customData: dynamicValues,
       createdAt: Timestamp.now(),
@@ -148,19 +126,6 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
 
     // 3. Run Transaction for Firestore Cleanup
     await runTransaction(db, async (transaction) => {
-      const latestTeamSnap = await transaction.get(teamRef);
-      const latestUserSnap = await transaction.get(userRef);
-      const transactionPlan = getPlan(
-        latestUserSnap.data()?.subscription || PLAN_IDS.BASIC
-      );
-      const transactionTotalMembers = latestTeamSnap.data()?.totalMembers || 0;
-
-      if (transactionTotalMembers >= transactionPlan.limits.membersPerTeam) {
-        throw new Error(
-          `Your ${transactionPlan.name} plan allows up to ${transactionPlan.limits.membersPerTeam} members per team.`
-        );
-      }
-
       transaction.set(memberRef, member);
       transaction.update(teamRef, { totalMembers: increment(1) });
       transaction.update(userRef, { memberCount: increment(1) });
@@ -180,11 +145,7 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
     }, 300);
   } catch (err) {
     console.error("Failed to add member:", err);
-    if (/members per team|upgrade|limit/i.test(err?.message || "")) {
-      setUpgradeOpen(true);
-    } else {
-      toast.error(err.message || "Failed to add member.");
-    }
+    toast.error(err.message || "Failed to add member.");
   } finally {
     setLoading(false);
   }
@@ -213,7 +174,7 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
               </div>
             </div>
 
-            <div className="pb-1">
+          <div className="pb-1">
               <Label className="pb-2" htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="e.g. john@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
@@ -264,6 +225,17 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
               </div>
             </RadioGroup>
           </div>
+          <div className="space-y-2">
+            <Label>Attendance method</Label>
+            <Select value={attendanceMode} onValueChange={setAttendanceMode}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="inherit">Use team default</SelectItem>
+                <SelectItem value="self">Self attendance</SelectItem>
+                <SelectItem value="managed">Managed attendance</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           </div>
 
           <DialogFooter className="p-4 border-t flex-row gap-2 justify-end bg-background">
@@ -273,12 +245,6 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
         </form>
       </DialogContent>
     </Dialog>
-    <UpgradeDialog
-      open={upgradeOpen}
-      onOpenChange={setUpgradeOpen}
-      title="Upgrade to add more members"
-      description={`Your current plan allows up to ${planLimits.membersPerTeam} members per team. Upgrade to Pro to add up to 50 members per team.`}
-    />
     </>
   );
 }

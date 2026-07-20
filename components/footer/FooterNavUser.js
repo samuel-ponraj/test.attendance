@@ -13,15 +13,11 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar"
 import { IconLogout, IconUserCircle } from "@tabler/icons-react"
-import { signOut } from "firebase/auth"
-import { auth } from "@/lib/firebase"
 import { useAuth } from "@/app/context/AuthContext"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 
 export function FooterUserNav() {
-  const { user } = useAuth()
-  const router = useRouter()
+  const { user, logout } = useAuth()
 
   if (!user) return null
 
@@ -35,8 +31,8 @@ export function FooterUserNav() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth)
-      router.push("/")
+      await logout()
+      window.location.assign("/")
     } catch (err) {
       console.error("Logout failed:", err)
     }

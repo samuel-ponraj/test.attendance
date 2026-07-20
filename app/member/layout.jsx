@@ -112,7 +112,6 @@ export default function MemberLayout({ children }) {
 			<MemberDashboardGate>
 			<AttendanceProvider>
 				<TeamsProvider>
-				
 				<UserProvider>
 				
 					<DashboardContent>{children}</DashboardContent>

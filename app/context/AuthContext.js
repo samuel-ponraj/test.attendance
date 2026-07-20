@@ -1,14 +1,10 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { 
   onAuthStateChanged, 
   signOut as firebaseSignOut, 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signInWithPopup, 
-  GoogleAuthProvider,
-  updateProfile 
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -18,17 +14,17 @@ const AuthContext = createContext({
   userData: null,
   loading: true,
   login: () => Promise.resolve(),
-  signup: () => Promise.resolve(),
   logout: () => Promise.resolve(),
-  signInWithGoogle: () => Promise.resolve(),
 });
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const sessionSyncControllerRef = useRef(null);
+  const loggingOutRef = useRef(false);
 
-  const syncSessionCookies = async (firebaseUser) => {
+  const syncSessionCookies = async (firebaseUser, signal) => {
     const token = await firebaseUser.getIdToken();
     const response = await fetch("/api/auth/session", {
       method: "POST",
@@ -37,6 +33,7 @@ export const AuthProvider = ({ children }) => {
       },
       body: JSON.stringify({ token }),
       credentials: "include",
+      signal,
     });
 
     const session = await response.json();
@@ -52,16 +49,23 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true); 
       if (firebaseUser) {
+        if (loggingOutRef.current) return;
         setUser(firebaseUser);
 
         try {
-          const session = await syncSessionCookies(firebaseUser);
+          const controller = new AbortController();
+          sessionSyncControllerRef.current = controller;
+          const session = await syncSessionCookies(firebaseUser, controller.signal);
+
+          if (loggingOutRef.current || auth.currentUser?.uid !== firebaseUser.uid) {
+            return;
+          }
           const fullName = firebaseUser.displayName || "";
           const [authFirstName = "", authLastName = ""] = fullName.split(" ");
 
-          if (session.role === "platform") {
+          if (session.role === "bos") {
             setUserData({
-              role: "platform",
+              role: "bos",
               firstName: authFirstName,
               lastName: authLastName,
               email: firebaseUser.email,
@@ -100,8 +104,12 @@ export const AuthProvider = ({ children }) => {
             }
           }
         } catch (error) {
+          if (loggingOutRef.current) return;
+          if (error.name === "AbortError") return;
           console.error("Error fetching user role:", error);
           setUserData({ role: "pending", error: error.message });
+        } finally {
+          sessionSyncControllerRef.current = null;
         }
       } else {
         setUser(null);
@@ -117,35 +125,28 @@ export const AuthProvider = ({ children }) => {
     return signInWithEmailAndPassword(auth, email, password);
   };
 
-  const signup = async (email, password, { firstName, lastName } = {}) => {
-    const res = await createUserWithEmailAndPassword(auth, email, password);
-    if (firstName && lastName) {
-      await updateProfile(res.user, {
-        displayName: `${firstName} ${lastName}`
-      });
-    }
-    return res;
-  };
-
   const logout = async () => {
-    await fetch("/api/auth/session", {
+    loggingOutRef.current = true;
+    sessionSyncControllerRef.current?.abort();
+
+    await firebaseSignOut(auth);
+
+    const response = await fetch("/api/auth/session", {
       method: "DELETE",
       credentials: "include",
     });
-    await firebaseSignOut(auth);
-  };
 
-
-  const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      return result.user; 
-    } catch (error) {
-      console.error("Google Popup Error:", error);
-      throw error;
+    if (!response.ok) {
+      loggingOutRef.current = false;
+      throw new Error("Failed to clear session");
     }
+
+    setUser(null);
+    setUserData(null);
+    setLoading(false);
+    loggingOutRef.current = false;
   };
+
 
   return (
     <AuthContext.Provider value={{ 
@@ -153,9 +154,7 @@ export const AuthProvider = ({ children }) => {
       userData, 
       loading, 
       login, 
-      signup, 
-      logout, 
-      signInWithGoogle 
+      logout,
     }}>
       {children}
     </AuthContext.Provider>

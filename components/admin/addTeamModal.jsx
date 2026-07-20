@@ -17,7 +17,6 @@ export default function AddTeamModal({
   open,
   onOpenChange,
   addTeam,
-  onUpgradeRequired,
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -44,11 +43,7 @@ export default function AddTeamModal({
       onOpenChange(false);
     } catch (err) {
       console.error(err);
-      if (err?.code === "plan-limit" || /upgrade|limit/i.test(err?.message || "")) {
-        onUpgradeRequired?.();
-      } else {
-        toast.error(err?.message || "Failed to create team.");
-      }
+      toast.error(err?.message || "Failed to create team.");
     } finally {
       setLoading(false);
     }

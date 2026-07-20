@@ -23,6 +23,7 @@ export default function Members({
   updateAttendance,
   handleMemberRemoved,
   setModalOpen,
+  currentUserId,
 }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -133,6 +134,7 @@ export default function Members({
                 attendance={attendance}
                 onUpdateAttendance={updateAttendance}
                 onRemove={handleMemberRemoved}
+                isCurrentUser={member.id === currentUserId}
               />
             ))}
           </div>

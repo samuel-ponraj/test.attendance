@@ -9,15 +9,13 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
-import UpgradeDialog from "../subscription/UpgradeDialog";
 
-const HistoryTable = ({ attendance = [], team, canExportPdf = false }) => {
+const HistoryTable = ({ attendance = [], team }) => {
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [attendanceFilter, setAttendanceFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const rows = attendance.filter((row) => {
   const attendanceMatch =
     attendanceFilter === "all" || row.status === attendanceFilter;
@@ -38,6 +36,12 @@ const HistoryTable = ({ attendance = [], team, canExportPdf = false }) => {
 
   const capitalize = (text) =>
     text ? text.charAt(0).toUpperCase() + text.slice(1) : "-";
+
+  const getMemberName = (row) =>
+    row.memberName ||
+    [row.firstName, row.lastName].filter(Boolean).join(" ") ||
+    row.email ||
+    "-";
 
   const formatTime = (value) => {
   if (!value) return "-";
@@ -66,11 +70,6 @@ const HistoryTable = ({ attendance = [], team, canExportPdf = false }) => {
 };
 
   const handleExportPDF = () => {
-    if (!canExportPdf) {
-      setUpgradeOpen(true);
-      return;
-    }
-
     const doc = new jsPDF({ orientation: "landscape", unit: "pt" });
     doc.setFontSize(14);
     doc.text("Attendance History", 40, 30);
@@ -80,7 +79,7 @@ const HistoryTable = ({ attendance = [], team, canExportPdf = false }) => {
       head: [["Date", "Member", "Team", "Attendance", "Punch In", "Punch Out", "Entry Type", "Status"]],
       body: rows.map(row => [
         row.dateDisplay || "-",
-        `${row.firstName || ""} ${row.lastName || ""}`.trim() || "-",
+        getMemberName(row),
         team?.name || "-",
         capitalize(row.status),
         row.punchIn ? formatTime(row.punchIn, "hh:mm a") : "-",
@@ -160,7 +159,7 @@ const HistoryTable = ({ attendance = [], team, canExportPdf = false }) => {
                 currentRows.map((row, index) => (
                   <tr key={index} className="border-t">
                     <td className="p-3 whitespace-nowrap">{row.dateDisplay || "-"}</td>
-                    <td className="p-3 whitespace-nowrap">{row.firstName} {row.lastName}</td>
+                    <td className="p-3 whitespace-nowrap">{getMemberName(row)}</td>
                     <td className="p-3 whitespace-nowrap">{team?.name || "-"}</td>
                     <td className="p-3 whitespace-nowrap">
                       <span 
@@ -278,12 +277,6 @@ const HistoryTable = ({ attendance = [], team, canExportPdf = false }) => {
           </div>
         </div>
       </CardContent>
-      <UpgradeDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        title="Upgrade to export PDF reports"
-        description="Attendance Report Export (PDF) is available on the Pro plan."
-      />
     </Card>
   );
 };

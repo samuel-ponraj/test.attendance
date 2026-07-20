@@ -23,6 +23,7 @@ const MemberRow = ({
   attendance = {},
   selectedDate = new Date(),
   onUpdateAttendance,
+  isCurrentUser = false,
 }) => {
 
   const dateKey = getDateKey(selectedDate);
@@ -95,14 +96,17 @@ const getRoleStyle = (status) => {
           <span>
             <Badge variant="outline" className={`capitalize ml-2 text-[12px] ${getRoleStyle(member.role)}`}>
               {member.role}
-            </Badge></span>
+            </Badge>
+            {isCurrentUser && (
+              <Badge variant="secondary" className="ml-2 text-[11px]">You</Badge>
+            )}</span>
         </p>
         <p className="text-sm text-muted-foreground">{member.email}</p>
       </div>
     </div>
 
     {/* Buttons Container */}
-    <div className="flex items-center justify-center sm:justify-end gap-2 w-full sm:w-auto">
+    {!isCurrentUser && <div className="flex items-center justify-center sm:justify-end gap-2 w-full sm:w-auto">
       <div className="flex gap-2">
           <Button
             variant={todayStatus === "present" ? "default" : "outline"}
@@ -151,7 +155,7 @@ const getRoleStyle = (status) => {
             Halfday
           </Button>
         </div>
-    </div>
+    </div>}
   </CardContent>
 </Card>
 

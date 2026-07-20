@@ -57,7 +57,7 @@ const HomePage = () => {
     if (loading) return;
 
     if (!user) {
-      router.push("/login");
+      router.push("/");
       return;
     }
 

@@ -1,6 +1,6 @@
 'use client'
 import { createContext, useContext, useEffect, useState } from "react";
-import { collection, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "./AuthContext";
 
@@ -12,61 +12,65 @@ export const MembersProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user?.email) return;
+    if (!user?.email) {
+      // Clear data immediately when authentication is removed.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMembers([]);
+      setLoading(false);
+      return;
+    }
 
-    const email = user.email.toLowerCase();
+    setLoading(true);
+    let unsubscribeMember = null;
+    const email = user.email.trim().toLowerCase();
 
-    // 🔥 Listen to allMembers mapping first
+    // A member reads one email mapping and then only their own member document.
     const unsubscribeMapping = onSnapshot(
-      collection(db, "allMembers"),
-      async (snapshot) => {
-        const mappings = snapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(m => m.email === email);
+      doc(db, "allMembers", email),
+      (mappingSnapshot) => {
+        unsubscribeMember?.();
 
-        if (!mappings.length) {
+        if (!mappingSnapshot.exists()) {
           setMembers([]);
           setLoading(false);
           return;
         }
 
-        const unsubscribers = [];
+        const { teamId, memberId } = mappingSnapshot.data();
+        if (!teamId || memberId !== user.uid) {
+          setMembers([]);
+          setLoading(false);
+          return;
+        }
 
-        const allMembersData = [];
-
-        mappings.forEach(mapping => {
-          const memberRef = collection(
-            db,
-            "teams",
-            mapping.teamId,
-            "members"
-          );
-
-          const unsubscribeMember = onSnapshot(memberRef, (memberSnap) => {
-            memberSnap.docs.forEach(doc => {
-              if (doc.id === mapping.memberId) {
-                allMembersData.push({
-                  id: doc.id,
-                  teamId: mapping.teamId,
-                  ...doc.data(),
-                });
-              }
-            });
-
-            setMembers([...allMembersData]);
+        unsubscribeMember = onSnapshot(
+          doc(db, "teams", teamId, "members", memberId),
+          (memberSnapshot) => {
+            setMembers(memberSnapshot.exists() ? [{
+              id: memberSnapshot.id,
+              teamId,
+              ...memberSnapshot.data(),
+            }] : []);
             setLoading(false);
-          });
-
-          unsubscribers.push(unsubscribeMember);
-        });
-
-        return () => {
-          unsubscribers.forEach(unsub => unsub());
-        };
+          },
+          (error) => {
+            console.error("Member document could not be loaded:", error);
+            setMembers([]);
+            setLoading(false);
+          }
+        );
+      },
+      (error) => {
+        console.error("Member mapping could not be loaded:", error);
+        setMembers([]);
+        setLoading(false);
       }
     );
 
-    return () => unsubscribeMapping();
+    return () => {
+      unsubscribeMapping();
+      unsubscribeMember?.();
+    };
   }, [user]);
 
   return (

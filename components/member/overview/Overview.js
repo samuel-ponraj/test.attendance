@@ -5,10 +5,9 @@ import AttendancePieChart from "./AttendancePieChart";
 import WeeklyBarChart from "./WeeklyBarChart";
 import { useAttendance } from "../../../app/context/attendanceContext";
 import { useAuth } from "../../../app/context/AuthContext";
-import { useMemo } from "react";
 
 const Overview = () => {
-  const { punchIn, punchOut, todayPunch, monthlyLogs, getStats, loading } = useAttendance();
+  const { punchIn, punchOut, todayPunch, monthlyLogs, getStats, loading, attendanceMode } = useAttendance();
   const { userData } = useAuth();
 
   const fullName = `${userData?.firstName || ""} ${userData?.lastName || ""}`.trim();
@@ -29,7 +28,7 @@ const Overview = () => {
   const rawDiff = punchInTime ? ((punchOutTime || new Date()) - punchInTime) : 0;
   const totalHours = Math.max(0, rawDiff / 3600000);
 
-  const stats = useMemo(() => getStats(), [monthlyLogs]);
+  const stats = getStats();
 
   return (
     <div className="space-y-6 px-4 pb-4 lg:px-6">
@@ -45,6 +44,8 @@ const Overview = () => {
             totalHours={totalHours}
             fullName={fullName}
             getGreeting={getGreeting}
+            attendanceMode={attendanceMode}
+            attendanceStatus={todayPunch?.status || null}
           />
           <StatsLogsCard stats={stats} monthlyLogs={monthlyLogs} />
         </div>

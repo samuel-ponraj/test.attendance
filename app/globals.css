@@ -208,3 +208,19 @@ a {
 button{
   cursor: pointer;
 }
+
+/* Keep browser/password-manager autofill consistent with the dark login form. */
+.login-autofill:-webkit-autofill,
+.login-autofill:-webkit-autofill:hover,
+.login-autofill:-webkit-autofill:focus,
+.login-autofill:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+  box-shadow: 0 0 0 1000px #020617 inset;
+  transition: background-color 9999s ease-out 0s;
+}
+
+.login-autofill:autofill {
+  color: #ffffff;
+  background-color: #020617;
+}

@@ -24,7 +24,7 @@ function ResetPasswordContent() {
   useEffect(() => {
     if (!oobCode) {
       toast.error("Invalid or expired reset link.");
-      router.push("/login");
+      router.push("/");
       return;
     }
 
@@ -35,7 +35,7 @@ function ResetPasswordContent() {
       })
       .catch(() => {
         toast.error("This link has expired or has already been used.");
-        router.push("/login");
+        router.push("/");
       });
   }, [oobCode, router]);
 
@@ -50,7 +50,7 @@ function ResetPasswordContent() {
     try {
       await confirmPasswordReset(auth, oobCode, newPassword);
       toast.success("Password updated! Redirecting to login...");
-      setTimeout(() => router.push("/login"), 2000);
+      setTimeout(() => router.push("/"), 2000);
     } catch (err) {
       toast.error(err.message || "Failed to reset password.");
     } finally {

@@ -9,7 +9,7 @@ const steps = [
     icon: UserPlus,
     title: "Create Your Team",
     description:
-      "Sign up and create your first team in seconds. Add team details and schedule preferences.",
+      "Sign in and create your first team in seconds. Add team details and schedule preferences.",
   },
   {
     number: "02",

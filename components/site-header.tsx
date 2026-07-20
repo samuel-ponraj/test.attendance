@@ -13,8 +13,7 @@ import AddFormModal from "./admin/forms/customForms/AddFormModal"
 import Notifications from "@/lib/Notifications"
 import { useMembers } from "@/app/context/MembersContext"
 import { db } from "@/lib/firebase"
-import { collection, doc, getDocs, onSnapshot } from "firebase/firestore"
-import UpgradeDialog from "./admin/subscription/UpgradeDialog"
+import { doc, onSnapshot } from "firebase/firestore"
 
 
 const ROUTE_CONFIG: Record<
@@ -27,6 +26,13 @@ const ROUTE_CONFIG: Record<
   }[]
 > = {
   admin: [
+    {
+      path: "/admin/teams/",
+      title: "Team Settings",
+      description: "Attendance and schedule settings",
+      match: (pathname: string) =>
+        /^\/admin\/teams\/[^/]+\/schedule$/.test(pathname),
+    },
     {
       path: "/admin/teams/",
       title: "Payments",
@@ -62,16 +68,6 @@ const ROUTE_CONFIG: Record<
       description: "Review payments across all teams",
     },
     {
-      path: "/admin/subscriptions",
-      title: "Subscriptions",
-      description: "Manage plans, invoices, and recurring billing",
-    },
-    {
-      path: "/admin/invite",
-      title: "Invite Members",
-      description: "Send email invitations to join your teams",
-    },
-    {
       path: "/admin/history",
       title: "Attendance History",
       description: "View detailed attendance records",
@@ -83,12 +79,17 @@ const ROUTE_CONFIG: Record<
     },
     {
       path: "/admin",
-      title: "Dashboard",
+      title: "Overview",
       description: "Manage teams and track attendance",
     },
   ],
 
   member: [
+    {
+      path: "/member/members",
+      title: "Team Members",
+      description: "Mark and review team attendance",
+    },
     {
       path: "/member/attendance",
       title: "My Attendance",
@@ -119,7 +120,7 @@ const ROUTE_CONFIG: Record<
 
 const DEFAULT_ROUTE = {
   path: "/admin",
-  title: "Dashboard",
+  title: "Overview",
   description: "Manage teams and track attendance",
 }
 
@@ -132,10 +133,6 @@ type TeamsContextValue = {
     description?: string
     ownerName: string
   }) => Promise<unknown>
-  hasReachedTeamLimit: boolean
-  planLimits: {
-    customForms: number
-  }
 }
 
 
@@ -191,28 +188,9 @@ export function SiteHeader() {
       : currentRouteBase
 
 
-  const { teams, addTeam, hasReachedTeamLimit, planLimits  } =
+  const { addTeam } =
     useTeams() as TeamsContextValue;
   const [modalOpen, setModalOpen] = useState(false);
-  const [showLimitDialog, setShowLimitDialog] = useState(false);
-  const [showCustomFormsDialog, setShowCustomFormsDialog] = useState(false);
-
-  const openCreateForm = async () => {
-    const formsSnapshot = await getDocs(collection(db, "customForms"));
-    const teamIds = new Set(teams.map((team) => team.id));
-    const currentAdminForms = formsSnapshot.docs.filter((formDoc) =>
-      (formDoc.data().teamsUsed || []).some((team: { teamId: string }) =>
-        teamIds.has(team.teamId),
-      ),
-    );
-
-    if (currentAdminForms.length >= planLimits.customForms) {
-      setShowCustomFormsDialog(true);
-      return;
-    }
-
-    setModalOpen(true);
-  };
 
 
   return (
@@ -248,15 +226,11 @@ export function SiteHeader() {
                         normalizedPath === "/admin" ||
                         normalizedPath === "/admin/teams"
                       ) {
-                        if (hasReachedTeamLimit) {
-                          setShowLimitDialog(true);
-                        } else {
-                          setModalOpen(true);
-                        }
+                        setModalOpen(true);
                       }
 
                       if (normalizedPath === "/admin/custom-forms") {
-                        openCreateForm();
+                        setModalOpen(true);
                       }
                     }}
                   
@@ -277,7 +251,6 @@ export function SiteHeader() {
                       open={modalOpen}
                       onOpenChange={setModalOpen}
                       addTeam={addTeam}
-                      onUpgradeRequired={() => setShowLimitDialog(true)}
                     />
                   )}
                 </>
@@ -289,19 +262,6 @@ export function SiteHeader() {
           <ModeToggle />
 
 
-          <UpgradeDialog
-            open={showLimitDialog}
-            onOpenChange={setShowLimitDialog}
-            title="Upgrade to add more teams"
-            description="Your current plan has reached its team limit. Upgrade to Pro to create up to 5 teams."
-          />
-
-          <UpgradeDialog
-            open={showCustomFormsDialog}
-            onOpenChange={setShowCustomFormsDialog}
-            title="Custom form limit reached"
-            description={`Your current plan allows up to ${planLimits.customForms} custom forms. Upgrade to Pro to create up to 10 custom forms.`}
-          />
         </div>
       </div>
     </header>

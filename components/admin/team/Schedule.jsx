@@ -4,12 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Clock, Coffee, Timer, Shield, Save, ArrowLeft } from "lucide-react";
+import { CalendarDays, Clock, Coffee, Timer, Shield, Save, ArrowLeft, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/lib/firebase"; 
 import { doc, updateDoc, onSnapshot } from "firebase/firestore";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -28,12 +27,9 @@ const Schedule = ({slug}) => {
   const teamId = slug;
 
   const [schedule, setSchedule] = useState(defaultSchedule);
+  const [defaultAttendanceMode, setDefaultAttendanceMode] = useState("self");
   const [loading, setLoading] = useState(false);
   const router = useRouter()
-
-  if (!schedule) {
-  return <div className="p-4">Loading schedule...</div>;
-}
 
 useEffect(() => {
   if (!teamId) return;
@@ -42,7 +38,9 @@ useEffect(() => {
 
   const unsubscribe = onSnapshot(teamRef, (snap) => {
     if (snap.exists()) {
-      const data = snap.data().schedule;
+      const teamData = snap.data();
+      const data = teamData.schedule;
+      setDefaultAttendanceMode(teamData.defaultAttendanceMode === "managed" ? "managed" : "self");
 
       if (data) {
         setSchedule({
@@ -105,10 +103,8 @@ useEffect(() => {
         schedule.breakDurationMinutes
       );
 
-      const { totalHrs, ...cleanSchedule } = schedule;
-
       const updatedSchedule = {
-        ...cleanSchedule,
+        ...schedule,
        totalShiftHours: totalShiftHours, 
       };
 
@@ -117,12 +113,13 @@ useEffect(() => {
       // 3. Update Firestore
       await updateDoc(teamRef, {
         schedule: updatedSchedule,
+        defaultAttendanceMode,
       });
 
       setSchedule(updatedSchedule);
       console.log("Schedule before save:", schedule);
-      toast.success("Schedule synced!", {
-        description: `Team settings updated. Net shift: ${totalShiftHours}h`,
+      toast.success("Team settings saved!", {
+        description: `Attendance and schedule settings updated. Net shift: ${totalShiftHours}h`,
       });
     } catch (error) {
       console.error("Error updating schedule:", error);
@@ -136,48 +133,39 @@ useEffect(() => {
 
   return (
     <div className="space-y-4 mb-4">
-    <button
+    <div className="flex items-center justify-between gap-3">
+      <button
           onClick={() => router.back()}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="w-4 h-4" /> Back
-        </button>
+      </button>
+      <Button onClick={handleSave} disabled={loading}>
+        <Save className="w-4 h-4" />
+        {loading ? "Saving..." : "Save Settings"}
+      </Button>
+    </div>
 
 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* Summary & Save */}
+      {/* Attendance Method */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <UserCheck className="w-4 h-4 text-primary" /> Attendance Method
+          </CardTitle>
+          <CardDescription>Default method for members who do not have an individual override</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          {[{ value: "self", title: "Self attendance", text: "Members punch in and out themselves." }, { value: "managed", title: "Managed attendance", text: "An admin or manager marks attendance." }].map((option) => (
+            <button key={option.value} type="button" onClick={() => setDefaultAttendanceMode(option.value)}
+              className={`rounded-xl border p-4 text-left transition ${defaultAttendanceMode === option.value ? "border-primary bg-primary/10" : "hover:bg-muted/50"}`}>
+              <span className="block font-medium">{option.title}</span>
+              <span className="mt-1 block text-xs text-muted-foreground">{option.text}</span>
+            </button>
+          ))}
+        </CardContent>
+      </Card>
 
-      
-<Card className="border-primary/20 bg-primary/5 flex  justify-center ">
-  <CardHeader >
-    <CardTitle className="text-base text-center font-bold">Quick summary of the configured schedule</CardTitle>
-  </CardHeader>
-
-  <CardContent className="pt-0 pb-0 flex flex-col items-center justify-center">
-  <div className="flex flex-wrap gap-2 mb-6">
-    <Badge variant="outline">
-      {schedule.workingDays.length} work days
-    </Badge>
-
-    <Badge variant="outline">
-      {schedule.shiftStartTime} - {schedule.shiftEndTime}
-    </Badge>
-
-    <Badge variant="outline">
-      {shiftHours.toFixed(1)}h net/day
-    </Badge>
-
-    <Badge variant="outline">
-      {schedule.breakDurationMinutes}min break
-    </Badge>
-  </div>
-
-  <Button onClick={handleSave} className="" disabled={loading}>
-    <Save className="w-4 h-4" />
-    {loading ? "Saving..." : "Save Schedule"}
-  </Button>
-</CardContent>
-</Card>
-            
       {/* Working Days */}
       <Card>
         <CardHeader className="pb-3">
@@ -319,7 +307,7 @@ useEffect(() => {
             <Shield className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">
               Members arriving within {schedule.graceMinutes} min after shift
-              start won't be flagged as late.
+              start won&apos;t be flagged as late.
             </span>
           </div>
         </CardContent>

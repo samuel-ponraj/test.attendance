@@ -54,7 +54,11 @@ const InvoiceForm = ({ teamId, memberId, period }) => {
   const memberName =
     `${member?.firstName || ""} ${member?.lastName || ""}`.trim();
   const normalizedContact = (member?.contact || "").replace(/\D/g, "");
-  const paymentLinkText = razorpayLink || "Generating payment link...";
+  const paymentLinkText =
+    razorpayLink ||
+    (paymentLinkLoading
+      ? "Generating payment link..."
+      : "No payment link generated yet");
   const paymentLinkAmount = Math.round(totalAmount * 100);
   const paymentLinkReferenceId = (() => {
     const compact = (value, length) =>
@@ -154,7 +158,6 @@ Kingz Digital Solutions`;
         if (
           !forceNew &&
           storedPaymentLink?.shortUrl &&
-          storedPaymentLink?.referenceId === paymentLinkReferenceId &&
           Number(storedPaymentLink?.amount || 0) === paymentLinkAmount &&
           !["paid", "cancelled", "expired"].includes(storedPaymentLink?.status)
         ) {
@@ -302,7 +305,6 @@ Kingz Digital Solutions`;
 
     if (
       storedPaymentLink?.shortUrl &&
-      storedPaymentLink?.referenceId === paymentLinkReferenceId &&
       Number(storedPaymentLink?.amount || 0) === paymentLinkAmount &&
       !["paid", "cancelled", "expired"].includes(storedPaymentLink?.status)
     ) {
@@ -314,7 +316,6 @@ Kingz Digital Solutions`;
   }, [
     billingPeriod?.razorpayPaymentLink,
     paymentLinkAmount,
-    paymentLinkReferenceId,
     paymentMode,
   ]);
 
@@ -662,18 +663,22 @@ Kingz Digital Solutions`;
                   placeholder="No payment link generated yet"
                   className="font-mono text-xs"
                 />
-                {!razorpayLink && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={paymentLinkLoading || !member || totalAmount <= 0}
-                    onClick={handleRegeneratePaymentLink}
-                    className="shrink-0 gap-2"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Generate
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={paymentLinkLoading || !member || totalAmount <= 0}
+                  onClick={handleRegeneratePaymentLink}
+                  className="shrink-0 gap-2"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${paymentLinkLoading ? "animate-spin" : ""}`}
+                  />
+                  {paymentLinkLoading
+                    ? "Generating..."
+                    : razorpayLink
+                      ? "Regenerate"
+                      : "Generate"}
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -687,20 +692,6 @@ Kingz Digital Solutions`;
                   onClick={handleCopyPaymentLink}
                 >
                   <Copy className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  disabled={paymentLinkLoading || !member || totalAmount <= 0}
-                  onClick={handleRegeneratePaymentLink}
-                  title={
-                    razorpayLink
-                      ? "Regenerate payment link"
-                      : "Generate payment link"
-                  }
-                >
-                  <RefreshCw className="h-4 w-4" />
                 </Button>
                 <Button
                   type="button"

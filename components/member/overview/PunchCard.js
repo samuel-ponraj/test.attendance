@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
       totalHours,
       fullName,
       getGreeting,
+      attendanceMode,
+      attendanceStatus,
     }) => {
 
 
@@ -82,6 +84,16 @@ import { cn } from "@/lib/utils";
           </p>
         </div>
 
+        {attendanceMode === "managed" ? (
+          <div className="w-full rounded-2xl border border-primary/20 bg-primary/5 p-6 text-center">
+            <Fingerprint size={42} className="mx-auto text-primary" />
+            <p className="mt-3 font-semibold">Attendance is managed for you</p>
+            <p className="mt-1 text-sm text-muted-foreground">An administrator or manager will mark your attendance.</p>
+            <p className="mt-3 text-sm font-medium capitalize">
+              Today: {attendanceStatus === "halfday" ? "Half day" : attendanceStatus || "Waiting to be marked"}
+            </p>
+          </div>
+        ) : <>
         {/* BUTTON */}
         <div className="relative flex items-center justify-center">
           <div className="absolute w-[200px] h-[200px] rounded-full bg-indigo-600/20 blur-2xl"></div>
@@ -113,6 +125,7 @@ import { cn } from "@/lib/utils";
             </span>
           </button>
         </div>
+        </>}
 
         {/* STATS */}
         <div className="w-full flex justify-around text-center">

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
-import { isPlatformAdminEmail } from "@/lib/platform-admin";
+import { isBosAdminEmail } from "@/lib/bos-admin";
 
 export async function POST(req) {
   const { token } = await req.json();
@@ -16,7 +16,17 @@ export async function POST(req) {
       return NextResponse.json({ error: "No email found in auth token" }, { status: 403 });
     }
 
-    let role = isPlatformAdminEmail(email) ? "platform" : null;
+    let role = isBosAdminEmail(email) ? "bos" : null;
+
+    // Firestore rules cannot read server environment variables. Mirror verified
+    // BOS identities into a server-managed collection used only for authorization.
+    if (role === "bos") {
+      await adminDb.collection("bosAdmins").doc(uid).set({
+        email,
+        role: "bos",
+        updatedAt: new Date(),
+      }, { merge: true });
+    }
 
     if (!role) {
       const adminDoc = await adminDb.collection("users").doc(uid).get();
@@ -26,11 +36,6 @@ export async function POST(req) {
     if (!role) {
       const memberDoc = await adminDb.collection("allMembers").doc(email).get();
       if (memberDoc.exists) role = "member";
-    }
-
-    if (!role) {
-      const pendingDoc = await adminDb.collection("pendingMembers").doc(uid).get();
-      if (pendingDoc.exists) role = "pending";
     }
 
     if (!role) {

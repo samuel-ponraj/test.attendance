@@ -45,7 +45,7 @@ const features = [
     icon: Smartphone,
     title: "Responsive Design",
     description:
-      "Access the platform from any device, including desktop, tablet, and mobile phone.",
+      "Access the system from any device, including desktop, tablet, and mobile phone.",
   },
   {
     icon: ReceiptIndianRupee,

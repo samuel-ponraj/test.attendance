@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useAuth } from "../../../app/context/AuthContext";
-import { collection, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const AttendanceHistory = () => {
@@ -83,9 +83,9 @@ const AttendanceHistory = () => {
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dayStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      const punchesRef = collection(db, `teams/${userData.teamId}/attendance/${dayStr}/punches`);
-      const snapshot = await getDocs(punchesRef);
-      const docData = snapshot.docs.find(doc => doc.id === userData.memberId)?.data();
+      const punchRef = doc(db, "teams", userData.teamId, "attendance", dayStr, "punches", userData.memberId);
+      const snapshot = await getDoc(punchRef);
+      const docData = snapshot.exists() ? snapshot.data() : null;
 
       if (docData) {
         logs.push({

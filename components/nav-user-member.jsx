@@ -29,23 +29,19 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
-import { signOut } from "firebase/auth"
-import { auth } from "@/lib/firebase"
 import { useAuth } from "@/app/context/AuthContext"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 
 export function NavUserMember() {
   const { isMobile, setOpenMobile } = useSidebar()
-  const { user, userData } = useAuth()
+  const { user, userData, logout } = useAuth()
 
   if (!user) return null
-  const router = useRouter()
 
   const handleLogout = async () => {
     try {
-      await signOut(auth)
-      router.push("/") 
+      await logout()
+      window.location.assign("/")
     } catch (err) {
       console.error("Logout failed:", err)
     }

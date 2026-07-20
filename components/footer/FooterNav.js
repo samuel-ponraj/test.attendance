@@ -17,14 +17,14 @@ import { db } from "@/lib/firebase"
 import { doc, onSnapshot } from "firebase/firestore"
 
 const admin = [
-  { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+  { title: "Overview", url: "/admin", icon: LayoutDashboard },
   { title: "Teams", url: "/admin/teams", icon: Users },
   { title: "Logs", url: "/admin/history", icon: History },
   { title: "Payments", url: "/admin/billing", icon: ReceiptIndianRupee },
 ]
 
 const member = [
-  { title: "Dashboard", url: "/member", icon: LayoutDashboard },
+  { title: "Overview", url: "/member", icon: LayoutDashboard },
   { title: "Attendance", url: "/member/attendance", icon: Calendar },
   { title: "Profile", url: "/member/profile", icon: UsersRound },
 ]

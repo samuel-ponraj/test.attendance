@@ -7,6 +7,7 @@ import {
 } from "firebase/firestore";
 import { toast } from "sonner";
 import { useMembers } from "../../app/context/MembersContext";
+import { getEffectiveAttendanceMode } from "@/lib/attendance-mode";
 
 const AttendanceContext = createContext();
 
@@ -17,6 +18,15 @@ export const AttendanceProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [todayPunch, setTodayPunch] = useState(null);
   const [monthlyLogs, setMonthlyLogs] = useState([]);
+  const [teamData, setTeamData] = useState(null);
+  const attendanceMode = getEffectiveAttendanceMode(teamData, member);
+
+  useEffect(() => {
+    if (!member?.teamId) return;
+    return onSnapshot(doc(db, "teams", member.teamId), (snap) => {
+      setTeamData(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+    });
+  }, [member?.teamId]);
 
   /* =========================
         HELPERS
@@ -46,7 +56,7 @@ export const AttendanceProvider = ({ children }) => {
   const punchIn = async () => {
     try {
       setLoading(true);
-      if (!member?.teamId || !member?.id) return;
+      if (!member?.teamId || !member?.id || attendanceMode !== "self") return;
 
       const response = await fetch("/api/attendance", {
         method: "POST",
@@ -79,7 +89,7 @@ export const AttendanceProvider = ({ children }) => {
   const punchOut = async () => {
     try {
       setLoading(true);
-      if (!member?.teamId || !member?.id) return;
+      if (!member?.teamId || !member?.id || attendanceMode !== "self") return;
 
       const response = await fetch("/api/attendance", {
         method: "PATCH",
@@ -244,8 +254,8 @@ export const AttendanceProvider = ({ children }) => {
     const unsubMonthly = subscribeMonthlyAttendance();
 
     return () => {
-      unsubToday && unsubToday();
-      unsubMonthly && unsubMonthly();
+      unsubToday?.();
+      unsubMonthly?.();
     };
   }, [member, subscribeTodayPunch, subscribeMonthlyAttendance]);
 
@@ -258,6 +268,8 @@ export const AttendanceProvider = ({ children }) => {
         monthlyLogs,
         getStats,
         loading,
+        attendanceMode,
+        canSelfPunch: attendanceMode === "self",
       }}
     >
       {children}

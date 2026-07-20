@@ -13,7 +13,6 @@ import {
   Calendar,
   Form, 
   ReceiptIndianRupee,
-  CreditCard,
 } from "lucide-react";
 
 import {
@@ -42,7 +41,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 const navConfig = {
   admin: {
     main: [
-      { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+      { title: "Overview", url: "/admin", icon: LayoutDashboard },
       { title: "Teams", url: "/admin/teams", icon: Users },
       { title: "Attendance Logs", url: "/admin/history", icon: History },
       { title: "Custom Forms", url: "/admin/custom-forms", icon: Form  },
@@ -50,7 +49,6 @@ const navConfig = {
     ],
     settings: [
       { title: "Account", url: "/admin/account", icon: Settings },
-      { title: "Subscriptions", url: "/admin/subscriptions", icon: CreditCard },
     ],
   },
 
@@ -87,6 +85,7 @@ export function AppSidebar() {
   const role = getRoleFromPath(pathname);
 
   const memberTeamId = members?.[0]?.teamId;
+  const isManager = members?.[0]?.role === "manager";
 
   useEffect(() => {
     if (role !== "member" || !memberTeamId) return;
@@ -100,7 +99,10 @@ export function AppSidebar() {
 
   if (!role) return null;
 
-  const mainNavItems = navConfig[role].main.map((item) =>
+  const roleNavItems = role === "member" && isManager
+    ? [...navConfig.member.main.slice(0, 1), { title: "Team Members", url: "/member/members", icon: Users }, ...navConfig.member.main.slice(1)]
+    : navConfig[role].main;
+  const mainNavItems = roleNavItems.map((item) =>
     role === "member" &&
     item.url === "/member/payments" &&
     memberBillingType === "salary"

@@ -31,7 +31,7 @@ export default function PrivacyPolicy() {
 						<li>To authenticate users securely.</li>
 						<li>To manage teams and attendance records.</li>
 						<li>To restrict access to authorized users only.</li>
-						<li>To maintain platform security and reliability.</li>
+						<li>To maintain system security and reliability.</li>
 					</ul>
 				</section>
 

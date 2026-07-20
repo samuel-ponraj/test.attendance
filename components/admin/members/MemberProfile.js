@@ -24,7 +24,8 @@ import {
   query,
   collection,
   where,
-  onSnapshot
+  onSnapshot,
+  deleteField,
 } from 'firebase/firestore'
 import {
   getDownloadURL,
@@ -56,6 +57,7 @@ const MemberProfile = ({ teamId, memberId }) => {
   const [email, setEmail] = useState('')
   const [contact, setContact] = useState('')
   const [role, setRole] = useState('member')
+  const [attendanceMode, setAttendanceMode] = useState('inherit')
   const [photoURL, setPhotoURL] = useState('')
   const [createdAt, setCreatedAt] = useState(null)
 
@@ -92,6 +94,7 @@ const MemberProfile = ({ teamId, memberId }) => {
         setEmail(data.email || '')
         setContact(data.contact || '')
         setRole(data.role || 'member')
+        setAttendanceMode(data.attendanceMode === 'self' || data.attendanceMode === 'managed' ? data.attendanceMode : 'inherit')
         setPhotoURL(data.photoURL || '')
         setCreatedAt(data.createdAt || null)
         setPhotoPreview(data.photoURL || '')
@@ -277,14 +280,20 @@ const handleDynamicChange = (fieldId, value) => {
     setSaving(true)
 
     const memberRef = doc(db, 'teams', teamId, 'members', memberId)
+    const memberMapRef = doc(db, 'allMembers', email.trim().toLowerCase())
 
-    await updateDoc(memberRef, {
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      contact: contact.trim(),
-      customData: dynamicFields,
-      updatedAt: serverTimestamp(),
-    })
+    await Promise.all([
+      updateDoc(memberRef, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        contact: contact.trim(),
+        role,
+        customData: dynamicFields,
+        attendanceMode: attendanceMode === 'inherit' ? deleteField() : attendanceMode,
+        updatedAt: serverTimestamp(),
+      }),
+      updateDoc(memberMapRef, { role }),
+    ])
 
     toast.success('Member profile updated successfully')
   } catch (error) {
@@ -410,9 +419,28 @@ const handleDynamicChange = (fieldId, value) => {
               </div>
               </div>
 
-              <div className='space-y-2'>
-                <Label>Role</Label>
-                <Input value={role} disabled />
+              <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
+                <div className='space-y-2'>
+                  <Label>Role</Label>
+                  <Select value={role} onValueChange={setRole}>
+                    <SelectTrigger className='w-full'><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='member'>Member</SelectItem>
+                      <SelectItem value='manager'>Manager</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className='space-y-2'>
+                  <Label>Attendance method</Label>
+                  <Select value={attendanceMode} onValueChange={setAttendanceMode}>
+                    <SelectTrigger className='w-full'><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='inherit'>Use team default</SelectItem>
+                      <SelectItem value='self'>Self attendance</SelectItem>
+                      <SelectItem value='managed'>Managed attendance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </div>

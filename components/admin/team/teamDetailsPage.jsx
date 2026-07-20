@@ -3,10 +3,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Users, CalendarIcon, CheckCircle, XCircle, UserPlus, Clock, CalendarDays, UserRoundCheck, IndianRupee, ReceiptIndianRupee, Lock } from "lucide-react";
+import { ArrowLeft, Users, CalendarIcon, CheckCircle, XCircle, UserPlus, Clock, Settings, UserRoundCheck, IndianRupee, ReceiptIndianRupee, Pencil, Loader2, QrCode } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, serverTimestamp, onSnapshot  } from "firebase/firestore";
 import AddMemberModal from "../addMemberModal";
@@ -23,6 +25,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner"
 import { FileSpreadsheet } from 'lucide-react';
 import ImportExcelSheet from "../functions/ExcelSheetImport";
@@ -31,9 +40,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Members from "./Members";
 import MembersList from "../members/MembersList";
 import BillingTab from "./BillingTab";
+import QrAttendanceModal from "./QrAttendanceModal";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { useTeams } from "@/app/context/TeamsContext";
-import UpgradeDialog from "../subscription/UpgradeDialog";
 
 
 
@@ -41,11 +49,6 @@ export default function TeamDetailsPage() {
   const router = useRouter();
   const { slug } = useParams();
   const { user } = useAuth()
-  const {
-    planLimits,
-    lockedTeams,
-    loading: teamsLoading,
-  } = useTeams();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [team, setTeam] = useState(null);
@@ -55,12 +58,14 @@ export default function TeamDetailsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const lockedTeam = lockedTeams.find((locked) => locked.id === slug);
+  const [editTeamOpen, setEditTeamOpen] = useState(false);
+  const [editedTeamName, setEditedTeamName] = useState("");
+  const [savingTeamName, setSavingTeamName] = useState(false);
+  const [qrAttendanceOpen, setQrAttendanceOpen] = useState(false);
 
 
   const fetchTeamData = useCallback(async () => {
-    if (!slug || teamsLoading || lockedTeam) return;
+    if (!slug) return;
 
     setLoading(true);
     let unsubscribePunches = null;
@@ -102,7 +107,7 @@ export default function TeamDetailsPage() {
     }
 
     return unsubscribePunches;
-  }, [lockedTeam, slug, selectedDate, teamsLoading]);
+  }, [slug, selectedDate]);
 
   // -----------------------------
   // 2️⃣ useEffect to call fetchTeamData
@@ -126,49 +131,6 @@ export default function TeamDetailsPage() {
     await fetchTeamData();
   };
   
-
-if (teamsLoading) {
-  return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <Spinner className="size-8" />
-    </div>
-  );
-}
-
-if (lockedTeam) {
-  return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <Card className="max-w-xl">
-        <CardContent className="space-y-5 p-8 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-600">
-            <Lock className="h-6 w-6" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold">Team locked by your plan</h2>
-            <p className="text-sm text-muted-foreground">
-              Your current plan unlocks 2 teams. 2 recently created teams are
-              locked. Upgrade to view and manage locked teams without deleting
-              their data.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <Button variant="outline" onClick={() => router.push("/admin/teams")}>
-              <ArrowLeft className="h-4 w-4" />
-              Back to teams
-            </Button>
-            <Button onClick={() => setUpgradeOpen(true)}>Upgrade to Pro</Button>
-          </div>
-          <UpgradeDialog
-            open={upgradeOpen}
-            onOpenChange={setUpgradeOpen}
-            title="Upgrade to unlock teams"
-            description="Your current plan unlocks 2 teams. 2 recently created teams are locked. Upgrade to view and manage locked teams without deleting their data."
-          />
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 if (loading) {
   return (
@@ -211,15 +173,35 @@ members.forEach((m) => {
 
 const totalCount = members.length;
 const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
-const hasReachedMemberLimit = members.length >= planLimits.membersPerTeam;
 const openAddMember = () => {
-  if (hasReachedMemberLimit) {
-    setUpgradeOpen(true);
-    return;
-  }
-
   setModalOpen(true);
 };
+
+  const openEditTeamName = () => {
+    setEditedTeamName(team.name || "");
+    setEditTeamOpen(true);
+  };
+
+  const handleUpdateTeamName = async () => {
+    const nextName = editedTeamName.trim();
+    if (!nextName || savingTeamName) return;
+
+    setSavingTeamName(true);
+    try {
+      await updateDoc(doc(db, "teams", team.id), {
+        name: nextName,
+        updatedAt: serverTimestamp(),
+      });
+      setTeam((current) => ({ ...current, name: nextName }));
+      setEditTeamOpen(false);
+      toast.success("Team name updated successfully");
+    } catch (error) {
+      console.error("Failed to update team name:", error);
+      toast.error(error?.message || "Failed to update team name");
+    } finally {
+      setSavingTeamName(false);
+    }
+  };
 
   /* ---------------- UPDATE ATTENDANCE ---------------- */
 
@@ -259,7 +241,7 @@ const openAddMember = () => {
         totalHoursWorked: 0,
 
         deviceInfo: {
-          platform: "manual",
+          entrySource: "manual",
           version: null,
         },
 
@@ -377,7 +359,20 @@ const openAddMember = () => {
                 <Users className="h-6 w-6" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">{team.name}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold">{team.name}</h2>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={openEditTeamName}
+                    aria-label="Edit team name"
+                    title="Edit team name"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
                 <p className="text-muted-foreground">{team.description}</p>
               </div>
             </div>
@@ -413,6 +408,15 @@ const openAddMember = () => {
             </div>
             <div className="flex justify-center gap-4">
               <div className="w-full">
+                <Button
+                  className="w-full"
+                  onClick={() => setQrAttendanceOpen(true)}
+                >
+                  <QrCode className="h-4 w-4" />
+                  QR Attendance
+                </Button>
+              </div>
+              <div className="w-full">
               <Button
                 className="w-full"
                 onClick={() => setImportOpen(true)}
@@ -421,19 +425,51 @@ const openAddMember = () => {
                 Import
               </Button>
               </div>
-              <Link href={`/admin/teams/${team.id}/invite`} className="w-full">
-              <Button>
-                <UserPlus className="h-4 w-4" />
-                Invite
-              </Button>
-              </Link>
               <Link href={`/admin/teams/${team.id}/schedule`} className="w-full">
-                <Button className="w-full"><CalendarDays />Schedule</Button>
+                <Button className="w-full"><Settings />Settings</Button>
               </Link>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Team Name</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="team-name">Team Name</Label>
+            <Input
+              id="team-name"
+              value={editedTeamName}
+              onChange={(event) => setEditedTeamName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") handleUpdateTeamName();
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditTeamOpen(false)}
+              disabled={savingTeamName}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleUpdateTeamName}
+              disabled={!editedTeamName.trim() || savingTeamName}
+            >
+              {savingTeamName && <Loader2 className="h-4 w-4 animate-spin" />}
+              {savingTeamName ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <Tabs defaultValue="attendance" className="space-y-6">
             <TabsList className="w-full grid grid-cols-3">
@@ -482,6 +518,12 @@ const openAddMember = () => {
           onSuccess={handleImportSuccess}
         />
 
+      <QrAttendanceModal
+        open={qrAttendanceOpen}
+        onOpenChange={setQrAttendanceOpen}
+        team={team}
+      />
+
 
 
       {/* Add Member Modal */}
@@ -494,12 +536,6 @@ const openAddMember = () => {
           const membersList = membersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
           setMembers(membersList);
         }}
-      />
-      <UpgradeDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        title="Upgrade to add more members"
-        description={`Your current plan allows up to ${planLimits.membersPerTeam} members per team. Upgrade to Pro to add up to 50 members per team.`}
       />
       <AlertDialog
           open={!!memberToRemove}

@@ -35,9 +35,7 @@ import { toast, Toaster } from "sonner";
 import { auth, db, storage } from "@/lib/firebase";
 import {
   EmailAuthProvider,
-  GoogleAuthProvider,
   reauthenticateWithCredential,
-  reauthenticateWithPopup,
   deleteUser,
   updatePassword,
   onAuthStateChanged, sendPasswordResetEmail
@@ -214,7 +212,7 @@ const [savingCompanyDetails, setSavingCompanyDetails] = useState(false);
     await batch.commit();
   };
 
-  const handleSaveWhatsappIntegration = async () => {
+  const handleSaveWhatsappIntegration = async (overrides = {}) => {
     if (!user?.uid) {
       toast.error("Please sign in again to save integration settings");
       return;
@@ -224,13 +222,14 @@ const [savingCompanyDetails, setSavingCompanyDetails] = useState(false);
 
     try {
       const token = await user.getIdToken();
+      const nextConfig = { ...whatsappConfig, ...overrides };
       const cleanWhatsappConfig = {
-        enabled: Boolean(whatsappConfig.enabled),
-        businessAccountId: whatsappConfig.businessAccountId.trim(),
-        phoneNumberId: whatsappConfig.phoneNumberId.trim(),
-        accessToken: whatsappConfig.accessToken.trim(),
-        templateName: whatsappConfig.templateName.trim(),
-        templateLanguage: whatsappConfig.templateLanguage.trim() || "en_US",
+        enabled: Boolean(nextConfig.enabled),
+        businessAccountId: nextConfig.businessAccountId.trim(),
+        phoneNumberId: nextConfig.phoneNumberId.trim(),
+        accessToken: nextConfig.accessToken.trim(),
+        templateName: nextConfig.templateName.trim(),
+        templateLanguage: nextConfig.templateLanguage.trim() || "en_US",
       };
 
       const res = await fetch("/api/admin/integrations", {
@@ -256,15 +255,17 @@ const [savingCompanyDetails, setSavingCompanyDetails] = useState(false);
       });
 
       toast.success("WhatsApp settings saved successfully");
+      return true;
     } catch (err) {
       console.error("WhatsApp settings save error:", err);
       toast.error(err.message || "Failed to save WhatsApp settings");
+      return false;
     } finally {
       setSavingWhatsapp(false);
     }
   };
 
-  const handleSaveRazorpayIntegration = async () => {
+  const handleSaveRazorpayIntegration = async (overrides = {}) => {
     if (!user?.uid) {
       toast.error("Please sign in again to save integration settings");
       return;
@@ -274,14 +275,15 @@ const [savingCompanyDetails, setSavingCompanyDetails] = useState(false);
 
     try {
       const token = await user.getIdToken();
+      const nextConfig = { ...razorpayConfig, ...overrides };
       const cleanRazorpayConfig = {
-        enabled: Boolean(razorpayConfig.enabled),
-        accountName: razorpayConfig.accountName.trim(),
-        keyId: razorpayConfig.keyId.trim(),
-        keySecret: razorpayConfig.keySecret.trim(),
-        webhookAppUrl: razorpayConfig.webhookAppUrl.trim(),
-        webhookSecret: razorpayConfig.webhookSecret.trim(),
-        currency: razorpayConfig.currency.trim() || "INR",
+        enabled: Boolean(nextConfig.enabled),
+        accountName: nextConfig.accountName.trim(),
+        keyId: nextConfig.keyId.trim(),
+        keySecret: nextConfig.keySecret.trim(),
+        webhookAppUrl: nextConfig.webhookAppUrl.trim(),
+        webhookSecret: nextConfig.webhookSecret.trim(),
+        currency: nextConfig.currency.trim() || "INR",
       };
 
       const res = await fetch("/api/admin/integrations", {
@@ -304,9 +306,11 @@ const [savingCompanyDetails, setSavingCompanyDetails] = useState(false);
       setRazorpayConfig(normalizeRazorpayConfig(data.razorpayConfig));
 
       toast.success("Razorpay settings saved successfully");
+      return true;
     } catch (err) {
       console.error("Razorpay settings save error:", err);
       toast.error(err.message || "Failed to save Razorpay settings");
+      return false;
     } finally {
       setSavingRazorpay(false);
     }
@@ -373,9 +377,6 @@ const [savingCompanyDetails, setSavingCompanyDetails] = useState(false);
       if (!password) throw new Error("Password is required to delete your account.");
       const credential = EmailAuthProvider.credential(user.email, password);
       await reauthenticateWithCredential(user, credential);
-    } else if (providerId === "google.com") {
-      const provider = new GoogleAuthProvider();
-      await reauthenticateWithPopup(user, provider);
     }
 
     // 2. Initialize Batch for Atomic Deletion
@@ -880,9 +881,17 @@ const handleSaveCompanyDetails = async () => {
                   <Label className="text-sm">Enable</Label>
                   <Switch
                     checked={whatsappConfig.enabled}
-                    onCheckedChange={(checked) =>
-                      updateWhatsappConfig("enabled", checked)
-                    }
+                    disabled={savingWhatsapp || !user?.uid}
+                    onCheckedChange={async (checked) => {
+                      const previousEnabled = whatsappConfig.enabled;
+                      updateWhatsappConfig("enabled", checked);
+                      const saved = await handleSaveWhatsappIntegration({
+                        enabled: checked,
+                      });
+                      if (!saved) {
+                        updateWhatsappConfig("enabled", previousEnabled);
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -964,7 +973,7 @@ const handleSaveCompanyDetails = async () => {
               </div>
 
               <Button
-                onClick={handleSaveWhatsappIntegration}
+                onClick={() => handleSaveWhatsappIntegration()}
                 disabled={savingWhatsapp || !user?.uid}
                 className="w-full sm:w-[170px]"
               >
@@ -1002,9 +1011,17 @@ const handleSaveCompanyDetails = async () => {
                   <Label className="text-sm">Enable</Label>
                   <Switch
                     checked={razorpayConfig.enabled}
-                    onCheckedChange={(checked) =>
-                      updateRazorpayConfig("enabled", checked)
-                    }
+                    disabled={savingRazorpay || !user?.uid}
+                    onCheckedChange={async (checked) => {
+                      const previousEnabled = razorpayConfig.enabled;
+                      updateRazorpayConfig("enabled", checked);
+                      const saved = await handleSaveRazorpayIntegration({
+                        enabled: checked,
+                      });
+                      if (!saved) {
+                        updateRazorpayConfig("enabled", previousEnabled);
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -1121,7 +1138,7 @@ const handleSaveCompanyDetails = async () => {
               </div>
 
               <Button
-                onClick={handleSaveRazorpayIntegration}
+                onClick={() => handleSaveRazorpayIntegration()}
                 disabled={savingRazorpay || !user?.uid}
                 className="w-full sm:w-[170px]"
               >
@@ -1292,12 +1309,6 @@ const handleSaveCompanyDetails = async () => {
                     className="w-full"
                   />
                 </div>
-              )}
-
-              {providerId === "google.com" && (
-                <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded">
-                  You will be prompted to sign in with Google again to confirm deletion.
-                </p>
               )}
 
               <AlertDialogFooter className="mt-6">

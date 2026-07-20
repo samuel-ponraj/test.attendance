@@ -1,184 +1,106 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { useAuth } from "./AuthContext"; 
-import { 
-  collection, 
-  doc, 
-  onSnapshot, 
-  query, 
-  serverTimestamp, 
-  where, 
-  runTransaction, 
-  increment 
-} from "firebase/firestore";
+import { createContext, useContext, useEffect, useState } from "react";
+import { useAuth } from "./AuthContext";
+import { collection, doc, getDoc, increment, onSnapshot, query, runTransaction, serverTimestamp, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getDateKey } from "@/lib/DateKey";
-import { createPlanLimitError, getPlan, PLAN_IDS } from "@/lib/subscriptionPlans";
-import { splitTeamsByPlanLimit } from "@/lib/team-access";
 
 const TeamsContext = createContext(null);
 
 export function TeamsProvider({ children }) {
-
-  const { user } = useAuth();
-  const [allTeams, setAllTeams] = useState([]);
+  const { user, userData } = useAuth();
+  const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [subscription, setSubscription] = useState('basic'); 
-  
-  const plan = getPlan(subscription);
-  const planLimits = plan.limits;
-  const TEAM_LIMIT = planLimits.teams;
-  const {
-    allTeams: planScopedTeams,
-    unlockedTeams: teams,
-    lockedTeams,
-  } = useMemo(
-    () => splitTeamsByPlanLimit(allTeams, TEAM_LIMIT),
-    [allTeams, TEAM_LIMIT]
-  );
-  const hasReachedTeamLimit = allTeams.length >= TEAM_LIMIT;
 
   useEffect(() => {
     if (!user?.uid) {
-      queueMicrotask(() => {
-        setAllTeams([]);
-        setSubscription('basic');
-        setLoading(false);
-      });
+      queueMicrotask(() => { setTeams([]); setLoading(false); });
       return;
     }
+    let unsubscribe = null;
+    let cancelled = false;
 
-    // 1. Listen to the User Document for subscription changes
-    const userDocRef = doc(db, "users", user.uid);
-    const unsubUser = onSnapshot(userDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        // Fallback to 'basic' if field is missing
-      setSubscription(data.subscription || PLAN_IDS.BASIC);
+    const loadTeams = async () => {
+      if (userData?.role === "member") {
+        const email = String(user.email || "").trim().toLowerCase();
+        const mappingSnapshot = await getDoc(doc(db, "allMembers", email));
+
+        if (cancelled) return;
+        if (!mappingSnapshot.exists()) {
+          setTeams([]);
+          setLoading(false);
+          return;
+        }
+
+        const { teamId, memberId } = mappingSnapshot.data();
+        if (!teamId || memberId !== user.uid) {
+          setTeams([]);
+          setLoading(false);
+          return;
+        }
+
+        unsubscribe = onSnapshot(doc(db, "teams", teamId), (teamSnapshot) => {
+          setTeams(teamSnapshot.exists() ? [{ id: teamSnapshot.id, ...teamSnapshot.data() }] : []);
+          setLoading(false);
+        }, (error) => {
+          console.error("Member team could not be loaded:", error);
+          setTeams([]);
+          setLoading(false);
+        });
+        return;
       }
-    });
 
-    // 2. Listen to the Teams Collection
-    const q = query(
-      collection(db, "teams"),
-      where("admin.userId", "==", user.uid)
-    );
+      const teamsQuery = query(collection(db, "teams"), where("admin.userId", "==", user.uid));
+      unsubscribe = onSnapshot(teamsQuery, (snapshot) => {
+        setTeams(snapshot.docs.map((teamDoc) => ({ id: teamDoc.id, ...teamDoc.data() })));
+        setLoading(false);
+      }, (error) => {
+        console.error("Firestore Teams Error:", error);
+        setTeams([]);
+        setLoading(false);
+      });
+    };
 
-    const unsubTeams = onSnapshot(q, (snapshot) => {
-      const teamsData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setAllTeams(teamsData);
-      setLoading(false);
-    }, (error) => {
-      console.error("Firestore Teams Error:", error);
+    loadTeams().catch((error) => {
+      console.error("Teams could not be loaded:", error);
+      setTeams([]);
       setLoading(false);
     });
 
     return () => {
-      unsubUser();
-      unsubTeams();
+      cancelled = true;
+      unsubscribe?.();
     };
-  }, [user?.uid]);
+  }, [user?.email, user?.uid, userData?.role]);
 
-  const addTeam = async ({
-  name,
-  description,
-  ownerName,
-}) => {
-  if (!user) return;
-
-  if (hasReachedTeamLimit) {
-    throw createPlanLimitError(
-      `Your ${plan.name} plan allows up to ${TEAM_LIMIT} teams. Upgrade to Pro to add more.`
-    );
-  }
-
-  try {
+  const addTeam = async ({ name, description, ownerName }) => {
+    if (!user) return;
     const todayKey = getDateKey(new Date());
-
     const newTeamId = await runTransaction(db, async (transaction) => {
       const userRef = doc(db, "users", user.uid);
       const userSnap = await transaction.get(userRef);
-
-      if (!userSnap.exists()) {
-        throw new Error("User profile not found!");
-      }
-
-      const userData = userSnap.data();
-      const currentCount = userData.teamCount || 0;
-      const currentSub = userData.subscription || PLAN_IDS.BASIC;
-      const currentPlan = getPlan(currentSub);
-      const currentTeamLimit = currentPlan.limits.teams;
-
-      if (currentCount >= currentTeamLimit) {
-        throw createPlanLimitError(
-          `Your ${currentPlan.name} plan allows up to ${currentTeamLimit} teams.`
-        );
-      }
-
-      const teamDocRef = doc(collection(db, "teams"));
-
-      transaction.set(teamDocRef, {
-        name,
-        description: description || "",
-        ownerName,
-        admin: {
-          email: user.email,
-          userId: user.uid,
-        },
-        createdAt: serverTimestamp(),
-        totalMembers: 0,
-        attendanceSummary: {
-          present: 0,
-          absent: 0,
-          halfday: 0,
-          dateKey: todayKey,
-        },
+      if (!userSnap.exists()) throw new Error("User profile not found!");
+      const teamRef = doc(collection(db, "teams"));
+      transaction.set(teamRef, {
+        name, description: description || "", ownerName,
+        admin: { email: user.email, userId: user.uid },
+        createdAt: serverTimestamp(), totalMembers: 0,
+        attendanceSummary: { present: 0, absent: 0, halfday: 0, dateKey: todayKey },
       });
-
-      transaction.update(userRef, {
-        teamCount: increment(1),
-      });
-
-      return teamDocRef.id;
+      transaction.update(userRef, { teamCount: increment(1) });
+      return teamRef.id;
     });
-
     return { success: true, id: newTeamId };
-  } catch (err) {
-    console.error("Add Team Error:", err);
-    throw err;
-  }
-};
+  };
 
-
-
-  return (
-    <TeamsContext.Provider
-      value={{
-        teams,
-        allTeams: planScopedTeams,
-        lockedTeams,
-        loading,
-        subscription, 
-        plan,
-        planLimits,
-        addTeam,
-        TEAM_LIMIT,
-        hasReachedTeamLimit,
-      }}
-    >
-      {children}
-    </TeamsContext.Provider>
-  );
+  return <TeamsContext.Provider value={{
+    teams, allTeams: teams, loading, addTeam,
+  }}>{children}</TeamsContext.Provider>;
 }
 
 export function useTeams() {
   const context = useContext(TeamsContext);
-  if (!context) {
-    throw new Error("useTeams must be used within TeamsProvider");
-  }
+  if (!context) throw new Error("useTeams must be used within TeamsProvider");
   return context;
 }
