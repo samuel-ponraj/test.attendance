@@ -51,7 +51,46 @@ async function getAuthenticatedMember(req) {
     throw error;
   }
 
-  return { ...memberData, id: decoded.uid, teamId: mapping.teamId };
+  return { ...memberData, id: decoded.uid, teamId: mapping.teamId, teamData: teamSnap.data() || {} };
+}
+
+function validateAttendanceLocation(teamData, location) {
+  const config = teamData?.attendanceLocation;
+  if (!config || config.enabled !== true) return null;
+
+  const targetLat = Number(config.latitude);
+  const targetLng = Number(config.longitude);
+  const radiusMeters = Number(config.radiusMeters);
+  const latitude = Number(location?.latitude ?? location?.lat);
+  const longitude = Number(location?.longitude ?? location?.lng);
+  const accuracy = Number(location?.accuracy);
+
+  if (![targetLat, targetLng, radiusMeters].every(Number.isFinite) || radiusMeters <= 0) return null;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    const error = new Error("A valid device location is required to mark attendance");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const toRadians = (degrees) => degrees * Math.PI / 180;
+  const latDelta = toRadians(latitude - targetLat);
+  const lngDelta = toRadians(longitude - targetLng);
+  const a = Math.sin(latDelta / 2) ** 2 +
+    Math.cos(toRadians(targetLat)) * Math.cos(toRadians(latitude)) * Math.sin(lngDelta / 2) ** 2;
+  const distanceMeters = 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  if (distanceMeters > radiusMeters) {
+    const error = new Error(`You are approximately ${Math.round(distanceMeters)} m from the attendance location. You must be within ${Math.round(radiusMeters)} m.`);
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return {
+    latitude,
+    longitude,
+    accuracy: Number.isFinite(accuracy) ? accuracy : null,
+    distanceMeters: Number(distanceMeters.toFixed(1)),
+  };
 }
 
 function assertValidDateKey(dateKey) {
@@ -115,9 +154,10 @@ async function updateTeamSummary(teamId, dateKey) {
 
 export async function POST(req) {
   try {
-    const { dateKey } = await req.json();
+    const { dateKey, location } = await req.json();
     assertValidDateKey(dateKey);
     const member = await getAuthenticatedMember(req);
+    const verifiedLocation = validateAttendanceLocation(member.teamData, location);
 
     await assertTeamUnlockedByPlan(member.teamId);
 
@@ -147,7 +187,7 @@ export async function POST(req) {
       updatedAt: FieldValue.serverTimestamp(),
       entryType: "manual",
       deviceInfo: { source: "web", version: null },
-      location: { lat: null, lng: null },
+      location: verifiedLocation,
     };
 
     await punchRef.set(data);
@@ -164,9 +204,10 @@ export async function POST(req) {
 
 export async function PATCH(req) {
   try {
-    const { dateKey } = await req.json();
+    const { dateKey, location } = await req.json();
     assertValidDateKey(dateKey);
     const member = await getAuthenticatedMember(req);
+    const verifiedLocation = validateAttendanceLocation(member.teamData, location);
 
     await assertTeamUnlockedByPlan(member.teamId);
 
@@ -200,6 +241,7 @@ export async function PATCH(req) {
       punchOut: FieldValue.serverTimestamp(),
       totalHoursWorked: Number(hours.toFixed(2)),
       status,
+      punchOutLocation: verifiedLocation,
       updatedAt: FieldValue.serverTimestamp(),
     });
 

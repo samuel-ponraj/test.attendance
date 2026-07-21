@@ -63,7 +63,7 @@ export const AttendanceProvider = ({ children }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           member, 
-          dateKey: getTodayDate() 
+          dateKey: getTodayDate(),
         }),
       });
 
@@ -77,7 +77,7 @@ export const AttendanceProvider = ({ children }) => {
       toast.success("Punched In");
     } catch (err) {
       console.error(err);
-      toast.error("Punch In Failed");
+      toast.error(err.message || "Punch In Failed");
     } finally {
       setLoading(false);
     }
@@ -96,7 +96,7 @@ export const AttendanceProvider = ({ children }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           member, 
-          dateKey: getTodayDate() 
+          dateKey: getTodayDate(),
         }),
       });
 
@@ -110,7 +110,7 @@ export const AttendanceProvider = ({ children }) => {
       toast.success("Punched Out");
     } catch (err) {
       console.error(err);
-      toast.error("Punch Out Failed");
+      toast.error(err.message || "Punch Out Failed");
     } finally {
       setLoading(false);
     }

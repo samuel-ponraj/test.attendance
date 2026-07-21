@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CalendarDays, Clock, Coffee, Timer, Shield, Save, ArrowLeft, UserCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { CalendarDays, Clock, Coffee, Timer, Shield, Save, ArrowLeft, UserCheck, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/lib/firebase"; 
 import { doc, updateDoc, onSnapshot } from "firebase/firestore";
@@ -28,6 +29,12 @@ const Schedule = ({slug}) => {
 
   const [schedule, setSchedule] = useState(defaultSchedule);
   const [defaultAttendanceMode, setDefaultAttendanceMode] = useState("self");
+  const [attendanceLocation, setAttendanceLocation] = useState({
+    enabled: false,
+    latitude: "",
+    longitude: "",
+    radiusMeters: "100",
+  });
   const [loading, setLoading] = useState(false);
   const router = useRouter()
 
@@ -41,6 +48,14 @@ useEffect(() => {
       const teamData = snap.data();
       const data = teamData.schedule;
       setDefaultAttendanceMode(teamData.defaultAttendanceMode === "managed" ? "managed" : "self");
+      if (teamData.attendanceLocation) {
+        setAttendanceLocation({
+          enabled: teamData.attendanceLocation.enabled === true,
+          latitude: String(teamData.attendanceLocation.latitude ?? ""),
+          longitude: String(teamData.attendanceLocation.longitude ?? ""),
+          radiusMeters: String(teamData.attendanceLocation.radiusMeters ?? "100"),
+        });
+      }
 
       if (data) {
         setSchedule({
@@ -95,6 +110,21 @@ useEffect(() => {
       return;
     }
 
+    const hasLocationValue = attendanceLocation.enabled;
+    const latitude = Number(attendanceLocation.latitude);
+    const longitude = Number(attendanceLocation.longitude);
+    const radiusMeters = Number(attendanceLocation.radiusMeters);
+
+    if (hasLocationValue && (
+      attendanceLocation.latitude === "" || attendanceLocation.longitude === "" ||
+      !Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
+      !Number.isFinite(longitude) || longitude < -180 || longitude > 180 ||
+      !Number.isFinite(radiusMeters) || radiusMeters <= 0
+    )) {
+      toast.error("Enter a valid latitude, longitude, and radius");
+      return;
+    }
+
     setLoading(true);
     try {
       const totalShiftHours = calculateNetHours(
@@ -114,6 +144,16 @@ useEffect(() => {
       await updateDoc(teamRef, {
         schedule: updatedSchedule,
         defaultAttendanceMode,
+        ...(hasLocationValue ? {
+          attendanceLocation: { enabled: true, latitude, longitude, radiusMeters },
+        } : {
+          attendanceLocation: {
+            enabled: false,
+            latitude: attendanceLocation.latitude === "" ? null : latitude,
+            longitude: attendanceLocation.longitude === "" ? null : longitude,
+            radiusMeters: Number.isFinite(radiusMeters) && radiusMeters > 0 ? radiusMeters : 100,
+          },
+        }),
       });
 
       setSchedule(updatedSchedule);
@@ -194,6 +234,51 @@ useEffect(() => {
           <p className="text-xs text-muted-foreground mt-3">
             {schedule.workingDays.length} working days ·{" "}
             {7 - schedule.workingDays.length} off days per week
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Attendance Location */}
+      <Card className="lg:col-span-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-primary" /> Attendance Location
+          </CardTitle>
+          <CardDescription>
+            Self-attendance members must be within this approximate radius to punch in or out.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+            <div>
+              <Label htmlFor="location-attendance-enabled" className="font-medium">Enable location-based attendance</Label>
+              <p className="mt-1 text-xs text-muted-foreground">Applies only to self attendance marked from the mobile app.</p>
+            </div>
+            <Switch id="location-attendance-enabled" checked={attendanceLocation.enabled}
+              onCheckedChange={(enabled) => setAttendanceLocation((prev) => ({ ...prev, enabled }))} />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="attendance-latitude">Latitude</Label>
+              <Input id="attendance-latitude" type="number" step="any" min={-90} max={90}
+                disabled={!attendanceLocation.enabled} placeholder="e.g. 12.9716" value={attendanceLocation.latitude}
+                onChange={(e) => setAttendanceLocation((prev) => ({ ...prev, latitude: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="attendance-longitude">Longitude</Label>
+              <Input id="attendance-longitude" type="number" step="any" min={-180} max={180}
+                disabled={!attendanceLocation.enabled} placeholder="e.g. 77.5946" value={attendanceLocation.longitude}
+                onChange={(e) => setAttendanceLocation((prev) => ({ ...prev, longitude: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="attendance-radius">Approx. distance (metres)</Label>
+              <Input id="attendance-radius" type="number" min={1} step={1}
+                disabled={!attendanceLocation.enabled} placeholder="100" value={attendanceLocation.radiusMeters}
+                onChange={(e) => setAttendanceLocation((prev) => ({ ...prev, radiusMeters: e.target.value }))} />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Tip: copy the latitude and longitude from your workplace location in a maps app. Location checks apply only to self attendance.
           </p>
         </CardContent>
       </Card>
