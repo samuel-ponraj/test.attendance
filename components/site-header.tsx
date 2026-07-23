@@ -86,6 +86,11 @@ const ROUTE_CONFIG: Record<
 
   member: [
     {
+      path: "/member/leave",
+      title: "Leave",
+      description: "Apply for leave and track approval status",
+    },
+    {
       path: "/member/members",
       title: "Team Members",
       description: "Mark and review team attendance",

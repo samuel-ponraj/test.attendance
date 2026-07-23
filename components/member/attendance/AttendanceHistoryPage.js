@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useAuth } from "../../../app/context/AuthContext";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const AttendanceHistory = () => {
@@ -29,6 +29,9 @@ const AttendanceHistory = () => {
   const getStatusColorClass = (status) => {
     const s = status?.toLowerCase();
     if (s === "present") return "text-emerald-500";
+    if (s === "paid_leave") return "text-emerald-500";
+    if (s === "unpaid_leave") return "text-orange-500";
+    if (s === "rejected_leave") return "text-red-500";
     if (s === "halfday") return "text-amber-500";
     if (s === "absent") return "text-red-500";
     return "text-gray-400";
@@ -37,6 +40,9 @@ const AttendanceHistory = () => {
   const getStatusBgClass = (status) => {
     const s = status?.toLowerCase();
     if (s === "present") return "bg-emerald-500";
+    if (s === "paid_leave") return "bg-emerald-500";
+    if (s === "unpaid_leave") return "bg-orange-500";
+    if (s === "rejected_leave") return "bg-red-500";
     if (s === "halfday") return "bg-amber-500";
     if (s === "absent") return "bg-red-500";
     return "bg-gray-400";
@@ -46,7 +52,16 @@ const AttendanceHistory = () => {
     present: "bg-emerald-50 dark:bg-emerald-950/30",
     absent: "bg-red-50 dark:bg-red-950/30",
     halfday: "bg-amber-50 dark:bg-amber-950/30",
+    paid_leave: "bg-emerald-50 dark:bg-emerald-950/30",
+    unpaid_leave: "bg-orange-50 dark:bg-orange-950/30",
+    rejected_leave: "bg-red-50 dark:bg-red-950/30",
   };
+
+  const getStatusLabel = (status) => ({
+    paid_leave: "Paid leave",
+    unpaid_leave: "Unpaid leave",
+    rejected_leave: "Leave rejected",
+  })[status] || status;
 
   const formatTime = (date) => {
   if (!date) return "--:--";
@@ -104,6 +119,27 @@ const AttendanceHistory = () => {
       }
     }
 
+    const leaveSnapshot = await getDocs(query(
+      collection(db, "teams", userData.teamId, "leaveRequests"),
+      where("memberId", "==", userData.memberId),
+    ));
+    leaveSnapshot.forEach((leaveDoc) => {
+      const leave = leaveDoc.data();
+      if (leave.status !== "rejected") return;
+      const current = new Date(`${leave.fromDate}T00:00:00`);
+      const end = new Date(`${leave.toDate}T00:00:00`);
+      while (current <= end) {
+        if (current.getFullYear() === year && current.getMonth() === month - 1) {
+          const log = logs[current.getDate() - 1];
+          if (log && !log.status) {
+            log.status = "rejected_leave";
+            log.entryType = "leave_request";
+          }
+        }
+        current.setDate(current.getDate() + 1);
+      }
+    });
+
     // Stats
     const present = logs.filter(l => l.status === "present").length;
     const halfDay = logs.filter(l => l.status === "halfday").length;
@@ -154,7 +190,7 @@ const AttendanceHistory = () => {
         </div>
       ) : (
     
-    <div className="px-4 sm:px-6 space-y-6">
+    <div className="space-y-4">
       {/* ===================== STATS SECTION ===================== */}
       <Card className="rounded-2xl">
         <CardContent>
@@ -262,9 +298,11 @@ const AttendanceHistory = () => {
                   <>
                     <div className={`font-bold  flex flex-col gap-2`}>
                       <span className={cn("capitalize", getStatusColorClass(data.status))}>
-                          {data.status}
+                          {getStatusLabel(data.status)}
                         </span>
-                      {data.entryType === 'admin' ? (
+                      {data.entryType === "leave" || data.entryType === "leave_request" ? (
+                        <span className="text-[11px]">{getStatusLabel(data.status)}</span>
+                      ) : data.entryType === 'admin' ? (
                         <span className="text-[11px]">Marked by Admin</span>
                       ): (
                         <span className="text-[11px]">{formatTime(data.punchIn)} - {formatTime(data.punchOut)}</span>
@@ -334,7 +372,7 @@ const AttendanceHistory = () => {
                 getStatusColorClass(log.status)
               )}
             >
-              {log.status}
+              {getStatusLabel(log.status)}
             </p>
           </div>
 

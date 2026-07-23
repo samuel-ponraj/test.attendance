@@ -314,7 +314,7 @@ const handleDynamicChange = (fieldId, value) => {
   }
 
   return (
-    <div className='space-y-4 px-4 md:px-6'>
+    <div className='space-y-4'>
       <div className='flex items-center justify-between'>
         <button
           onClick={() => router.back()}

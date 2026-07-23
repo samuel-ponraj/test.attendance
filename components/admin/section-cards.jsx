@@ -11,6 +11,21 @@ import {
   Layers,
 } from "lucide-react";
 
+function CardItem({ title, value, Icon, color }) {
+  return (
+    <Card className="py-4">
+      <CardHeader className="flex flex-row items-center justify-between ">
+        <div>
+          <CardTitle className="mb-2 text-3xl font-semibold">{value}</CardTitle>
+          <CardDescription>{title}</CardDescription>
+        </div>
+        <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${color.bg}`}>
+          <Icon className={`h-6 w-6 ${color.icon}`} />
+        </div>
+      </CardHeader>
+    </Card>
+  );
+}
 
 export function SectionCards({ teams = [] }) {
 
@@ -31,29 +46,8 @@ export function SectionCards({ teams = [] }) {
     0
   );
 
-
-  const CardItem = ({ title, value, Icon, color }) => (
-    <Card className="py-5 lg:py-6">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle className="text-3xl font-semibold mb-2">
-            {value}
-          </CardTitle>
-          <CardDescription >{title}</CardDescription>
-        </div>
-
-        {/* Colored icon */}
-        <div
-          className={`flex h-12 w-12 items-center justify-center rounded-xl ${color.bg}`}
-        >
-          <Icon className={`h-6 w-6 ${color.icon}`} />
-        </div>
-      </CardHeader>
-    </Card>
-  );
-
   return (
-    <div className="grid grid-cols-2 gap-4 px-4 lg:px-6 sm:grid-cols-2  xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <CardItem
         title="Total Teams"
         value={totalTeams}

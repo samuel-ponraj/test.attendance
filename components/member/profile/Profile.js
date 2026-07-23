@@ -493,7 +493,7 @@ const MemberProfileDesktop = () => {
 
   return (
     <>
-      <div className="min-h-screen text-white mx-4">
+      <div className="min-h-screen text-white">
         <div key={member.id || 'profile'} className="space-y-6">
 
           {/* NAME CARD */}

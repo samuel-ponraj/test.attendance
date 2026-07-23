@@ -123,7 +123,7 @@ const CustomForms = () => {
       {loading ? (
         <Loader2 className="w-4 h-4 animate-spin" />
       ) : customForms.length === 0 ? (
-        <Card className="mx-6 py-0 lg:py-2">
+        <Card className="py-0 lg:py-2">
           <CardContent className="flex flex-col items-center justify-center p-12 text-center">
             <div className="w-16 h-16 gradient-hero rounded-full flex items-center justify-center mb-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -150,7 +150,7 @@ const CustomForms = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 px-4 lg:px-6">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
           {customForms.map((form) => (
             <Card
               key={form.id}

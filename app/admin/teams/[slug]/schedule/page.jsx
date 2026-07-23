@@ -6,7 +6,7 @@ export default async function Page({ params }) {
 
   return (
     <TeamAccessGate teamId={slug}>
-      <div className="p-6 px-4 lg:px-6">
+      <div>
         <Schedule slug={slug} />
       </div>
     </TeamAccessGate>

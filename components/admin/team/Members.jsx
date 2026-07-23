@@ -24,6 +24,7 @@ export default function Members({
   handleMemberRemoved,
   setModalOpen,
   currentUserId,
+  memberProfileBasePath,
 }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -94,6 +95,8 @@ export default function Members({
                 <SelectItem value="all">All Attendance</SelectItem>
                 <SelectItem value="present">Present</SelectItem>
                 <SelectItem value="absent">Absent</SelectItem>
+                <SelectItem value="paid_leave">Paid Leave</SelectItem>
+                <SelectItem value="unpaid_leave">Unpaid Leave</SelectItem>
                 <SelectItem value="unmarked">Unmarked</SelectItem>
               </SelectGroup>
             </SelectContent>
@@ -135,6 +138,7 @@ export default function Members({
                 onUpdateAttendance={updateAttendance}
                 onRemove={handleMemberRemoved}
                 isCurrentUser={member.id === currentUserId}
+                profileHref={memberProfileBasePath ? `${memberProfileBasePath}/${member.id}` : null}
               />
             ))}
           </div>

@@ -641,7 +641,7 @@ const handleSaveCompanyDetails = async () => {
 
 
   return (
-    <div className="flex w-full flex-col gap-4 p-4 py-2 md:px-6">
+    <div className="flex w-full flex-col gap-4">
       <Toaster richColors position="top-center" />
 
       <Card>

@@ -60,16 +60,12 @@ export default function DashboardPage() {
 
 
   return (
-    <>
+    <div className="-mt-4 flex w-full flex-col gap-4">
       <Toaster richColors position="top-center" />
-      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-4 ">
-        <SectionCards teams={teams}/>
-      </div>
-
-      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-0 md:pb-6">
+      <SectionCards teams={teams}/>
 
         {teams.length === 0 && !loading ? (
-          <Card className="mx-6 py-0 lg:py-2 ">
+          <Card className="py-0 lg:py-2">
             <CardContent className="flex flex-col items-center justify-center p-12 text-center">
               <div className="w-16 h-16 gradient-hero rounded-full flex items-center justify-center mb-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -105,8 +101,6 @@ export default function DashboardPage() {
             {/* <TeamCardLayout teams={teams} sendDeleteOtp={sendDeleteOtp} deleteTeamWithOtp={deleteTeamWithOtp}/> */}
           </>
           )}
-
-      </div>
-    </>
+    </div>
   );
 }

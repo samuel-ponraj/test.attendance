@@ -70,6 +70,29 @@ service cloud.firestore {
           (isTeamMember(teamId) && resource.data.memberId == request.auth.uid);
         allow write: if isBos() || isTeamAdmin(teamId);
       }
+      match /leaveRequests/{requestId} {
+        allow read: if isBos() || isTeamAdmin(teamId) || isTeamManager(teamId) ||
+          (isTeamMember(teamId) && resource.data.memberId == request.auth.uid);
+        allow create: if isTeamMember(teamId) &&
+          request.resource.data.memberId == request.auth.uid &&
+          request.resource.data.status == "pending" &&
+          request.resource.data.leaveType == null &&
+          request.resource.data.reason is string &&
+          request.resource.data.reason.size() > 0 &&
+          get(/databases/$(database)/documents/teams/$(teamId)).data.billingConfig.billingType == "salary";
+        allow update: if isBos() || isTeamAdmin(teamId) ||
+          (isTeamManager(teamId) &&
+            resource.data.memberId != request.auth.uid &&
+            resource.data.status == "pending" &&
+            request.resource.data.status in ["approved", "rejected"] &&
+            request.resource.data.leaveType in ["paid", "unpaid", null] &&
+            request.resource.data.reviewedBy.id == request.auth.uid &&
+            request.resource.data.reviewedBy.role == "manager" &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              "status", "leaveType", "reviewedBy", "reviewedAt", "updatedAt"
+            ]));
+        allow delete: if isBos() || isTeamAdmin(teamId);
+      }
       match /{teamSubpath=**} {
         allow read, write: if isBos() || isTeamAdmin(teamId);
       }

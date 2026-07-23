@@ -293,7 +293,7 @@ export default function TransactionsTable({
     : filteredTransactions;
 
   return (
-    <Card className="mx-4 lg:mx-6">
+    <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">

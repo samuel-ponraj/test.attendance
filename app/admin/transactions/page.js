@@ -25,8 +25,8 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 py-4 md:gap-6 md:pb-6">
-      <div className="flex items-center justify-between px-4 lg:px-6">
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
         <button
           onClick={() => router.back()}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground"

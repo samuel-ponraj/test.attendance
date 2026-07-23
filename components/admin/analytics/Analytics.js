@@ -151,7 +151,7 @@ useEffect(() => {
         No Data Found
       </div>
     ) : (
-      <div className="grid grid-cols-1  px-4 lg:px-6 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Team-wise Attendance */}
         <Card>
           <CardHeader>

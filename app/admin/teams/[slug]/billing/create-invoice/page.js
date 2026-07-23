@@ -14,7 +14,7 @@ export default function Page() {
 
   return (
     <TeamAccessGate teamId={teamId}>
-      <div className="flex flex-col gap-4 pb-4 md:gap-6 md:pb-6 px-4">
+      <div className="flex flex-col gap-4">
         <InvoiceForm teamId={teamId} memberId={memberId} period={period} />
       </div>
     </TeamAccessGate>

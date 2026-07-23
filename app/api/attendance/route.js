@@ -54,6 +54,36 @@ async function getAuthenticatedMember(req) {
   return { ...memberData, id: decoded.uid, teamId: mapping.teamId, teamData: teamSnap.data() || {} };
 }
 
+async function getAuthenticatedManager(req, teamId) {
+  const token = getTokenFromRequest(req);
+  if (!token) {
+    const error = new Error("Authentication required");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  let decoded;
+  try {
+    decoded = await adminAuth.verifyIdToken(token);
+  } catch {
+    const error = new Error("Invalid authentication token");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const managerSnap = await adminDb
+    .collection("teams").doc(teamId)
+    .collection("members").doc(decoded.uid).get();
+
+  if (!managerSnap.exists || managerSnap.data()?.role !== "manager") {
+    const error = new Error("Manager access denied");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return { id: decoded.uid, ...managerSnap.data() };
+}
+
 function validateAttendanceLocation(teamData, location) {
   const config = teamData?.attendanceLocation;
   if (!config || config.enabled !== true) return null;
@@ -251,6 +281,67 @@ export async function PATCH(req) {
   } catch (error) {
     return NextResponse.json(
       { error: error.message || "Punch Out Failed" },
+      { status: error.statusCode || 500 }
+    );
+  }
+}
+
+// Manager-marked attendance must update the cached team summary used by the
+// admin home and teams pages. Direct client writes only refresh punch listeners.
+export async function PUT(req) {
+  try {
+    const { teamId, dateKey, member, status } = await req.json();
+    if (!teamId || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || ""))) {
+      const error = new Error("Invalid team or attendance date");
+      error.statusCode = 400;
+      throw error;
+    }
+    if (!member?.id || !["present", "absent", "halfday"].includes(status)) {
+      const error = new Error("Invalid member or attendance status");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const manager = await getAuthenticatedManager(req, teamId);
+    await assertTeamUnlockedByPlan(teamId);
+
+    const memberSnap = await adminDb
+      .collection("teams").doc(teamId)
+      .collection("members").doc(member.id).get();
+    if (!memberSnap.exists) {
+      const error = new Error("Member not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const punchRef = adminDb
+      .collection("teams").doc(teamId)
+      .collection("attendance").doc(dateKey)
+      .collection("punches").doc(member.id);
+    const existing = await punchRef.get();
+    const now = FieldValue.serverTimestamp();
+
+    await punchRef.set({
+      id: member.id,
+      firstName: memberSnap.data()?.firstName || "",
+      lastName: memberSnap.data()?.lastName || "",
+      status,
+      entryType: "manager",
+      markedBy: manager.id,
+      markedAt: now,
+      punchIn: existing.exists ? existing.data()?.punchIn ?? null : null,
+      punchOut: existing.exists ? existing.data()?.punchOut ?? null : null,
+      totalHoursWorked: existing.exists ? existing.data()?.totalHoursWorked ?? 0 : 0,
+      ...(!existing.exists ? { createdAt: now } : {}),
+      updatedAt: now,
+    }, { merge: true });
+
+    await updateTeamSummary(teamId, dateKey);
+    return NextResponse.json({ message: "Attendance updated" });
+  } catch (error) {
+    console.error("Manager attendance update error:", error);
+    return NextResponse.json(
+      { error: error.message || "Attendance update failed" },
       { status: error.statusCode || 500 }
     );
   }

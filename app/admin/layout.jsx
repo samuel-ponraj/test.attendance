@@ -41,7 +41,7 @@ function DashboardContent({ children }) {
 
           <div className="flex flex-1 flex-col pt-0 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
             <div className="@container/main flex flex-1 flex-col gap-2">
-              <div className="flex-1">{children}</div>
+              <div className="flex-1 p-4">{children}</div>
 
               <div className="mt-auto py-2 text-center text-[10px] text-muted-foreground">
                 Powered by{" "}

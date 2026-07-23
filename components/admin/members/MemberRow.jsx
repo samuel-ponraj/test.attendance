@@ -8,6 +8,7 @@ import {
 import Image from "next/image";
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 // ✅ Utility: DD-MM-YYYY
 const getDateKey = (date = new Date()) => {
@@ -24,6 +25,7 @@ const MemberRow = ({
   selectedDate = new Date(),
   onUpdateAttendance,
   isCurrentUser = false,
+  profileHref = null,
 }) => {
 
   const dateKey = getDateKey(selectedDate);
@@ -91,8 +93,8 @@ const getRoleStyle = (status) => {
       </Avatar>
 
       <div className="flex flex-col gap-1">
-        <p className="font-medium text-foreground leading-none flex items-center ">
-          {`${member.firstName || ''} ${member.lastName || ''}`} 
+        <div className="font-medium text-foreground leading-none flex items-center ">
+          {profileHref ? <Link href={profileHref} className="hover:text-primary hover:underline underline-offset-4">{`${member.firstName || ''} ${member.lastName || ''}`}</Link> : `${member.firstName || ''} ${member.lastName || ''}`} 
           <span>
             <Badge variant="outline" className={`capitalize ml-2 text-[12px] ${getRoleStyle(member.role)}`}>
               {member.role}
@@ -100,7 +102,7 @@ const getRoleStyle = (status) => {
             {isCurrentUser && (
               <Badge variant="secondary" className="ml-2 text-[11px]">You</Badge>
             )}</span>
-        </p>
+        </div>
         <p className="text-sm text-muted-foreground">{member.email}</p>
       </div>
     </div>

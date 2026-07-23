@@ -976,7 +976,7 @@ const Payments = () => {
 
   if (membersLoading || (teamId && !team)) {
     return (
-      <div className="flex min-h-[360px] items-center justify-center px-4">
+      <div className="flex min-h-[360px] items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -984,7 +984,7 @@ const Payments = () => {
 
   if (!member) {
     return (
-      <div className="px-4 md:px-6">
+      <div>
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             No member profile found for this account.
@@ -995,7 +995,7 @@ const Payments = () => {
   }
 
   return (
-    <div className="space-y-6 px-4 md:px-6">
+    <div className="space-y-4">
       <Card className="overflow-hidden">
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>

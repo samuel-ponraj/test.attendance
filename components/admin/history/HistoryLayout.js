@@ -131,7 +131,7 @@ const HistoryLayout = () => {
   };
 
   return (
-    <div className="space-y-6 px-4 lg:px-6">
+    <div className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">

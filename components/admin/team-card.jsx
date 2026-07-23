@@ -226,7 +226,7 @@ const TeamCardLayout = ({
 
   return (
     <>
-      <div className="space-y-4 px-4 lg:px-6">
+      <div className="space-y-4">
         {lockedCount > 0 && (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
             Your current plan unlocks {unlockedCount} team

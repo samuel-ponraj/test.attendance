@@ -31,9 +31,9 @@ const Overview = () => {
   const stats = getStats();
 
   return (
-    <div className="space-y-6 px-4 pb-4 lg:px-6">
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch">
+    <div className="space-y-4">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
           <PunchCard
             punchIn={punchIn}
             punchOut={punchOut}
@@ -49,7 +49,7 @@ const Overview = () => {
           />
           <StatsLogsCard stats={stats} monthlyLogs={monthlyLogs} />
         </div>
-        <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
           <AttendancePieChart stats={stats} />
           <WeeklyBarChart monthlyLogs={monthlyLogs} />
         </div>

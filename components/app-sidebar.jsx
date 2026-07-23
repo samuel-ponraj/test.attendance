@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -13,6 +12,7 @@ import {
   Calendar,
   Form, 
   ReceiptIndianRupee,
+  CalendarCheck,
 } from "lucide-react";
 
 import {
@@ -33,8 +33,7 @@ import { NavUserAdmin } from "./nav-user-admin";
 import { NavUserMember } from "./nav-user-member";
 import { useTheme } from "next-themes";
 import { useMembers } from "@/app/context/MembersContext";
-import { db } from "@/lib/firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+import { useTeams } from "@/app/context/TeamsContext";
 
 /* ---------------- NAV CONFIG ---------------- */
 
@@ -70,7 +69,7 @@ export function AppSidebar() {
   const { state, setOpenMobile } = useSidebar();
   const { theme } = useTheme();
   const { members } = useMembers();
-  const [memberBillingType, setMemberBillingType] = useState("");
+  const { teams } = useTeams();
 
   const isCollapsed = state === "collapsed";
   const isLight = theme === "light";
@@ -84,18 +83,8 @@ export function AppSidebar() {
 
   const role = getRoleFromPath(pathname);
 
-  const memberTeamId = members?.[0]?.teamId;
   const isManager = members?.[0]?.role === "manager";
-
-  useEffect(() => {
-    if (role !== "member" || !memberTeamId) return;
-
-    const unsubscribe = onSnapshot(doc(db, "teams", memberTeamId), (snapshot) => {
-      setMemberBillingType(snapshot.data()?.billingConfig?.billingType || "");
-    });
-
-    return () => unsubscribe();
-  }, [memberTeamId, role]);
+  const memberBillingType = teams?.[0]?.billingConfig?.billingType || "";
 
   if (!role) return null;
 
@@ -109,6 +98,18 @@ export function AppSidebar() {
       ? { ...item, title: "Payroll" }
       : item,
   );
+  if (role === "member" && memberBillingType === "salary") {
+    const teamMembersIndex = mainNavItems.findIndex((item) => item.url === "/member/members");
+    const paymentsIndex = mainNavItems.findIndex((item) => item.url === "/member/payments");
+    const leaveIndex = isManager && teamMembersIndex >= 0
+      ? teamMembersIndex + 1
+      : paymentsIndex < 0 ? mainNavItems.length : paymentsIndex;
+    mainNavItems.splice(leaveIndex, 0, {
+      title: "Leave",
+      url: "/member/leave",
+      icon: CalendarCheck,
+    });
+  }
   const settingsItems = navConfig[role].settings;
 
   /* ---------- ACTIVE CHECK ---------- */

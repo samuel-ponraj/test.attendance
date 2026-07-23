@@ -190,7 +190,7 @@ export default function BillingOverviewChart({ teams = [] }) {
   }, [billingRows, teams]);
 
   return (
-    <Card className="mx-4 lg:mx-6">
+    <Card>
       <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Users, CalendarIcon, CheckCircle, XCircle, UserPlus, Clock, Settings, UserRoundCheck, IndianRupee, ReceiptIndianRupee, Pencil, Loader2, QrCode } from "lucide-react";
+import { ArrowLeft, Users, CalendarIcon, CheckCircle, XCircle, UserPlus, Clock, Settings, UserRoundCheck, IndianRupee, ReceiptIndianRupee, Pencil, Loader2, QrCode, CalendarCheck } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, serverTimestamp, onSnapshot  } from "firebase/firestore";
 import AddMemberModal from "../addMemberModal";
@@ -41,6 +41,7 @@ import Members from "./Members";
 import MembersList from "../members/MembersList";
 import BillingTab from "./BillingTab";
 import QrAttendanceModal from "./QrAttendanceModal";
+import LeaveRequestsTab from "./LeaveRequestsTab";
 import { getFunctions, httpsCallable } from "firebase/functions";
 
 
@@ -153,6 +154,7 @@ if (!team) {
   let presentCount = 0;
 let absentCount = 0;
 let halfdayCount = 0;
+let leaveCount = 0;
 
 members.forEach((m) => {
   const entry = attendance[m.id];
@@ -168,11 +170,15 @@ members.forEach((m) => {
     case "halfday":
       halfdayCount++;
       break;
+    case "paid_leave":
+    case "unpaid_leave":
+      leaveCount++;
+      break;
   }
 });
 
 const totalCount = members.length;
-const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount);
+const unmarkedCount = totalCount - (presentCount + absentCount + halfdayCount + leaveCount);
 const openAddMember = () => {
   setModalOpen(true);
 };
@@ -333,7 +339,7 @@ const openAddMember = () => {
 
 
   return (
-    <div className="space-y-6 pb-4">
+    <div className="space-y-4">
       {/* Back & Add */}
       <div className="flex justify-between items-center mb-4 sm:mb-4">
         <button
@@ -404,6 +410,7 @@ const openAddMember = () => {
               <Count icon={CheckCircle} label={`${presentCount} Present`} color="success" />
               <Count icon={XCircle} label={`${absentCount} Absent`} color="destructive" />
               <Count icon={Clock} label={`${halfdayCount} Halfday`} color="warning" />
+              {team.billingConfig?.billingType === "salary" && <Count icon={CalendarCheck} label={`${leaveCount} Leave`} color="muted" />}
               <Count icon={Users} label={`${unmarkedCount} Unmarked`} color="muted" />
             </div>
             <div className="flex justify-center gap-4">
@@ -472,7 +479,7 @@ const openAddMember = () => {
       </Dialog>
       
       <Tabs defaultValue="attendance" className="space-y-6">
-            <TabsList className="w-full grid grid-cols-3">
+            <TabsList className={`w-full grid ${team.billingConfig?.billingType === "salary" ? "grid-cols-4" : "grid-cols-3"}`}>
               <TabsTrigger value="attendance">
                 <UserRoundCheck className="w-4 h-4 hidden sm:inline" />
                 Mark Attendance
@@ -481,6 +488,10 @@ const openAddMember = () => {
                 <Users className="w-4 h-4 hidden sm:inline" />
                 Members
               </TabsTrigger>
+              {team.billingConfig?.billingType === "salary" && <TabsTrigger value="leave">
+                <CalendarCheck className="w-4 h-4 hidden sm:inline" />
+                Leave Requests
+              </TabsTrigger>}
               <TabsTrigger value="billing">
                 <IndianRupee className="w-4 h-4 hidden sm:inline" />
                 Billing
@@ -497,6 +508,7 @@ const openAddMember = () => {
                 updateAttendance={updateAttendance}
                 handleMemberRemoved={handleMemberRemoved}
                 setModalOpen={openAddMember}
+                memberProfileBasePath={`/admin/teams/${team.id}/members`}
               />
             </TabsContent>
 
@@ -509,6 +521,12 @@ const openAddMember = () => {
             <TabsContent value="billing">
               <BillingTab teamId={team.id}/>
             </TabsContent>
+            {team.billingConfig?.billingType === "salary" && <TabsContent value="leave">
+              <LeaveRequestsTab
+                teamId={team.id}
+                reviewer={{ id: user?.uid || null, name: user?.displayName || user?.email || "Admin", role: "admin" }}
+              />
+            </TabsContent>}
         </Tabs>
 
       <ImportExcelSheet

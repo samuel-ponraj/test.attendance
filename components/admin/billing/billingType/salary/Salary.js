@@ -279,6 +279,8 @@ const Salary = ({ teamId, team, members }) => {
     let presentDays = 0;
     let absentDays = 0;
     let halfDays = 0;
+    let paidLeaveDays = 0;
+    let unpaidLeaveDays = 0;
 
     const workingDays = team?.schedule?.workingDays || [];
 
@@ -308,16 +310,24 @@ const Salary = ({ teamId, team, members }) => {
           return;
         }
 
-        const status = punchSnap.data()?.status;
+        const punch = punchSnap.data();
+        const status = punch?.status;
+        const leaveDuration = Number(punch?.leaveDuration || 1);
 
         if (status === "present") presentDays += 1;
+        else if (status === "paid_leave") paidLeaveDays += 1;
+        else if (status === "unpaid_leave") {
+          unpaidLeaveDays += leaveDuration;
+          if (leaveDuration === 0.5) halfDays += 1;
+          else absentDays += 1;
+        }
         else if (status === "absent") absentDays += 1;
         else if (status === "halfday") halfDays += 1;
         else absentDays += 1;
       }),
     );
 
-    const totalWorkingDays = presentDays + absentDays + halfDays;
+    const totalWorkingDays = presentDays + paidLeaveDays + absentDays + halfDays;
 
     return {
       totalDays: attendanceDateKeys.length,
@@ -326,7 +336,9 @@ const Salary = ({ teamId, team, members }) => {
       presentDays,
       absentDays,
       halfDays,
-      payableDays: presentDays + halfDays * 0.5,
+      paidLeaveDays,
+      unpaidLeaveDays,
+      payableDays: presentDays + paidLeaveDays + halfDays * 0.5,
     };
   };
 
@@ -347,7 +359,7 @@ const Salary = ({ teamId, team, members }) => {
 
       return {
         basicPay:
-          attendance.presentDays * dailyRate +
+          (attendance.presentDays + attendance.paidLeaveDays) * dailyRate +
           attendance.halfDays * (dailyRate / 2),
         perDaySalary: dailyRate,
         lossOfPay:
@@ -364,7 +376,7 @@ const Salary = ({ teamId, team, members }) => {
           ? monthlySalary / attendance.totalWorkingDays
           : 0;
 
-      const payableDays = attendance.presentDays + attendance.halfDays * 0.5;
+      const payableDays = attendance.presentDays + attendance.paidLeaveDays + attendance.halfDays * 0.5;
 
       const basicPay = payableDays * perDaySalary;
 
@@ -484,6 +496,8 @@ const Salary = ({ teamId, team, members }) => {
       presentDays: attendance.presentDays,
       absentDays: attendance.absentDays,
       halfDays: attendance.halfDays,
+      paidLeaveDays: attendance.paidLeaveDays,
+      unpaidLeaveDays: attendance.unpaidLeaveDays,
       payableDays: attendance.payableDays,
 
       perDaySalary: Math.round(perDaySalary),

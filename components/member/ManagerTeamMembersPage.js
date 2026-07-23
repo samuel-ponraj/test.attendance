@@ -4,13 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   collection,
-  doc,
   onSnapshot,
-  serverTimestamp,
-  setDoc,
 } from "firebase/firestore";
 import { format } from "date-fns";
-import { CalendarIcon, CheckCircle, Clock, Users, XCircle } from "lucide-react";
+import { CalendarCheck, CalendarIcon, CheckCircle, Clock, Users, XCircle } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useMembers } from "@/app/context/MembersContext";
 import { useTeams } from "@/app/context/TeamsContext";
@@ -25,6 +22,7 @@ import {
 } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
+import Link from "next/link";
 
 const getDateKey = (date) => date.toLocaleDateString("en-CA");
 
@@ -94,24 +92,13 @@ export default function ManagerTeamMembersPage() {
 
   const updateAttendance = async ({ teamId, dateKey, member, status }) => {
     try {
-      await setDoc(
-        doc(db, "teams", teamId, "attendance", dateKey, "punches", member.id),
-        {
-          id: member.id,
-          firstName: member.firstName || "",
-          lastName: member.lastName || "",
-          status,
-          entryType: "manager",
-          markedBy: manager.id,
-          markedAt: serverTimestamp(),
-          punchIn: null,
-          punchOut: null,
-          totalHoursWorked: 0,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
+      const response = await fetch("/api/attendance", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamId, dateKey, member: { id: member.id }, status }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Attendance update failed");
       toast.success("Attendance updated");
     } catch (error) {
       console.error("Manager attendance update failed:", error);
@@ -129,7 +116,7 @@ export default function ManagerTeamMembersPage() {
   if (manager.role !== "manager") return null;
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-4">
       <Card>
         <CardContent className="space-y-6">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -144,6 +131,8 @@ export default function ManagerTeamMembersPage() {
                 </p>
               </div>
             </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            {team.billingConfig?.billingType === "salary" && <Button asChild><Link href="/member/leave"><CalendarCheck className="size-4" />Apply Leave</Link></Button>}
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -163,6 +152,7 @@ export default function ManagerTeamMembersPage() {
                 />
               </PopoverContent>
             </Popover>
+            </div>
           </div>
           <div className="flex flex-wrap gap-5 border-t pt-5">
             <Count
