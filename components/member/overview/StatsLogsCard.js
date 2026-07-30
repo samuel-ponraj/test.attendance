@@ -3,7 +3,12 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 
 const StatsLogsCard = ({ stats, monthlyLogs }) => {
-
+  const isPresentStatus = (status) => status === "present" || status === "paid_leave";
+  const isAbsentStatus = (status) => status === "absent" || status === "unpaid_leave";
+  const statusLabel = (status) => ({
+    paid_leave: "PAID LEAVE",
+    unpaid_leave: "UNPAID LEAVE",
+  })[status] || status?.toUpperCase();
 
   const formatTime = (date) => {
     if (!date) return "--:--";
@@ -26,6 +31,15 @@ const StatsLogsCard = ({ stats, monthlyLogs }) => {
     .slice(0, 3);
 
   const renderTimeBlock = (log, type) => {
+    if (log.entryType === "leave") {
+      return (
+        <div className="text-center">
+          <p className="text-xs font-bold text-emerald-500">Leave</p>
+          <p className="text-[10px] text-gray-500 uppercase">Approved</p>
+        </div>
+      );
+    }
+
     if (log.entryType === "admin") {
       return (
         <div className="text-center">
@@ -127,9 +141,9 @@ const StatsLogsCard = ({ stats, monthlyLogs }) => {
                   {/* DATE */}
                   <div
                     className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center text-white shrink-0 ${
-                      log.status === "present"
+                      isPresentStatus(log.status)
                         ? "bg-emerald-500"
-                        : log.status === "absent"
+                        : isAbsentStatus(log.status)
                         ? "bg-red-600"
                         : "bg-amber-500"
                     }`}
@@ -155,14 +169,14 @@ const StatsLogsCard = ({ stats, monthlyLogs }) => {
                     </p>
                     <p
                       className={`text-[10px] font-black mt-1 ${
-                        log.status === "present"
+                        isPresentStatus(log.status)
                           ? "text-emerald-500"
-                          : log.status === "absent"
+                          : isAbsentStatus(log.status)
                           ? "text-red-600"
                           : "text-amber-500"
                       }`}
                     >
-                      {log.status?.toUpperCase()}
+                      {statusLabel(log.status)}
                     </p>
                   </div>
 

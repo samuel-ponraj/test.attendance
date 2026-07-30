@@ -273,9 +273,9 @@ const openAddMember = () => {
     punchesSnap.forEach((doc) => {
       const data = doc.data();
 
-      if (data.status === "present") present++;
+      if (data.status === "present" || data.status === "paid_leave") present++;
       if (data.status === "halfday") halfday++;
-      if (data.status === "absent") absent++;
+      if (data.status === "absent" || data.status === "unpaid_leave") absent++;
     });
 
     // 🔥 Update Team Root attendanceSummary

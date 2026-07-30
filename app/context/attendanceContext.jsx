@@ -216,7 +216,8 @@ export const AttendanceProvider = ({ children }) => {
       checkInCount = 0;
 
     monthlyLogs.forEach((log) => {
-      if (log.status === "present") present++;
+      // Paid leave is a payable/present day in attendance insights.
+      if (log.status === "present" || log.status === "paid_leave") present++;
       else if (log.status === "halfday") halfDay++;
       else absent++;
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, onSnapshot, serverTimestamp, writeBatch } from "firebase/firestore";
+import { collection, doc, getDocs, onSnapshot, serverTimestamp, writeBatch } from "firebase/firestore";
 import { CalendarDays, CheckCircle2, ClipboardList, Clock3, Loader2, XCircle } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,6 +18,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { getDateKey } from "@/lib/DateKey";
+import { updateAttendanceSummary } from "@/lib/updateAttendanceSummary";
 
 const dateKeys = (from, to) => {
   const result = [];
@@ -116,6 +118,17 @@ export default function LeaveRequestsTab({ teamId, reviewer, excludeMemberId = n
         });
       }
       await batch.commit();
+
+      // Leave approval writes punches directly, so refresh the cached summary
+      // consumed by the admin overview when the request includes today.
+      const affectedDateKeys = decision === "approved" ? dateKeys(request.fromDate, request.toDate) : [];
+      const todayKey = getDateKey();
+      if (affectedDateKeys.includes(todayKey)) {
+        const punches = await getDocs(collection(db, "teams", teamId, "attendance", todayKey, "punches"));
+        const attendanceMap = Object.fromEntries(punches.docs.map((item) => [item.id, item.data()]));
+        await updateAttendanceSummary({ teamId, attendanceMap, dateKey: todayKey });
+      }
+
       toast.success(decision === "approved" ? `Approved as ${leaveType} leave.` : "Leave request rejected.");
       setPendingChange(null);
     } catch (error) {

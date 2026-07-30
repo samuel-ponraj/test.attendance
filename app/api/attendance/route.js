@@ -163,9 +163,9 @@ async function updateTeamSummary(teamId, dateKey) {
 
   punchesSnap.forEach((doc) => {
     const data = doc.data();
-    if (data.status === "present") present++;
+    if (data.status === "present" || data.status === "paid_leave") present++;
     else if (data.status === "halfday") halfday++;
-    else if (data.status === "absent") absent++;
+    else if (data.status === "absent" || data.status === "unpaid_leave") absent++;
   });
 
   await teamRef.set(

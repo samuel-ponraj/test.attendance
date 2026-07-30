@@ -141,9 +141,9 @@ const AttendanceHistory = () => {
     });
 
     // Stats
-    const present = logs.filter(l => l.status === "present").length;
+    const present = logs.filter(l => l.status === "present" || l.status === "paid_leave").length;
     const halfDay = logs.filter(l => l.status === "halfday").length;
-    const absent = logs.filter(l => l.status === "absent").length;
+    const absent = logs.filter(l => l.status === "absent" || l.status === "unpaid_leave").length;
 
     let avgCheckIn = "--:--";
     if (checkInTimes.length) {
