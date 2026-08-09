@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   collection,
   onSnapshot,
 } from "firebase/firestore";
 import { format } from "date-fns";
-import { CalendarCheck, CalendarIcon, CheckCircle, Clock, Users, XCircle } from "lucide-react";
+import { CalendarCheck, CalendarIcon, CheckCircle, Clock, Users, UserRoundCheck, XCircle } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useMembers } from "@/app/context/MembersContext";
 import { useTeams } from "@/app/context/TeamsContext";
@@ -23,6 +23,9 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import Link from "next/link";
+import AddMemberModal from "@/components/admin/addMemberModal";
+import MembersList from "@/components/admin/members/MembersList";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const getDateKey = (date) => date.toLocaleDateString("en-CA");
 
@@ -37,6 +40,7 @@ function Count({ icon: Icon, label, className }) {
 
 export default function ManagerTeamMembersPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { members: ownMembers, loading: memberLoading } = useMembers();
   const { teams, loading: teamLoading } = useTeams();
   const manager = ownMembers?.[0];
@@ -44,6 +48,7 @@ export default function ManagerTeamMembersPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [teamMembers, setTeamMembers] = useState([]);
   const [attendance, setAttendance] = useState({});
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
 
   useEffect(() => {
     if (!memberLoading && manager && manager.role !== "manager")
@@ -132,7 +137,7 @@ export default function ManagerTeamMembersPage() {
               </div>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            {team.billingConfig?.billingType === "salary" && <Button asChild><Link href="/member/leave"><CalendarCheck className="size-4" />Apply Leave</Link></Button>}
+           
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -154,7 +159,8 @@ export default function ManagerTeamMembersPage() {
             </Popover>
             </div>
           </div>
-          <div className="flex flex-wrap gap-5 border-t pt-5">
+          <div className="flex flex-col gap-4 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-5">
             <Count
               icon={CheckCircle}
               label={`${counts.present} Present`}
@@ -175,19 +181,34 @@ export default function ManagerTeamMembersPage() {
               label={`${counts.unmarked} Unmarked`}
               className="text-muted-foreground"
             />
+            </div>
+            {team.billingConfig?.billingType === "salary" && <Button asChild><Link href="/member/leave"><CalendarCheck className="size-4" />Apply Leave</Link></Button>}
           </div>
         </CardContent>
       </Card>
-      <Members
-        members={teamMembers}
-        selectedDate={selectedDate}
-        attendance={attendance}
-        team={team}
-        updateAttendance={updateAttendance}
-        handleMemberRemoved={() => {}}
-        setModalOpen={() => {}}
-        currentUserId={manager.id}
-      />
+      <Tabs defaultValue={searchParams.get("tab") === "members" ? "members" : "attendance"} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="attendance"><UserRoundCheck className="size-4 hidden sm:inline" />Mark Attendance</TabsTrigger>
+          <TabsTrigger value="members"><Users className="size-4 hidden sm:inline" />Members</TabsTrigger>
+        </TabsList>
+        <TabsContent value="attendance">
+          <Members
+            members={teamMembers}
+            selectedDate={selectedDate}
+            attendance={attendance}
+            team={team}
+            updateAttendance={updateAttendance}
+            handleMemberRemoved={() => {}}
+            setModalOpen={() => {}}
+            currentUserId={manager.id}
+            memberProfileBasePath="/member/members"
+          />
+        </TabsContent>
+        <TabsContent value="members">
+          <MembersList setModalOpen={setAddMemberOpen} teamId={manager.teamId} managerMode currentUserId={manager.id} />
+        </TabsContent>
+      </Tabs>
+      <AddMemberModal open={addMemberOpen} onOpenChange={setAddMemberOpen} team={team} managerMode />
     </div>
   );
 }

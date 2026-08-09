@@ -525,7 +525,7 @@ const MemberProfileDesktop = () => {
                   accept="image/*" 
                   className="hidden" 
                   onChange={handleImageUpload}
-                  disabled={isUpdating}
+                  disabled={isUpdating || member.role === "manager"}
                 />
               </label>
             </div>
@@ -659,7 +659,7 @@ const MemberProfileDesktop = () => {
                 </div>
                 <Button 
                   onClick={() => handleUpdate(member.email?.toLowerCase(), member, team)} 
-                  disabled={isUpdating}
+                  disabled={isUpdating || member.role === "manager"}
                 >
                   {isUpdating ? "Updating..." : "Update Profile"}
                 </Button>
@@ -671,6 +671,7 @@ const MemberProfileDesktop = () => {
                     <Label className="text-gray-400">First Name</Label>
                     <Input
                       value={formData.firstName || ""}
+                      disabled={member.role === "manager"}
                       onChange={(e) => handleChange("firstName", e.target.value)}
                       className="bg-transparent border-gray-700 focus:border-primary"
                     />
@@ -679,6 +680,7 @@ const MemberProfileDesktop = () => {
                     <Label className="text-gray-400">Last Name</Label>
                     <Input
                       value={formData.lastName || ""}
+                      disabled={member.role === "manager"}
                       onChange={(e) => handleChange("lastName", e.target.value)}
                       className="bg-transparent border-gray-700 focus:border-primary"
                     />
@@ -690,6 +692,7 @@ const MemberProfileDesktop = () => {
                     <Label className="text-gray-400">Contact</Label>
                     <Input
                       value={formData.contact || ""}
+                      disabled={member.role === "manager"}
                       onChange={(e) => handleChange("contact", e.target.value)}
                       className="bg-transparent border-gray-700 focus:border-primary"
                       placeholder="+919876543210"

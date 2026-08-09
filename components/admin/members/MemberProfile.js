@@ -45,7 +45,7 @@ import BillingCard from './BillingCard'
 import PaymentHistoryCard from './PaymentHistoryCard'
 import SalaryCard from "./SalaryCard";
 
-const MemberProfile = ({ teamId, memberId }) => {
+const MemberProfile = ({ teamId, memberId, managerView = false, currentUserId = null }) => {
   const router = useRouter()
   
 
@@ -72,6 +72,7 @@ const MemberProfile = ({ teamId, memberId }) => {
   const [teamDetails, setTeamDetails] = useState(null)
   const [billingPeriods, setBillingPeriods] = useState([])
   const [payments, setPayments] = useState([])
+  const readOnly = managerView && memberId === currentUserId
 
   useEffect(() => {
     const fetchMember = async () => {
@@ -115,7 +116,7 @@ const MemberProfile = ({ teamId, memberId }) => {
   }, [teamId, memberId, router])
 
   useEffect(() => {
-	if (!teamId || !memberId) return;
+  if (managerView || !teamId || !memberId) return;
 
 	const paymentsRef = collection(db, "teams", teamId , "payments");
 	const q = query(paymentsRef, where("memberId", "==", memberId));
@@ -141,10 +142,10 @@ const MemberProfile = ({ teamId, memberId }) => {
 	});
 
 	return () => unsubscribe();
-}, [memberId, teamId]);
+}, [managerView, memberId, teamId]);
 
   useEffect(() => {
-    if (!teamId || !memberId) return;
+    if (managerView || !teamId || !memberId) return;
 
     const periodsRef = collection(
       db,
@@ -165,7 +166,7 @@ const MemberProfile = ({ teamId, memberId }) => {
     });
 
     return () => unsubscribe();
-  }, [memberId, teamId]);
+  }, [managerView, memberId, teamId]);
 
   const formatDate = (value) => {
     if (!value) return 'Not configured'
@@ -282,18 +283,18 @@ const handleDynamicChange = (fieldId, value) => {
     const memberRef = doc(db, 'teams', teamId, 'members', memberId)
     const memberMapRef = doc(db, 'allMembers', email.trim().toLowerCase())
 
-    await Promise.all([
-      updateDoc(memberRef, {
+    const updates = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         contact: contact.trim(),
-        role,
         customData: dynamicFields,
         attendanceMode: attendanceMode === 'inherit' ? deleteField() : attendanceMode,
         updatedAt: serverTimestamp(),
-      }),
-      updateDoc(memberMapRef, { role }),
-    ])
+      }
+    if (!managerView) updates.role = role
+
+    await updateDoc(memberRef, updates)
+    if (!managerView) await updateDoc(memberMapRef, { role })
 
     toast.success('Member profile updated successfully')
   } catch (error) {
@@ -317,7 +318,7 @@ const handleDynamicChange = (fieldId, value) => {
     <div className='space-y-4'>
       <div className='flex items-center justify-between'>
         <button
-          onClick={() => router.back()}
+          onClick={() => managerView ? router.push("/member/members?tab=members") : router.back()}
           className='flex items-center gap-2 text-muted-foreground hover:text-foreground'
         >
           <ArrowLeft className='h-4 w-4' />
@@ -325,7 +326,7 @@ const handleDynamicChange = (fieldId, value) => {
         </button>
 
         <div className='flex items-center gap-2'>
-          <Button
+          {!readOnly && <Button
             onClick={handleSave}
             disabled={saving}
             className='min-w-40'
@@ -337,7 +338,7 @@ const handleDynamicChange = (fieldId, value) => {
             ) : (
               'Save Profile'
             )}
-          </Button>
+          </Button>}
         </div>
       </div>
 
@@ -362,18 +363,19 @@ const handleDynamicChange = (fieldId, value) => {
                     </AvatarFallback>
                   </Avatar>
 
-                  <Label
+                  {!managerView && <Label
                     htmlFor="photo-upload"
                     className="absolute bottom-1 right-1 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition hover:scale-105"
                   >
                     <Edit className="h-4 w-4" />
-                  </Label>
+                  </Label>}
 
                   <Input
                     id="photo-upload"
                     type="file"
                     accept="image/*"
                     className="hidden"
+                    disabled={managerView}
                     onChange={(e) => {
                       const file = e.target.files?.[0]
                       if (!file) return
@@ -391,6 +393,7 @@ const handleDynamicChange = (fieldId, value) => {
                   <Label>First Name</Label>
                   <Input
                     value={firstName}
+                    disabled={readOnly}
                     onChange={(e) => setFirstName(e.target.value)}
                   />
                 </div>
@@ -399,6 +402,7 @@ const handleDynamicChange = (fieldId, value) => {
                   <Label>Last Name</Label>
                   <Input
                     value={lastName}
+                    disabled={readOnly}
                     onChange={(e) => setLastName(e.target.value)}
                   />
                 </div>
@@ -412,15 +416,16 @@ const handleDynamicChange = (fieldId, value) => {
 
               <div className='space-y-2'>
                 <Label>Contact</Label>
-                <Input
-                  value={contact}
+                  <Input
+                    value={contact}
+                    disabled={readOnly}
                   onChange={(e) => setContact(e.target.value)}
                 />
               </div>
               </div>
 
               <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-                <div className='space-y-2'>
+                {!managerView && <div className='space-y-2'>
                   <Label>Role</Label>
                   <Select value={role} onValueChange={setRole}>
                     <SelectTrigger className='w-full'><SelectValue /></SelectTrigger>
@@ -429,10 +434,10 @@ const handleDynamicChange = (fieldId, value) => {
                       <SelectItem value='manager'>Manager</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </div>}
                 <div className='space-y-2'>
                   <Label>Attendance method</Label>
-                  <Select value={attendanceMode} onValueChange={setAttendanceMode}>
+                  <Select value={attendanceMode} onValueChange={setAttendanceMode} disabled={readOnly}>
                     <SelectTrigger className='w-full'><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value='inherit'>Use team default</SelectItem>
@@ -447,7 +452,7 @@ const handleDynamicChange = (fieldId, value) => {
         </CardContent>
       </Card>
 
-      {teamBillingConfig?.billingType === "salary" ? (
+      {!managerView && (teamBillingConfig?.billingType === "salary" ? (
             <SalaryCard
               teamId={teamId}
 	            memberId={memberId}
@@ -458,7 +463,7 @@ const handleDynamicChange = (fieldId, value) => {
               memberId={memberId}
               config={teamBillingConfig}
             />
-          )}
+          ))}
 
       {/* Custom Forms */}
 
@@ -479,6 +484,7 @@ const handleDynamicChange = (fieldId, value) => {
                     <Textarea
                       id={field.id}
                       value={dynamicFields[field.id] || ""}
+                      disabled={readOnly}
                       onChange={(e) =>
                         handleDynamicChange(field.id, e.target.value)
                       }
@@ -487,6 +493,7 @@ const handleDynamicChange = (fieldId, value) => {
                   ) : field.type === "select" ? (
                     <Select
                       value={dynamicFields[field.id] || ""}
+                      disabled={readOnly}
                       onValueChange={(val) =>
                         handleDynamicChange(field.id, val)
                       }
@@ -505,6 +512,7 @@ const handleDynamicChange = (fieldId, value) => {
                   ) : field.type === "radio" ? (
                     <RadioGroup
                       value={dynamicFields[field.id] || ""}
+                      disabled={readOnly}
                       onValueChange={(val) =>
                         handleDynamicChange(field.id, val)
                       }
@@ -527,6 +535,7 @@ const handleDynamicChange = (fieldId, value) => {
                       id={field.id}
                       type={field.type}
                       value={dynamicFields[field.id] || ""}
+                      disabled={readOnly}
                       onChange={(e) =>
                         handleDynamicChange(field.id, e.target.value)
                       }
@@ -538,7 +547,7 @@ const handleDynamicChange = (fieldId, value) => {
             </CardContent>
           </Card>
           ))} 
-          {teamBillingConfig?.billingType !== "salary" ? (
+          {!managerView && teamBillingConfig?.billingType !== "salary" ? (
           <PaymentHistoryCard
             payments={payments}
             billingPeriods={billingPeriods}

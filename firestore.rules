@@ -47,7 +47,12 @@ service cloud.firestore {
 
       match /members/{memberId} {
         allow read: if isBos() || isTeamAdmin(teamId) || isTeamManager(teamId) || (isTeamMember(teamId) && request.auth.uid == memberId);
-        allow write: if isBos() || isTeamAdmin(teamId);
+        allow create, delete: if isBos() || isTeamAdmin(teamId);
+        allow update: if isBos() || isTeamAdmin(teamId) ||
+          (isTeamManager(teamId) && request.auth.uid != memberId &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              "firstName", "lastName", "contact", "customData", "attendanceMode", "updatedAt"
+            ]));
         match /{memberSubpath=**} {
           allow read: if isBos() || isTeamAdmin(teamId) || (isTeamMember(teamId) && request.auth.uid == memberId);
           allow write: if isBos() || isTeamAdmin(teamId);
@@ -103,6 +108,14 @@ service cloud.firestore {
       allow list: if isBos() || (isAdmin() && isTeamAdmin(resource.data.teamId));
       allow create: if isBos() || isTeamAdmin(request.resource.data.teamId);
       allow update, delete: if isBos() || isTeamAdmin(resource.data.teamId);
+    }
+    match /customForms/{formId} {
+      // Members fetch known form IDs from their own team's `customForms`
+      // array. Listing every form remains restricted to administrators.
+      allow get: if isBos() || isAdmin() || signedIn();
+      allow list: if isBos() || isAdmin();
+      allow create: if isBos() || (isAdmin() && request.resource.data.adminUserId == request.auth.uid);
+      allow update, delete: if isBos() || (isAdmin() && resource.data.adminUserId == request.auth.uid);
     }
     match /pendingMembers/{userId} {
       allow create, get, update, delete: if isBos() || (signedIn() && request.auth.uid == userId) || isAdmin();

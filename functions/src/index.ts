@@ -93,23 +93,67 @@ export const createMemberAccount = onCall(async (request) => {
     throw new HttpsError("unauthenticated", "User must be logged in");
   }
 
-  const { email, firstName, lastName } = request.data;
+  const { email, firstName, lastName, teamId, contact, customData } = request.data;
   const password = "123456"; 
+  let createdUid: string | null = null;
 
   try {
+    if (teamId) {
+      const email = String(request.auth.token.email || "").trim().toLowerCase();
+      const mappingSnap = email ? await db.doc(`allMembers/${email}`).get() : null;
+      const managerId = mappingSnap?.data()?.memberId || request.auth.uid;
+      if (!mappingSnap?.exists || mappingSnap.data()?.teamId !== teamId || managerId !== request.auth.uid) {
+        throw new HttpsError("permission-denied", "Manager team mapping not found");
+      }
+      const managerSnap = await db.doc(`teams/${teamId}/members/${managerId}`).get();
+      if (!managerSnap.exists || managerSnap.data()?.role !== "manager") {
+        throw new HttpsError("permission-denied", "Manager access denied");
+      }
+    }
+
     // 2. Create the User in Firebase Auth
     const userRecord = await admin.auth().createUser({
       email: email.toLowerCase(),
       password: password,
       displayName: `${firstName} ${lastName}`,
     });
+    createdUid = userRecord.uid;
+
+    // Managers create regular members through this trusted path. Salary and
+    // billing fields are deliberately never accepted from the client.
+    if (teamId) {
+      const normalizedEmail = email.toLowerCase();
+      const batch = db.batch();
+      batch.set(db.doc(`teams/${teamId}/members/${userRecord.uid}`), {
+        id: userRecord.uid,
+        firstName: String(firstName || "").trim(),
+        lastName: String(lastName || "").trim(),
+        email: normalizedEmail,
+        contact: String(contact || "").trim(),
+        role: "member",
+        customData: customData || {},
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      batch.set(db.doc(`allMembers/${normalizedEmail}`), {
+        teamId,
+        email: normalizedEmail,
+        memberId: userRecord.uid,
+        role: "member",
+      });
+      batch.update(db.doc(`teams/${teamId}`), {
+        totalMembers: admin.firestore.FieldValue.increment(1),
+      });
+      await batch.commit();
+    }
 
     // 3. Return the new UID to the frontend
     return { uid: userRecord.uid };
     
   } catch (error: any) {
+    if (createdUid) await admin.auth().deleteUser(createdUid).catch(() => undefined);
     console.error("Error creating user:", error);
     
+    if (error instanceof HttpsError) throw error;
     if (error.code === 'auth/email-already-in-use') {
       throw new HttpsError("already-exists", "This email is already registered.");
     }

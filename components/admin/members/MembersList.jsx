@@ -41,8 +41,9 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const MembersList = ({setModalOpen}) => {
+const MembersList = ({ setModalOpen, teamId: providedTeamId, managerMode = false, currentUserId = null }) => {
   const { slug } = useParams(); 
+  const activeTeamId = providedTeamId || slug;
   const [team, setTeam] = useState(null);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,12 +58,12 @@ const MembersList = ({setModalOpen}) => {
 
   /* ---------------- FETCH DATA ---------------- */
   useEffect(() => {
-    if (!slug) return;
+    if (!activeTeamId) return;
 
     const fetchData = async () => {
       setLoading(true);
       try {
-        const teamDoc = await getDoc(doc(db, "teams", slug));
+        const teamDoc = await getDoc(doc(db, "teams", activeTeamId));
         if (teamDoc.exists()) {
           const teamData = { id: teamDoc.id, ...teamDoc.data() };
           setTeam(teamData);
@@ -84,7 +85,7 @@ const MembersList = ({setModalOpen}) => {
         }
 
         // 2. Fetch Members
-        const membersCol = collection(db, "teams", slug, "members");
+        const membersCol = collection(db, "teams", activeTeamId, "members");
         const snapshot = await getDocs(membersCol);
         const membersList = snapshot.docs.map((doc) => ({
           id: doc.id,
@@ -100,7 +101,7 @@ const MembersList = ({setModalOpen}) => {
     };
 
     fetchData();
-  }, [slug]);
+  }, [activeTeamId]);
 
 
   const toggleSelectMember = (memberId) => {
@@ -174,7 +175,7 @@ const notifyProfileCompletion = async (member) => {
 };
 
 const confirmDeleteMember = async () => {
-  if (!memberToDelete?.length || !user?.uid) return;
+  if (managerMode || !memberToDelete?.length || !user?.uid) return;
 
   const functions = getFunctions();
   const removeMembersCall = httpsCallable(functions, 'removeMembers');
@@ -185,7 +186,7 @@ const confirmDeleteMember = async () => {
   try {
     // Call the Cloud Function
     await removeMembersCall({ 
-      teamId: slug, 
+      teamId: activeTeamId, 
       memberIds: memberToDelete 
     });
 
@@ -277,7 +278,7 @@ const filteredMembers = members.filter((member) => {
   {/* Buttons */}
   <div className="flex w-full gap-2 md:w-auto md:gap-3">
 
-    {selectedMembers.length > 0 && (
+    {!managerMode && selectedMembers.length > 0 && (
       <Button
         onClick={() => handleDelete(selectedMembers)}
         className="flex-1 md:flex-none"
@@ -305,7 +306,7 @@ const filteredMembers = members.filter((member) => {
         <table className="w-full text-sm ">
           <thead className="bg-muted">
             <tr>
-            <th className="px-4 py-3">
+            {!managerMode && <th className="px-4 py-3">
                 <Checkbox
                   checked={
                     members.length > 0 &&
@@ -313,7 +314,7 @@ const filteredMembers = members.filter((member) => {
                   }
                   onCheckedChange={toggleSelectAll}
                 />
-              </th>
+            </th>}
               <th className="px-4 py-3 text-left">First Name</th>
               <th className="px-4 py-3 text-left">Last Name</th>
               <th className="px-4 py-3 text-left">Email</th>
@@ -337,12 +338,12 @@ const filteredMembers = members.filter((member) => {
             ) : (
               currentRows.map((member) => (
                 <tr key={member.id} className="border-t hover:bg-muted/50">
-                <td className="px-4 py-3">
+                {!managerMode && <td className="px-4 py-3">
                   <Checkbox
                     checked={selectedMembers.includes(member.id)}
                     onCheckedChange={() => toggleSelectMember(member.id)}
                   />
-                </td>
+                </td>}
                   <td className="px-4 py-3 font-medium whitespace-nowrap">
                     {member.firstName}
                   </td>
@@ -367,13 +368,13 @@ const filteredMembers = members.filter((member) => {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                    <Link href={`/admin/teams/${team.id}/members/${member.id}`}>
+                    <Link href={managerMode ? `/member/members/${member.id}` : `/admin/teams/${team.id}/members/${member.id}`}>
                       <Button variant="outline" size="icon">
                         <Edit className="h-4 w-4" />
                       </Button>
                     </Link>
 
-                    {!isProfileComplete(member) && (
+                    {!managerMode && !isProfileComplete(member) && (
                       <Button
                         variant="outline"
                         size="sm"

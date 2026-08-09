@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { doc, collection, Timestamp, increment, runTransaction } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { nanoid } from "nanoid";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
@@ -22,7 +22,7 @@ const countryCodeOptions = getCountries().map((iso) => ({
   iso,
 }));
 
-export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded }) {
+export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded, managerMode = false }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -79,6 +79,45 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
   setLoading(true);
 
   try {
+    if (managerMode) {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch("/api/team/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          teamId: team.id, firstName: firstName.trim(), lastName: lastName.trim(),
+          email: email.trim().toLowerCase(), contact: `${countryCode} ${phoneNumber.trim()}`,
+          attendanceMode: attendanceMode === "inherit" ? null : attendanceMode, customData: dynamicValues,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to add member");
+      toast.success("Member created successfully!");
+      onOpenChange(false);
+      router.push(`/member/members/${result.uid}`);
+      return;
+    }
+
+    // Keep member creation server-side for admins too. This avoids a client
+    // Firestore transaction being rejected by stricter production rules.
+    const token = await auth.currentUser?.getIdToken();
+    const serverResponse = await fetch("/api/team/members", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        teamId: team.id, firstName: firstName.trim(), lastName: lastName.trim(),
+        email: email.trim().toLowerCase(), contact: `${countryCode} ${phoneNumber.trim()}`,
+        attendanceMode: attendanceMode === "inherit" ? null : attendanceMode, customData: dynamicValues,
+      }),
+    });
+    const serverResult = await serverResponse.json();
+    if (!serverResponse.ok) throw new Error(serverResult.error || "Failed to add member");
+    if (onMemberAdded) onMemberAdded();
+    toast.success("Member created successfully!");
+    onOpenChange(false);
+    router.push(`/admin/teams/${team.id}/members/${serverResult.uid}`);
+    return;
+
     const teamRef = doc(db, "teams", team.id);
     const userRef = doc(db, "users", team.admin.userId);
 
@@ -203,7 +242,7 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
               </div>
             </div>
                     
-           <div className="pb-1">
+           {!managerMode && <div className="pb-1">
             <Label className="pb-2" htmlFor="role">Role</Label>         
             <RadioGroup
               value={role}
@@ -224,7 +263,7 @@ export default function AddMemberModal({ open, onOpenChange, team, onMemberAdded
                 </Label>
               </div>
             </RadioGroup>
-          </div>
+          </div>}
           <div className="space-y-2">
             <Label>Attendance method</Label>
             <Select value={attendanceMode} onValueChange={setAttendanceMode}>

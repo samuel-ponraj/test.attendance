@@ -116,7 +116,7 @@ const getRoleStyle = (status) => {
             onClick={() => handleAttendance("present")}
             className={
               todayStatus === "present"
-                ? "bg-success text-white hover:bg-success"
+                ? "border-success bg-success/15 text-success hover:bg-success/20"
                 : "hover:bg-success/10 hover:text-success hover:border-success"
             }
           >
@@ -130,7 +130,7 @@ const getRoleStyle = (status) => {
             onClick={() => handleAttendance("absent")}
             className={
               todayStatus === "absent"
-                ? "bg-destructive text-white hover:bg-destructive"
+                ? "border-destructive bg-destructive/15 text-destructive hover:bg-destructive/20"
                 : "hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
             }
           >
@@ -145,7 +145,7 @@ const getRoleStyle = (status) => {
             // We use style for the specific hex colors when active
             style={
               todayStatus === "halfday" 
-                ? { backgroundColor: '#F59E0B', color: 'white', borderColor: '#F59E0B' } 
+                ? { backgroundColor: '#F59E0B20', color: '#F59E0B', borderColor: '#F59E0B' } 
                 : {}
             }
             className={cn(
