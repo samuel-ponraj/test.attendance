@@ -135,7 +135,10 @@ export const ensureBillingPeriods = async ({ teamId, member, periods }) => {
 		: Math.max(newAmount - oldPaid - oldDiscount, 0);
 
 	await updateDoc(periodRef, {
+		periodKey: period.periodKey || old.periodKey || "",
 		periodLabel: period.periodLabel,
+		billingCycle: period.billingCycle || old.billingCycle || "",
+		billingType: period.billingType || old.billingType || "fixed",
 		fromDate: period.fromDate,
 		toDate: period.toDate,
 		dueDate: period.dueDate || "",
@@ -143,10 +146,17 @@ export const ensureBillingPeriods = async ({ teamId, member, periods }) => {
 		dayName: period.dayName || "",
 		isHoliday: !!period.isHoliday,
 		attendance: period.attendance || old.attendance || null,
+		presentDays: period.presentDays ?? old.presentDays ?? 0,
+		halfDays: period.halfDays ?? old.halfDays ?? 0,
+		absentDays: period.absentDays ?? old.absentDays ?? 0,
+		billableDays: period.billableDays ?? old.billableDays ?? 0,
+		totalDaysInMonth: period.totalDaysInMonth ?? old.totalDaysInMonth ?? 0,
 		amount: newAmount,
 		balance: newBalance,
 		status: nonPayableStatus
 			? nonPayableStatus
+			: newAmount <= 0 && period.status === "pending"
+				? "pending"
 			: newBalance <= 0
 				? "settled"
 				: oldPaid > 0 || oldDiscount > 0
@@ -162,7 +172,7 @@ export const ensureBillingPeriods = async ({ teamId, member, periods }) => {
 				...period,
 				memberId: member.id,
 				memberName: `${member.firstName || ""} ${member.lastName || ""}`.trim(),
-				billingType: "fixed",
+				billingType: period.billingType || "fixed",
 				paid: 0,
 				balance:
 					period.status === "holiday" ||

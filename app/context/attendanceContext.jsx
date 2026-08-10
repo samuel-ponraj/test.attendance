@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import {
   doc,
   onSnapshot,
@@ -8,6 +8,7 @@ import {
 import { toast } from "sonner";
 import { useMembers } from "../../app/context/MembersContext";
 import { getEffectiveAttendanceMode } from "@/lib/attendance-mode";
+import { getDateKey } from "@/lib/DateKey";
 
 const AttendanceContext = createContext();
 
@@ -32,8 +33,7 @@ export const AttendanceProvider = ({ children }) => {
         HELPERS
   ========================== */
   const getTodayDate = () => {
-    const today = new Date();
-    return today.toLocaleDateString("en-CA"); 
+    return getDateKey();
   };
 
   const getPunchRef = () => {
@@ -60,7 +60,10 @@ export const AttendanceProvider = ({ children }) => {
 
       const response = await fetch("/api/attendance", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await auth.currentUser?.getIdToken()}`,
+        },
         body: JSON.stringify({ 
           member, 
           dateKey: getTodayDate(),
@@ -93,7 +96,10 @@ export const AttendanceProvider = ({ children }) => {
 
       const response = await fetch("/api/attendance", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await auth.currentUser?.getIdToken()}`,
+        },
         body: JSON.stringify({ 
           member, 
           dateKey: getTodayDate(),
@@ -157,7 +163,7 @@ export const AttendanceProvider = ({ children }) => {
 
     const unsubscribes = Array.from({ length: daysInMonth }, (_, i) => {
       const current = new Date(year, month, i + 1);
-      const dateKey = current.toLocaleDateString("en-CA");
+      const dateKey = getDateKey(current);
 
       const ref = doc(
         db,

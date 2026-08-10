@@ -9,9 +9,12 @@ import {
 import { format } from "date-fns";
 import { CalendarCheck, CalendarIcon, CheckCircle, Clock, Users, UserRoundCheck, XCircle } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
+import { getDateKey } from "@/lib/DateKey";
 import { useMembers } from "@/app/context/MembersContext";
 import { useTeams } from "@/app/context/TeamsContext";
-import Members from "@/components/admin/team/Members";
+import MembersTab from "@/components/members/MembersTab";
+import MemberDirectory from "@/components/members/MemberDirectory";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -24,10 +27,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import Link from "next/link";
 import AddMemberModal from "@/components/admin/addMemberModal";
-import MembersList from "@/components/admin/members/MembersList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-const getDateKey = (date) => date.toLocaleDateString("en-CA");
 
 function Count({ icon: Icon, label, className }) {
   return (
@@ -97,9 +97,14 @@ export default function ManagerTeamMembersPage() {
 
   const updateAttendance = async ({ teamId, dateKey, member, status }) => {
     try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Your session has expired. Please sign in again.");
       const response = await fetch("/api/attendance", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ teamId, dateKey, member: { id: member.id }, status }),
       });
       const result = await response.json();
@@ -192,20 +197,17 @@ export default function ManagerTeamMembersPage() {
           <TabsTrigger value="members"><Users className="size-4 hidden sm:inline" />Members</TabsTrigger>
         </TabsList>
         <TabsContent value="attendance">
-          <Members
+          <MembersTab
             members={teamMembers}
             selectedDate={selectedDate}
             attendance={attendance}
-            team={team}
-            updateAttendance={updateAttendance}
-            handleMemberRemoved={() => {}}
-            setModalOpen={() => {}}
+            teamId={team.id}
+            onUpdateAttendance={updateAttendance}
             currentUserId={manager.id}
-            memberProfileBasePath="/member/members"
           />
         </TabsContent>
         <TabsContent value="members">
-          <MembersList setModalOpen={setAddMemberOpen} teamId={manager.teamId} managerMode currentUserId={manager.id} />
+          <MemberDirectory members={teamMembers} onAddMember={() => setAddMemberOpen(true)} />
         </TabsContent>
       </Tabs>
       <AddMemberModal open={addMemberOpen} onOpenChange={setAddMemberOpen} team={team} managerMode />

@@ -15,6 +15,9 @@ service cloud.firestore {
     function isTeamMember(teamId) {
       return signedIn() && exists(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid));
     }
+    function isCurrentMember(teamId, memberId) {
+      return isTeamMember(teamId) && request.auth.uid == memberId;
+    }
     function isTeamManager(teamId) {
       return isTeamMember(teamId) &&
         get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.role == "manager";
@@ -48,19 +51,36 @@ service cloud.firestore {
       match /members/{memberId} {
         allow read: if isBos() || isTeamAdmin(teamId) || isTeamManager(teamId) || (isTeamMember(teamId) && request.auth.uid == memberId);
         allow create, delete: if isBos() || isTeamAdmin(teamId);
+        // A member may only update the aggregate shown on their own payment
+        // screen. Individual billing periods are restricted below.
         allow update: if isBos() || isTeamAdmin(teamId) ||
+          (isCurrentMember(teamId, memberId) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              "billing"
+            ])) ||
           (isTeamManager(teamId) && request.auth.uid != memberId &&
             request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               "firstName", "lastName", "contact", "customData", "attendanceMode", "updatedAt"
             ]));
         match /{memberSubpath=**} {
           allow read: if isBos() || isTeamAdmin(teamId) || (isTeamMember(teamId) && request.auth.uid == memberId);
-          allow write: if isBos() || isTeamAdmin(teamId);
+          // A checkout updates the selected period in the same Firestore
+          // transaction as the member summary and payment record.
+          allow update: if isBos() || isTeamAdmin(teamId) ||
+            (isCurrentMember(teamId, memberId) &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                "paid", "balance", "status", "lastPaymentAmount",
+                "paymentMode", "lastPaymentDate", "updatedAt"
+              ]));
+          allow create, delete: if isBos() || isTeamAdmin(teamId);
         }
       }
       match /attendance/{dateId}/punches/{memberId} {
-        allow read: if isBos() || isTeamAdmin(teamId) || isTeamManager(teamId) ||
-          (isTeamMember(teamId) && (request.auth.uid == memberId || resource.data.id == request.auth.uid));
+        // Attendance tables and real-time listeners query a day's punch
+        // collection. Query authorization must be decidable before Firestore
+        // returns documents, so make reads team-scoped rather than document-
+        // scoped. Write permissions below remain role/self-member restricted.
+        allow read: if isBos() || isTeamAdmin(teamId) || isTeamMember(teamId);
         allow create, update: if isBos() || isTeamAdmin(teamId) || isTeamManager(teamId) ||
           (request.auth.uid == memberId && canSelfPunch(teamId) && request.resource.data.id == request.auth.uid);
         allow delete: if isBos() || isTeamAdmin(teamId);
@@ -68,7 +88,15 @@ service cloud.firestore {
       match /payments/{paymentId} {
         allow read: if isBos() || isTeamAdmin(teamId) ||
           (isTeamMember(teamId) && resource.data.memberId == request.auth.uid);
-        allow write: if isBos() || isTeamAdmin(teamId);
+        // Members can only write payment records that identify themselves.
+        // This covers the success/failure record created after Razorpay
+        // verification, while preventing cross-member writes.
+        allow create: if isBos() || isTeamAdmin(teamId) ||
+          (isTeamMember(teamId) && request.resource.data.memberId == request.auth.uid);
+        allow update: if isBos() || isTeamAdmin(teamId) ||
+          (isTeamMember(teamId) && resource.data.memberId == request.auth.uid &&
+            request.resource.data.memberId == request.auth.uid);
+        allow delete: if isBos() || isTeamAdmin(teamId);
       }
       match /salarySlips/{slipId} {
         allow read: if isBos() || isTeamAdmin(teamId) ||

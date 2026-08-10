@@ -2,13 +2,16 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../../app/context/AuthContext";
+import { useAttendance } from "@/app/context/attendanceContext";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const AttendanceHistory = () => {
   const { userData } = useAuth();
+  const { monthlyLogs: realtimeMonthlyLogs } = useAttendance();
+  const refreshTimer = useRef(null);
 
   const [monthlyLogs, setMonthlyLogs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -172,6 +175,18 @@ const AttendanceHistory = () => {
   useEffect(() => {
     fetchMonthlyAttendance(currentDate);
   }, [currentDate, fetchMonthlyAttendance]);
+
+  // The provider receives live manager/admin updates. Debounce the initial
+  // batch of daily listeners so opening this screen does not trigger one
+  // history fetch per day, then refresh the visible calendar on later writes.
+  useEffect(() => {
+    if (!realtimeMonthlyLogs.length) return;
+    clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(() => {
+      fetchMonthlyAttendance(currentDate);
+    }, 250);
+    return () => clearTimeout(refreshTimer.current);
+  }, [currentDate, fetchMonthlyAttendance, realtimeMonthlyLogs]);
 
   const attendanceMap = useMemo(() => {
     const map = {};

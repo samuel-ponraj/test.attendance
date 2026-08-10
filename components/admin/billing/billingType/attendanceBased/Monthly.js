@@ -157,7 +157,7 @@ const Monthly = ({ teamId, team, members, initialMemberId, showBackButton = true
           if (punchSnap.exists()) {
             const status = punchSnap.data()?.status;
 
-            if (status === "present") {
+            if (status === "present" || status === "paid_leave") {
               presentDays += 1;
             } else if (status === "halfday") {
               halfDays += 1;

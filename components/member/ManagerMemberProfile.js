@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { useMembers } from "@/app/context/MembersContext";
-import MemberProfile from "@/components/admin/members/MemberProfile";
+import MemberDetails from "@/components/members/MemberDetails";
 
 export default function ManagerMemberProfile({ memberId }) {
   const router = useRouter();
@@ -20,5 +20,5 @@ export default function ManagerMemberProfile({ memberId }) {
   }
   if (manager.role !== "manager") return null;
 
-  return <MemberProfile teamId={manager.teamId} memberId={memberId} managerView currentUserId={manager.id} />;
+  return <MemberDetails teamId={manager.teamId} memberId={memberId} currentUserId={manager.id} />;
 }

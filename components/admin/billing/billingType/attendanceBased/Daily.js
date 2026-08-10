@@ -150,7 +150,15 @@ const Daily = ({ teamId, team, members, initialMemberId, showBackButton = true }
 				}
 			}
 
-			const isAbsent = attendance === "absent";
+			const isPresent = attendance === "present" || attendance === "paid_leave";
+			const isHalfDay = attendance === "halfday";
+			const amount = isHoliday
+				? 0
+				: isPresent
+					? baseAmount
+					: isHalfDay
+						? baseAmount / 2
+						: 0;
 
 			rows.push({
 				id: `${dateKey}_daily`,
@@ -168,8 +176,10 @@ const Daily = ({ teamId, team, members, initialMemberId, showBackButton = true }
 				isHoliday,
 
 				attendance,
-				amount: isHoliday || isAbsent ? 0 : baseAmount,
-				status: isHoliday ? "holiday" : isAbsent ? "leave" : "pending",
+				amount,
+				// Keep unmarked dates pending so a later attendance mark refreshes
+				// the amount instead of permanently treating the date as leave.
+				status: isHoliday ? "holiday" : "pending",
 			});
 
 			current.setDate(current.getDate() + 1);
