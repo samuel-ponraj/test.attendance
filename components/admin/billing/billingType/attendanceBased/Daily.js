@@ -545,6 +545,8 @@ const Daily = ({ teamId, team, members, initialMemberId, showBackButton = true }
 
 										const leave =
 											period.attendance === "absent" || period.status === "leave";
+										const notMarked =
+											!holiday && period.attendance === "not_marked";
 
 										const notApplicable = holiday || leave;
 
@@ -606,6 +608,8 @@ const Daily = ({ teamId, team, members, initialMemberId, showBackButton = true }
 														<span className="text-muted-foreground font-semibold">
 															Leave
 														</span>
+													) : notMarked ? (
+														<span className="text-muted-foreground font-semibold">—</span>
 													) : (
 														getStatusText(getEffectiveBalance(period) <= 0 ? "settled" : period.status)
 													)}
@@ -616,6 +620,8 @@ const Daily = ({ teamId, team, members, initialMemberId, showBackButton = true }
 														<span className="text-sm text-muted-foreground">
 															Not Applicable
 														</span>
+													) : notMarked ? (
+														<span className="text-sm text-muted-foreground">—</span>
 													) : (period.status === "settled" || getEffectiveBalance(period) <= 0) ? (
 														<PiFilePdf
 															className="cursor-pointer text-2xl text-orange-500 mx-auto"

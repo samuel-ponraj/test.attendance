@@ -118,19 +118,28 @@ export const ensureBillingPeriods = async ({ teamId, member, periods }) => {
 
 			const periodSnap = await getDoc(periodRef);
 
-			if (periodSnap.exists()) {
+		if (periodSnap.exists()) {
 	const old = periodSnap.data();
 
 	const newAmount = Number(period.amount || 0);
 	const oldPaid = Number(old.paid || 0);
 	const oldDiscount = Number(old.discountAmount || 0);
+	// A recorded payment is an accounting record.  Attendance or configuration
+	// changes must not rewrite the charge that was already paid.
+	const isFinanciallyFinalized =
+		oldPaid > 0 || oldDiscount > 0 || old.status === "settled";
+	const amountToStore = isFinanciallyFinalized
+		? Number(old.amount || 0)
+		: newAmount;
 	const nonPayableStatus =
 		period.status === "holiday" || period.isHoliday
 			? "holiday"
 			: period.status === "leave"
 				? "leave"
 				: "";
-	const newBalance = nonPayableStatus
+	const newBalance = isFinanciallyFinalized
+		? Math.max(amountToStore - oldPaid - oldDiscount, 0)
+		: nonPayableStatus
 		? 0
 		: Math.max(newAmount - oldPaid - oldDiscount, 0);
 
@@ -151,11 +160,11 @@ export const ensureBillingPeriods = async ({ teamId, member, periods }) => {
 		absentDays: period.absentDays ?? old.absentDays ?? 0,
 		billableDays: period.billableDays ?? old.billableDays ?? 0,
 		totalDaysInMonth: period.totalDaysInMonth ?? old.totalDaysInMonth ?? 0,
-		amount: newAmount,
+		amount: amountToStore,
 		balance: newBalance,
 		status: nonPayableStatus
 			? nonPayableStatus
-			: newAmount <= 0 && period.status === "pending"
+		: amountToStore <= 0 && period.status === "pending"
 				? "pending"
 			: newBalance <= 0
 				? "settled"

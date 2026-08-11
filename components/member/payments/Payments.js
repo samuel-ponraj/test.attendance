@@ -6,6 +6,7 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   query,
@@ -27,6 +28,11 @@ import { toast } from "sonner";
 import { auth, db } from "@/lib/firebase";
 import { generatePayslip } from "@/lib/GeneratePayslip";
 import { generateReceipt } from "@/components/admin/billing/GenerateReceipt";
+import {
+  ensureBillingPeriods,
+  getBaseAmount,
+  getMemberBillingStartDate,
+} from "@/components/admin/billing/billingType/BillingHelpers";
 import { useMembers } from "@/app/context/MembersContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -165,6 +171,181 @@ const getSalaryPaidAmount = (slip) => {
   return Math.min(Number(slip.amountPaid ?? netSalary), netSalary);
 };
 
+const startOfDay = (value) => {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+const getWorkingDays = (team) =>
+  Array.isArray(team?.schedule?.workingDays)
+    ? team.schedule.workingDays.map(Number)
+    : [0, 1, 2, 3, 4, 5, 6];
+
+const buildMemberBillingPeriods = async ({ team, teamId, member }) => {
+  const config = team?.billingConfig || {};
+  const billingType = config.billingType;
+  const billingCycle = config.billingCycle;
+  const startDate = getMemberBillingStartDate(team, member);
+  const today = startOfDay(new Date());
+  const baseAmount = getBaseAmount(team);
+  const workingDays = getWorkingDays(team);
+  const rows = [];
+
+  if (!billingType || !billingCycle || billingType === "salary") return rows;
+
+  if (billingCycle === "daily") {
+    const current = startOfDay(startDate);
+
+    while (current <= today) {
+      const dateKey = toDateKey(current);
+      const isHoliday = !workingDays.includes(current.getDay());
+      let attendance = "not_marked";
+
+      if (billingType === "attendanceBased" && !isHoliday) {
+        const punchSnap = await getDoc(
+          doc(
+            db,
+            "teams",
+            teamId,
+            "attendance",
+            dateKey,
+            "punches",
+            member.id,
+          ),
+        );
+        attendance = punchSnap.exists()
+          ? punchSnap.data()?.status || "not_marked"
+          : "not_marked";
+      }
+
+      const amount =
+        billingType === "fixed"
+          ? isHoliday
+            ? 0
+            : baseAmount
+          : isHoliday
+            ? 0
+            : attendance === "present" || attendance === "paid_leave"
+              ? baseAmount
+              : attendance === "halfday"
+                ? baseAmount / 2
+                : 0;
+
+      rows.push({
+        id: `${dateKey}_daily`,
+        periodKey: "daily",
+        periodLabel: formatDate(dateKey),
+        billingCycle: "daily",
+        billingType,
+        fromDate: dateKey,
+        toDate: dateKey,
+        dueDate: dateKey,
+        dayNumber: current.getDay(),
+        dayName: current.toLocaleDateString("en-IN", { weekday: "long" }),
+        isHoliday,
+        attendance: billingType === "attendanceBased" ? attendance : null,
+        amount,
+        status: isHoliday ? "holiday" : "pending",
+      });
+      current.setDate(current.getDate() + 1);
+    }
+  } else if (billingCycle === "monthly") {
+    const current = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+
+    while (current <= today) {
+      const year = current.getFullYear();
+      const month = current.getMonth();
+      const monthStart = new Date(year, month, 1);
+      const monthEnd = new Date(year, month + 1, 0);
+      const fromDate =
+        year === startDate.getFullYear() && month === startDate.getMonth()
+          ? startOfDay(startDate)
+          : monthStart;
+      const toDate =
+        billingType === "attendanceBased" && monthEnd > today ? today : monthEnd;
+      let billableDays = 0;
+      let presentDays = 0;
+      let halfDays = 0;
+      let absentDays = 0;
+
+      if (billingType === "attendanceBased") {
+        const day = new Date(fromDate);
+        while (day <= toDate) {
+          if (workingDays.includes(day.getDay())) {
+            billableDays += 1;
+            const punchSnap = await getDoc(
+              doc(db, "teams", teamId, "attendance", toDateKey(day), "punches", member.id),
+            );
+            const attendance = punchSnap.exists() ? punchSnap.data()?.status : "absent";
+            if (attendance === "present" || attendance === "paid_leave") presentDays += 1;
+            else if (attendance === "halfday") halfDays += 1;
+            else absentDays += 1;
+          }
+          day.setDate(day.getDate() + 1);
+        }
+      }
+
+      const amount =
+        billingType === "fixed"
+          ? baseAmount
+          : Math.round(
+              (presentDays + halfDays * 0.5) *
+                (billableDays > 0 ? baseAmount / billableDays : 0),
+            );
+      const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+      rows.push({
+        id: `${monthKey}_monthly`,
+        periodKey: monthKey,
+        periodLabel: fromDate.toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
+        billingCycle: "monthly",
+        billingType,
+        fromDate: toDateKey(fromDate),
+        toDate: toDateKey(toDate),
+        dueDate: toDateKey(toDate),
+        billableDays,
+        presentDays,
+        halfDays,
+        absentDays,
+        amount,
+        status: billingType === "attendanceBased" && amount <= 0 ? "leave" : "pending",
+      });
+      current.setMonth(current.getMonth() + 1);
+    }
+  } else if (billingType === "fixed" && billingCycle === "annual") {
+    const current = new Date(startDate.getFullYear(), 0, 1);
+    while (current <= today) {
+      const year = current.getFullYear();
+      const fromDate = year === startDate.getFullYear() ? startOfDay(startDate) : current;
+      rows.push({
+        id: `${year}_annual`, periodKey: String(year), periodLabel: String(year),
+        billingCycle: "annual", billingType, fromDate: toDateKey(fromDate),
+        toDate: `${year}-12-31`, dueDate: `${year}-12-31`, amount: baseAmount, status: "pending",
+      });
+      current.setFullYear(current.getFullYear() + 1);
+    }
+  } else if (billingType === "fixed" && billingCycle === "term") {
+    (config.academicYears || []).forEach((yearItem) => {
+      (yearItem.terms || []).forEach((term) => {
+        const startKey = toDateKey(startDate);
+        if (!term.endDate || term.endDate < startKey) return;
+        rows.push({
+          id: `${yearItem.academicYear}_term_${term.termNo}`,
+          periodKey: `${yearItem.academicYear}_term_${term.termNo}`,
+          periodLabel: term.name || `Term ${term.termNo}`,
+          billingCycle: "term", billingType, academicYear: yearItem.academicYear,
+          termNumber: term.termNo, termName: term.name || `Term ${term.termNo}`,
+          fromDate: term.startDate < startKey ? startKey : term.startDate,
+          toDate: term.endDate, dueDate: term.dueDate || term.endDate,
+          amount: Number(term.amount || baseAmount), status: "pending",
+        });
+      });
+    });
+  }
+
+  return rows;
+};
+
 const loadRazorpayCheckout = () =>
   new Promise((resolve, reject) => {
     if (typeof window === "undefined") {
@@ -230,6 +411,38 @@ const Payments = () => {
 
     return () => unsubscribe();
   }, [teamId]);
+
+  // Keep the member portal in sync with the same generated periods used by
+  // the admin screens.  This removes the dependency on an admin opening a
+  // billing page before a member can see today's dues.
+  useEffect(() => {
+    if (!teamId || !member || !team || isSalaryBilling) return;
+
+    const generateCurrentPeriods = async () => {
+      try {
+        const periods = await buildMemberBillingPeriods({ team, teamId, member });
+        if (periods.length) {
+          await ensureBillingPeriods({ teamId, member, periods });
+        }
+      } catch (error) {
+        console.error("Unable to generate current billing periods:", error);
+      }
+    };
+
+    generateCurrentPeriods();
+  }, [
+    teamId,
+    member,
+    memberId,
+    team,
+    team?.billingConfig?.billingType,
+    team?.billingConfig?.billingCycle,
+    team?.billingConfig?.baseAmount,
+    team?.billingConfig?.billingStartDate,
+    team?.billingConfig?.academicYears,
+    team?.schedule?.workingDays,
+    isSalaryBilling,
+  ]);
 
   useEffect(() => {
     if (!teamId || !memberId || isSalaryBilling) return;
