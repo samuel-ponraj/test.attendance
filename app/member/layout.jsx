@@ -18,7 +18,7 @@ import Link from "next/link";
 import MemberDashboardGate from "@/components/member/MemberDashboardGate";
 
 export const metadata = {
-  title: "Kingz Digital Attendances",
+  title: "Kingz Digital Attendance",
 };
 
 function DashboardContent({ children }) {

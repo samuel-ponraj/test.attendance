@@ -30,7 +30,7 @@ export default function DashboardPage() {
   const [summaryReady, setSummaryReady] = useState(false);
 
   useEffect(() => {
-    document.title = "Overview | Kingz Digital Attendance";
+    document.title = "Kingz Digital Attendance";
   }, []);
 
       useEffect(() => {
