@@ -29,7 +29,6 @@ import { auth, db } from "@/lib/firebase";
 import { generatePayslip } from "@/lib/GeneratePayslip";
 import { generateReceipt } from "@/components/admin/billing/GenerateReceipt";
 import {
-  ensureBillingPeriods,
   getBaseAmount,
   getMemberBillingStartDate,
 } from "@/components/admin/billing/billingType/BillingHelpers";
@@ -182,7 +181,9 @@ const getWorkingDays = (team) =>
     ? team.schedule.workingDays.map(Number)
     : [0, 1, 2, 3, 4, 5, 6];
 
-const buildMemberBillingPeriods = async ({ team, teamId, member }) => {
+// Kept as a pure preview helper for callers that need to display a proposed
+// charge. Persisting periods is handled only by the trusted Cloud Functions.
+export const buildMemberBillingPeriods = async ({ team, teamId, member }) => {
   const config = team?.billingConfig || {};
   const billingType = config.billingType;
   const billingCycle = config.billingCycle;
@@ -411,38 +412,6 @@ const Payments = () => {
 
     return () => unsubscribe();
   }, [teamId]);
-
-  // Keep the member portal in sync with the same generated periods used by
-  // the admin screens.  This removes the dependency on an admin opening a
-  // billing page before a member can see today's dues.
-  useEffect(() => {
-    if (!teamId || !member || !team || isSalaryBilling) return;
-
-    const generateCurrentPeriods = async () => {
-      try {
-        const periods = await buildMemberBillingPeriods({ team, teamId, member });
-        if (periods.length) {
-          await ensureBillingPeriods({ teamId, member, periods });
-        }
-      } catch (error) {
-        console.error("Unable to generate current billing periods:", error);
-      }
-    };
-
-    generateCurrentPeriods();
-  }, [
-    teamId,
-    member,
-    memberId,
-    team,
-    team?.billingConfig?.billingType,
-    team?.billingConfig?.billingCycle,
-    team?.billingConfig?.baseAmount,
-    team?.billingConfig?.billingStartDate,
-    team?.billingConfig?.academicYears,
-    team?.schedule?.workingDays,
-    isSalaryBilling,
-  ]);
 
   useEffect(() => {
     if (!teamId || !memberId || isSalaryBilling) return;

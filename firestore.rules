@@ -6,8 +6,12 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/bosAdmins/$(request.auth.uid));
     }
     function isAdmin() {
-      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+      // Administrator accounts are stored in `users`; members use the
+      // separate `allMembers` mapping.  Some existing administrator profiles
+      // predate the `role` field, so requiring that optional field prevents
+      // legitimate admins from reading their own teams.
+      return signedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
     function isTeamAdmin(teamId) {
       return signedIn() && get(/databases/$(database)/documents/teams/$(teamId)).data.admin.userId == request.auth.uid;
